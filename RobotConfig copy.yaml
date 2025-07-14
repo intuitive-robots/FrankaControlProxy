@@ -1,0 +1,7 @@
+type:Gripper
+follower:true
+robot_ip:172.16.1.2
+gripper_pub_addr:tcp://141.3.53.152:51003
+service_addr:tcp://141.3.53.152:51004
+sub_addr:tcp://141.3.53.152:51005
+useGripper:true

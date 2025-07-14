@@ -17,12 +17,12 @@ void debugPrintFrankaArmStateBuffer(const std::vector<uint8_t>& buffer) {
     std::cout << "\n[DEBUG] MessageHeader:\n";
     std::cout << "  ID  = " << static_cast<int>(header.id) << "\n";
     std::cout << "  len = " << header.len << "\n";
-    if (header.len != 648) {
-        std::cerr << "[ERROR] Header length field is not 648 (actual: " << header.len << ")" << std::endl;
+    if (header.len != 636) {
+        std::cerr << "[ERROR] Header length field is not 636 (actual: " << header.len << ")" << std::endl;
     }
     // Step 2: Decode FrankaArmState
     const uint8_t* payload = buffer.data() + 4;
-    FrankaArmState decoded = FrankaArmState::decode(payload, 648);
+    FrankaArmState decoded = FrankaArmState::decode(payload, 636);
     std::cout << std::fixed << std::setprecision(4);
     std::cout << "\n[DEBUG] FrankaArmState:\n";
     std::cout << "  timestamp_ms = " << decoded.timestamp_ms << "\n";

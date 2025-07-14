@@ -1,0 +1,7 @@
+type:Arm
+follower:true
+robot_ip:172.16.1.2
+state_pub_addr:tcp://141.3.53.152:51000
+service_addr:tcp://141.3.53.152:51001
+sub_addr:tcp://141.3.53.152:52000
+useGripper:true

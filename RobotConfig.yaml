@@ -1,4 +1,9 @@
-robot_ip: 172.16.2.2
-state_pub_addr: tcp://141.3.53.152:5555
-service_addr: tcp://141.3.53.152:5556
-useGripper: true
+type:Arm
+follower:false
+robot_ip:172.16.2.2
+state_pub_addr:tcp://141.3.53.152:5555
+service_addr:tcp://141.3.53.152:5556
+gripper_pub_addr:tcp://141.3.53.152:5557
+sub_addr:tcp://141.3.53.152:5558
+gripper_sub_addr:tcp://141.3.53.152:5559
+useGripper:true

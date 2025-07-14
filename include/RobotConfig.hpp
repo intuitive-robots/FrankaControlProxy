@@ -46,7 +46,6 @@ public:
         }
     }   
 
-    
 
     // Function to display the loaded configuration
     void display() const {

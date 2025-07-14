@@ -13,9 +13,12 @@ int main(int argc, char **argv)
     std::string config_path = argv[1];
     FrankaProxy proxy(config_path);
     registerAllControlModes(proxy);
-    proxy.setControlMode("idle");
+    std::string type = proxy.getType();
+    std::cout << "[INFO] FrankaProxy initialized with type: " << type << std::endl;
+    std::cout<<"go start!"<<std::endl;
     proxy.start();
+    //proxy.setControlMode("zero_torque");
     proxy.spin();
-
+    
     return 0;
 }

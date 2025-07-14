@@ -1,5 +1,5 @@
-#ifndef IDLE_CONTROL_MODE_H
-#define IDLE_CONTROL_MODE_H
+#ifndef ZERO_TORQUE_MODE_HPP
+#define ZERO_TORQUE_MODE_HPP
 
 #include "abstract_control_mode.h"
 #include <franka/robot.h>
@@ -11,12 +11,10 @@
 #include <franka/exception.h>
 #include <iostream>
 
-
-
-class IdleControlMode : public AbstractControlMode {
+class ZeroTorqueMode : public AbstractControlMode {
 public:
-    IdleControlMode() = default;
-    ~IdleControlMode() override = default;
+    ZeroTorqueMode() = default;
+    ~ZeroTorqueMode() override = default;
 
     //void initialize(const franka::RobotState& initial_state) override;
     void start() override;
@@ -24,5 +22,4 @@ public:
     int getModeID() const override;
 };
 
-    
-#endif // IDLE_CONTROL_MODE_H
+#endif // ZERO_TORQUE_MODE_HPP

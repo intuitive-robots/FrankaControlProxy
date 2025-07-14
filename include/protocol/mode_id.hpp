@@ -12,13 +12,15 @@ enum class ModeID : uint8_t {
     JOINT_VELOCITY = 3,
     HUMAN_MODE = 4,
     IDLE = 5,
+    PD_TEST = 6,
 };
 
 inline std::string toString(ModeID mode) {
     switch (mode) {
         case ModeID::IDLE: return "idle";
-        case ModeID::JOINT_VELOCITY: return "joint_velocity";
-        default: return "unknown";
+        case ModeID::HUMAN_MODE: return "zero_torque";
+        case ModeID::PD_TEST: return "joint_pd";
+        default: return "idle";
     }
 }
 
