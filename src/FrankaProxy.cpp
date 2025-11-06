@@ -448,9 +448,9 @@ void FrankaProxy::responseSocketThread() {
 void FrankaProxy::handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) {
     //check the request size 
     using namespace protocol;
-    if (request.size() < 4) {
+    if (request.size() < MessageHeader::SIZE) {
         response = encodeErrorMessage(0x01);
-        std::cerr << "[FrankaProxy] Invalid request size: " << request.size() << ". Expected at least 4 bytes." << std::endl;
+        std::cerr << "[FrankaProxy] Invalid request size: " << request.size() << ". Expected at least 12 bytes." << std::endl;
         return;
     }
 
@@ -462,12 +462,12 @@ void FrankaProxy::handleServiceRequest(const std::vector<uint8_t>& request, std:
     //     return;
     // }
     
-    const uint8_t* payload = data + 4;
+    const uint8_t* payload = data + MessageHeader::SIZE;
     std::vector<uint8_t> resp;
     uint8_t command = payload[0];
     //deal with different kinds of msg
-    switch (header.id) {
-        case static_cast<int> (protocol::MsgID::GET_STATE_REQ):
+    switch (header.message_type) {
+        case static_cast<int> (protocol::MsgID::GET_STATE_REQ)://
             {
 
                 resp = encodeStateMessage(protocol::FrankaArmState::fromRobotState(getCurrentState()));//send protocol_state to pack message

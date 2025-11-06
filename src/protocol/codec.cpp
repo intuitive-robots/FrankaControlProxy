@@ -4,6 +4,7 @@
 #include "protocol/franka_arm_state.hpp"
 #include "protocol/franka_gripper_state.hpp"
 #include "protocol/mode_id.hpp"
+#include "protocol/request_result.hpp"
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -14,31 +15,34 @@
 #include <franka/gripper.h>
 namespace protocol {
 
-// header + payload
+// header + payload (12-byte header)
+//payload only read
 std::vector<uint8_t> encodeMessage(const MessageHeader& header, const std::vector<uint8_t>& payload) {
-    std::vector<uint8_t> result(4 + payload.size());
-    header.encode(result.data());  // get head
-    std::memcpy(result.data() + 4, payload.data(), payload.size());
+    std::vector<uint8_t> result(MessageHeader::SIZE + payload.size());
+    header.encode(result.data());  // write header
+    std::memcpy(result.data() + MessageHeader::SIZE, payload.data(), payload.size());
     return result;
 }
 
 // Arm:GET_STATE_RESP/PUB_STATE
 std::vector<uint8_t> encodeStateMessage(const protocol::FrankaArmState& state) {
     auto payload = state.encode();  // 636B
-    MessageHeader header{
-        static_cast<uint8_t>(MsgID::GET_STATE_RESP), 
-        static_cast<uint16_t>(payload.size())
-    };
+    MessageHeader header{};
+    header.message_type   = static_cast<uint8_t>(MsgID::GET_STATE_RESP);
+    header.flags          = 0;
+    header.payload_length = static_cast<uint16_t>(payload.size());
+    header.timestamp      = 0; // todo:fill with actual timestamp
     return encodeMessage(header, payload);
 }
 
 //Gripper:GET_STATE_RESP/PUB_STATE
 std::vector<uint8_t> encodeGripperMessage(const FrankaGripperState& gripper_state) {
     auto payload = gripper_state.gripper_encode();  // 23B
-    MessageHeader header{
-        static_cast<uint8_t>(MsgID::GET_STATE_RESP), 
-        static_cast<uint16_t>(payload.size())
-    };
+    MessageHeader header{};
+    header.message_type   = static_cast<uint8_t>(MsgID::GET_STATE_RESP);
+    header.flags          = 0;
+    header.payload_length = static_cast<uint16_t>(payload.size());
+    header.timestamp      = 0;
     return encodeMessage(header, payload);
 }
 
@@ -46,10 +50,11 @@ std::vector<uint8_t> encodeGripperMessage(const FrankaGripperState& gripper_stat
 // QUERY_STATE_RESP
 std::vector<uint8_t> encodeModeMessage(uint8_t mode_code) {
     std::vector<uint8_t> payload{mode_code}; 
-    MessageHeader header{
-        static_cast<uint8_t>(MsgID::GET_CONTROL_MODE_RESP),
-        static_cast<uint16_t>(payload.size())
-    }; // 1 Byte for mode code
+    MessageHeader header{};
+    header.message_type   = static_cast<uint8_t>(MsgID::GET_CONTROL_MODE_RESP);
+    header.flags          = 0;
+    header.payload_length = static_cast<uint16_t>(payload.size()); // 1 byte
+    header.timestamp      = 0;
     return encodeMessage(header, payload);
 }
 
@@ -58,9 +63,11 @@ std::vector<uint8_t> encodeModeMessage(uint8_t mode_code) {
 
 // }
 std::vector<uint8_t> encodeStartControlResp(bool success, ModeID mode_id) {
-    MessageHeader header;
-    header.id = static_cast<uint16_t>(protocol::MsgID::SET_CONTROL_MODE_RESP);
-    header.len = 2;
+    MessageHeader header{};
+    header.message_type   = static_cast<uint8_t>(protocol::MsgID::SET_CONTROL_MODE_RESP);
+    header.flags          = 0;
+    header.payload_length = 2;
+    header.timestamp      = 0;
     std::vector<uint8_t> payload = {
         static_cast<uint8_t>(success ? 0x00 : 0x01),
         static_cast<uint8_t>(mode_id)
@@ -72,10 +79,11 @@ std::vector<uint8_t> encodeStartControlResp(bool success, ModeID mode_id) {
 // ERROR
 std::vector<uint8_t> encodeErrorMessage(uint8_t error_code) {
     std::vector<uint8_t> payload{error_code};
-    MessageHeader header{
-        static_cast<uint8_t>(MsgID::ERROR),
-        static_cast<uint16_t>(payload.size())
-    };
+    MessageHeader header{};
+    header.message_type   = static_cast<uint8_t>(MsgID::ERROR);
+    header.flags          = 0;
+    header.payload_length = static_cast<uint16_t>(payload.size());
+    header.timestamp      = 0;
     return encodeMessage(header, payload);
 }
 
@@ -106,6 +114,11 @@ bool decodeGripperMessage(const std::vector<uint8_t>& data, FrankaGripperState& 
         std::cerr << "[FrankaProxy] Decode error: " << e.what() << std::endl;
         return false;
     }
+}
+
+// Server -> Client: wrap RequestResult to message
+std::vector<uint8_t> encodeRequestResultMessage(const RequestResult& result) {
+    return result.encodeMessage();
 }
 
 }  // namespace protocol

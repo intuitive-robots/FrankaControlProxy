@@ -13,6 +13,8 @@
 
 namespace protocol {
 
+class RequestResult; // forward declaration?
+
 // encode std::array<double, N> (fixed size) 
 template <size_t N>
 inline void encode_array_f64(uint8_t*& ptr, const std::array<double, N>& in) {
@@ -117,11 +119,24 @@ inline bool decode_bool(const uint8_t*& ptr) {
 std::vector<uint8_t> encodeMessage(const MessageHeader& header, const std::vector<uint8_t>& payload);
 std::vector<uint8_t> encodeStateMessage(const FrankaArmState& state);
 std::vector<uint8_t> encodeModeMessage(uint8_t mode_code);
-std::vector<uint8_t> encodeErrorMessage(uint8_t error_code);
-std::vector<uint8_t> encodeGripperMessage(const FrankaGripperState& gripper_state);
+//Todo:check if need vector of following 2 functions
+std::vector<uint8_t> encodeRequestResultMessage(const RequestResult& result); // Todo: implement RequestResult class
+std::vector<uint8_t> encodePubPortMessage(uint16_t Pubport);//Todo:implement, and whta Pubport old name
+//Todo:check if return bool
+bool decodeModeMessage(const std::vector<uint8_t>& data, uint8_t& mode_code);//Todo:change into FrankaArmControl
+bool decodeCommandMessage(const std::vector<uint8_t>& data, uint8_t& command);
+//Todo: think of the exact command class name? check with the header 11 for Command
+//Than the exact type of commmand should be switch by the following 0-5
+
+
+
+//May no use in future
 bool decodeStateMessage(const std::vector<uint8_t>& data, FrankaArmState& arm_state);
+// std::vector<uint8_t> encodeErrorMessage(uint8_t error_code);
+
+std::vector<uint8_t> encodeGripperMessage(const FrankaGripperState& gripper_state);
 bool decodeGripperMessage(const std::vector<uint8_t>& data, FrankaGripperState& gripper_state);
-std::vector<uint8_t> encodeStartControlResp(bool success, ModeID mode_id);
+// std::vector<uint8_t> encodeStartControlResp(bool success, ModeID mode_id);
 
 
 
