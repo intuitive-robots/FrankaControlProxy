@@ -13,17 +13,16 @@
 #include <franka/robot_state.h>
 #include <franka/gripper.h>
 #include <yaml-cpp/yaml.h>
-#include "utils/AtomicDoubleBuffer.hpp"
 #include "protocol/franka_arm_state.hpp"
 #include "control_mode/abstract_control_mode.h"
 #include "protocol/franka_gripper_state.hpp"
 
-class FrankaProxy {
+class FrankaArmProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaProxy(const std::string& config_path);// Constructor that initializes the proxy with a configuration file
-    ~FrankaProxy();// Destructor to clean up resources
+    explicit FrankaArmProxy(const std::string& config_path);// Constructor that initializes the proxy with a configuration file
+    ~FrankaArmProxy();// Destructor to clean up resources
 
     // Core server operations
     bool start();// Starts the Franka server, initializing the robot and communication sockets
@@ -109,9 +108,7 @@ private:
     std::atomic<bool> in_control_;//for threads
     
     // State data
-    AtomicDoubleBuffer<franka::RobotState> current_state_;
-    // franka::RobotState current_state_;
-    franka::RobotState leader_state_; //for follower to generate control
+    franka::RobotState current_state_;
     // Gripper data
     franka::GripperState current_gripper_state_;
     franka::GripperState leader_gripper_state_; //for follower

@@ -1,7 +1,7 @@
 #ifndef ZERO_TORQUE_MODE_HPP
 #define ZERO_TORQUE_MODE_HPP
 
-#include "abstract_control_mode.h"
+#include "abstract_control_mode.hpp"
 #include <franka/robot.h>
 #include <franka/model.h>
 #include <franka/robot_state.h>

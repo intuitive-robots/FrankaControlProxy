@@ -1,0 +1,50 @@
+#include "joint_velocity_mode.hpp"
+#include <franka/exception.h>
+#include <franka/robot_state.h>
+#include <iostream>
+
+
+// JointVelocityMode::JointVelocityMode() = default;
+// JointVelocityMode::~JointVelocityMode() = default;
+
+
+void JointVelocityMode::start() {
+    std::cout << "[JointVelocityMode] Started.\n";
+    is_running_ = true;
+    // Initialize desired velocities to zero
+    desired_velocities_.write(franka::JointVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
+
+    if (!robot_ || !model_) {
+        std::cerr << "[JointVelocityMode] Robot or model not set.\n";
+        return;
+    }
+    robot_->automaticErrorRecovery();
+
+    std::function<franka::JointVelocities(const franka::RobotState&, franka::Duration)> joint_velocity_callback =
+        [this](const franka::RobotState& state, franka::Duration) -> franka::JointVelocities {
+            if (!is_running_) {
+                throw franka::ControlException("JointVelocityMode stopped.");
+            }
+            updateRobotState(state);
+            franka::JointVelocities desired_velocities = desired_velocities_.read();
+            if (!is_running_) {
+                return franka::MotionFinished(desired_velocities);
+            }
+            return desired_velocities;
+        };
+
+    try {
+        robot_->control(joint_velocity_callback);
+    } catch (const franka::ControlException& e) {
+        std::cerr << "[JointVelocityMode] Exception: " << e.what() << std::endl;
+        if (std::string(e.what()).find("reflex") != std::string::npos) {
+            std::cout << "Reflex detected, attempting automatic recovery...\n";
+            try {
+                robot_->automaticErrorRecovery();
+            } catch (const franka::Exception& recovery_error) {
+                std::cerr << "Recovery failed: " << recovery_error.what() << std::endl;
+            }
+        }
+        std::cout << "[JointVelocityMode] Exited.\n";
+    }
+}
