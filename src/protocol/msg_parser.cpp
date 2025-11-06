@@ -22,23 +22,25 @@ std::vector<uint8_t> MsgParser::extract_payload(const zmq::message_t& msg) {
     return std::vector<uint8_t>(start, start + msg.size() - HEADER_SIZE);
 }//return a vector of uint8_t, the payload of the message
 
-zmq::message_t MsgParser::build_message(MsgID id, const std::vector<uint8_t>& payload) {
-    MessageHeader header;
-    header.id = static_cast<uint8_t>(id);
-    header.len = static_cast<uint16_t>(payload.size());
-    header.pad = 0;
 
-    size_t total_size = HEADER_SIZE + payload.size();
-    zmq::message_t msg(total_size);
+//no use for now, may delete
+// zmq::message_t MsgParser::build_message(MsgID id, const std::vector<uint8_t>& payload) {
+//     MessageHeader header;
+//     header.id = static_cast<uint8_t>(id);
+//     header.len = static_cast<uint16_t>(payload.size());
+//     header.pad = 0;
 
-    // encode header
-    header.encode(static_cast<uint8_t*>(msg.data()));
-    // copy payload
-    std::memcpy(static_cast<uint8_t*>(msg.data()) + HEADER_SIZE, payload.data(), payload.size());
-    // zero-fill padding
-    std::memset(static_cast<uint8_t*>(msg.data()) + total_size, 0, msg.size() - total_size);
+//     size_t total_size = HEADER_SIZE + payload.size();
+//     zmq::message_t msg(total_size);
 
-    return msg;
-}
+//     // encode header
+//     header.encode(static_cast<uint8_t*>(msg.data()));
+//     // copy payload
+//     std::memcpy(static_cast<uint8_t*>(msg.data()) + HEADER_SIZE, payload.data(), payload.size());
+//     // zero-fill padding
+//     std::memset(static_cast<uint8_t*>(msg.data()) + total_size, 0, msg.size() - total_size);
+
+//     return msg;
+// }
 
 }  // namespace protocol

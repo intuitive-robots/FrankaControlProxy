@@ -80,24 +80,28 @@ private:
     
     // ZMQ communication
     zmq::context_t context_;
+    zmq::socket_t pub_arm_socket_;//arm state publish socket
+    zmq::socket_t sub_cmd_socket_;//command socket
+    zmq::socket_t rep_socket_;//service socket
     //zmq::socket_t pub_socket_;
-    zmq::socket_t pub_arm_socket_;
-    zmq::socket_t pub_gripper_socket_;
+    // zmq::socket_t pub_gripper_socket_;
     //zmq::socket_t sub_socket_;
-    zmq::socket_t sub_arm_socket_;
-    zmq::socket_t sub_gripper_socket_;
-    zmq::socket_t rep_socket_;
+    // zmq::socket_t sub_gripper_socket_;
+    
     
     // Threading
-    std::thread control_thread_;//controlLoopThread()
-
     std::thread state_pub_thread_;//statePublishThread()
-    std::thread gripper_pub_thread_;//gripperPublishThread()
-
+    // std::thread state_sub_thread_;//stateSubscribeThread(),just for follower
+    std::thread command_sub_thread_;//commandSubscribeThread(),just for follower
+    std::thread control_thread_;//controlLoopThread()
     std::thread service_thread_;//responseSocketThread()
+    
+    // std::thread gripper_pub_thread_;//gripperPublishThread()
 
-    std::thread state_sub_thread_;//stateSubscribeThread(),just for follower
-    std::thread gripper_sub_thread_;//gripperSubscribeThread(),just for follower
+    
+
+    
+    // std::thread gripper_sub_thread_;//gripperSubscribeThread(),just for follower
     
     
     // Synchronization
