@@ -20,7 +20,20 @@ public:
     virtual ~AbstractControlMode() = default;
     // Pure virtual public functions
     //virtual void initialize(const RobotState& initial_state);
-    virtual void start() = 0;
+    void start() {
+        if (!robot_ || !model_) {
+            std::cerr << "[CartesianVelocityMode] Robot or model not set.\n";
+            return;
+        }
+        std::cout << "[CartesianVelocityMode] Started.\n";
+        is_running_ = true;
+        robot_->automaticErrorRecovery();
+        std::thread control_thread(&AbstractControlMode::controlLoop, this);
+        control_thread.detach();
+        std::thread sub_thread(&AbstractControlMode::commandSubscriptionLoop, this, "tcp://localhost:5556");
+        sub_thread.detach();
+    };
+
     virtual void stop() = 0;
     // Get the mode ID for this control mode
     virtual int getModeID() const = 0; // Return the mode ID as an integer
@@ -46,8 +59,10 @@ protected:
     AtomicDoubleBuffer<franka::RobotState> current_state_;
     
     bool is_running_ = false;
-    
-    void startCommandSubscriptionThread(const std::string& address) {
+
+    virtual void controlLoop() = 0;
+
+    void commandSubscriptionLoop(const std::string& address) {
         zmq::socket_t sub_socket_(zmq::context_t(1), ZMQ_SUB);
         sub_socket_.set(zmq::sockopt::rcvtimeo, 1000); // 1 second timeout
         sub_socket_.connect(address);

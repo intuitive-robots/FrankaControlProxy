@@ -17,7 +17,7 @@ public:
     ~ZeroTorqueMode() override = default;
 
     //void initialize(const franka::RobotState& initial_state) override;
-    void start() override;
+    void controlLoop() override;
     void stop() override;
     int getModeID() const override;
 };

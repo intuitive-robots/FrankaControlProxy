@@ -5,7 +5,7 @@
 CartesianVelocityMode::CartesianVelocityMode() = default;
 CartesianVelocityMode::~CartesianVelocityMode() = default;
 
-void CartesianVelocityMode::start() {
+void CartesianVelocityMode::controlLoop() {
     std::cout << "[CartesianVelocityMode] Started.\n";
     is_running_ = true;
 

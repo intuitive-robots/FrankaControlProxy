@@ -10,7 +10,7 @@ class JointVelocityMode : public AbstractControlMode {
 public:
     JointVelocityMode();
     ~JointVelocityMode() override;
-    void start() override;
+    void controlLoop() override;
     void stop() override;
     int getModeID() const override;
 private:

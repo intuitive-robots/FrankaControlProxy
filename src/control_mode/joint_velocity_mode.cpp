@@ -8,7 +8,7 @@
 // JointVelocityMode::~JointVelocityMode() = default;
 
 
-void JointVelocityMode::start() {
+void JointVelocityMode::controlLoop() {
     std::cout << "[JointVelocityMode] Started.\n";
     is_running_ = true;
     // Initialize desired velocities to zero

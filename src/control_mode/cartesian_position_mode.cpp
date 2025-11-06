@@ -5,7 +5,7 @@
 CartesianPositionMode::CartesianPositionMode() = default;
 CartesianPositionMode::~CartesianPositionMode() = default;
 
-void CartesianPositionMode::start() {
+void CartesianPositionMode::controlLoop() {
     std::cout << "[CartesianPositionMode] Started.\n";
     is_running_ = true;
 

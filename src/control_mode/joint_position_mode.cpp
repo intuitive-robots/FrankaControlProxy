@@ -5,7 +5,7 @@
 JointPositionMode::JointPositionMode() = default;
 JointPositionMode::~JointPositionMode() = default;
 
-void JointPositionMode::start() {
+void JointPositionMode::controlLoop() {
     std::cout << "[JointPositionMode] Started.\n";
     is_running_ = true;
 

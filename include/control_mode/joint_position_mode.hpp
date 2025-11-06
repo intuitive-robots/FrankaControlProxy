@@ -9,7 +9,7 @@ class JointPositionMode : public AbstractControlMode {
 public:
     JointPositionMode();
     ~JointPositionMode() override;
-    void start() override;
+    void controlLoop() override;
     void stop() override;
     int getModeID() const override;
 private:
