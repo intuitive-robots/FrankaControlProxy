@@ -9,6 +9,8 @@
 #include <mutex>
 #include <zmq.hpp>
 #include <iostream>
+#include <thread>
+#include <zmq.hpp>
 
 #include "utils/AtomicDoubleBuffer.hpp"
 #include "protocol/franka_arm_state.hpp"
@@ -49,6 +51,9 @@ public:
         current_state_.write(new_state);
     }
 
+private:
+    std::shared_ptr<zmq::context_t> context_;
+
 
 protected:
     // Protected constructor to prevent direct instantiation
@@ -63,19 +68,18 @@ protected:
     virtual void controlLoop() = 0;
 
     void commandSubscriptionLoop(const std::string& address) {
-        zmq::socket_t sub_socket_(zmq::context_t(1), ZMQ_SUB);
+        zmq::socket_t sub_socket_(*context_, ZMQ_SUB);
         sub_socket_.set(zmq::sockopt::rcvtimeo, 1000); // 1 second timeout
         sub_socket_.connect(address);
         sub_socket_.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
         while (is_running_) {
             try {
-                zmq::message_t message;
+                zmq::message_t message; 
                 auto result = sub_socket_.recv(message, zmq::recv_flags::none);
                 if (!result) {
                     std::cerr << "[FrankaProxy] Failed to receive state message." << std::endl;
                     continue; // Skip this iteration if no message received
                 }
-                
                 std::vector<uint8_t> data(static_cast<uint8_t*>(message.data()), static_cast<uint8_t*>(message.data()) + message.size());
                 writeCommand(data);
             } catch (const zmq::error_t& e) {

@@ -1,5 +1,4 @@
-#ifndef ZERO_TORQUE_MODE_HPP
-#define ZERO_TORQUE_MODE_HPP
+#pragma once
 
 #include "abstract_control_mode.hpp"
 #include <franka/robot.h>
@@ -21,5 +20,3 @@ public:
     void stop() override;
     int getModeID() const override;
 };
-
-#endif // ZERO_TORQUE_MODE_HPP

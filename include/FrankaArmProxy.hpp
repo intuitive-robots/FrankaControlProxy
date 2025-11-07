@@ -14,8 +14,10 @@
 #include <franka/gripper.h>
 #include <yaml-cpp/yaml.h>
 #include "protocol/franka_arm_state.hpp"
-#include "control_mode/abstract_control_mode.h"
+#include "control_mode/abstract_control_mode.hpp"
 #include "protocol/franka_gripper_state.hpp"
+#include "utils/AtomicDoubleBuffer.hpp"
+#include "abstract_control_mode.hpp"
 
 class FrankaArmProxy {
 
@@ -34,9 +36,6 @@ public:
     protocol::FrankaGripperState getCurrentGripper();// Return the current state of the gripper
     // Mode management
     void registerControlMode(const std::string& mode, std::unique_ptr<AbstractControlMode> control_mode);//register the map
-    void setControlMode(const std::string& mode);
-    
-    
     
     // Configuration
     void displayConfig() const;
@@ -59,7 +58,7 @@ private:
     void gripperSubscribeThread();// ZMQ SUB, Subscribes to the gripper updates
     // Message handling
     void handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) ;
-    
+    protocol::RequestResult FrankaArmProxy::setControlMode(const std::string& mode);
     
 private:
     // Configuration
@@ -68,55 +67,30 @@ private:
     std::string robot_ip_;
     std::string service_addr_;
     std::string state_pub_addr_;
-    std::string gripper_pub_addr_;
-    std::string state_sub_addr_;
-    std::string gripper_sub_addr_;
-    std::string follower_ = "false";
     // Franka robot
     std::shared_ptr<franka::Robot> robot_;
     std::shared_ptr<franka::Model> model_;
-    //Franka gripper
-    std::shared_ptr<franka::Gripper> gripper_;
     
     // ZMQ communication
     zmq::context_t context_;
-    zmq::socket_t pub_arm_socket_;//arm state publish socket
-    zmq::socket_t sub_cmd_socket_;//command socket
-    zmq::socket_t rep_socket_;//service socket
-    //zmq::socket_t pub_socket_;
-    // zmq::socket_t pub_gripper_socket_;
-    //zmq::socket_t sub_socket_;
-    // zmq::socket_t sub_gripper_socket_;
-    
+    zmq::socket_t state_pub_socket_;//arm state publish socket
+    zmq::socket_t res_socket_;//service socket
     
     // Threading
-    std::thread state_pub_thread_;//statePublishThread()
-    // std::thread state_sub_thread_;//stateSubscribeThread(),just for follower
-    std::thread command_sub_thread_;//commandSubscribeThread(),just for follower
-    std::thread control_thread_;//controlLoopThread()
-    std::thread service_thread_;//responseSocketThread()
-    
-    // std::thread gripper_pub_thread_;//gripperPublishThread()
-
-    
-
-    
-    // std::thread gripper_sub_thread_;//gripperSubscribeThread(),just for follower
-    
-    
+    std::thread state_pub_thread_;
+    std::thread service_thread_;
+        
     // Synchronization
-    std::atomic<bool> in_control_;//for threads
-    
-    // State data
-    franka::RobotState current_state_;
-    // Gripper data
-    franka::GripperState current_gripper_state_;
-    franka::GripperState leader_gripper_state_; //for follower
+    std::atomic<bool> is_running; // for threads
     
     //Control mode
-    AbstractControlMode* current_mode_ = nullptr;
-    std::mutex control_mutex_;
-    std::map<std::string, std::shared_ptr<AbstractControlMode>> control_modes_map_;
+    std::shared_ptr<AbstractControlMode> current_mode_;
+
+    // Current robot state
+    AtomicDoubleBuffer<franka::RobotState> current_state_;
+
+    // service registry
+    ServiceRegistry<FrankaArmProxy, protocol::MessageHeader> service_registry_;
     
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;

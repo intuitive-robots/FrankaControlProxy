@@ -1,4 +1,4 @@
-#include "FrankaProxy.hpp"
+#include "FrankaArmProxy.hpp"
 #include "control_mode_registry.h"
 #include <iostream>
 
