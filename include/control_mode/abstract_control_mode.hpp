@@ -1,6 +1,4 @@
-#ifndef ABSTRACT_CONTROL_MODE_H
-#define ABSTRACT_CONTROL_MODE_H
-
+#pragma once
 #include <franka/robot.h>
 #include <franka/model.h>
 #include <franka/robot_state.h>
@@ -12,7 +10,7 @@
 #include <thread>
 #include <zmq.hpp>
 
-#include "utils/AtomicDoubleBuffer.hpp"
+#include "utils/atomic_double_buffer.hpp"
 #include "protocol/franka_arm_state.hpp"
 
 //todo:reform and check the leadter state get and the is_running
@@ -93,4 +91,3 @@ protected:
         // Implementation for writing commands to the robot
     };
 };
-#endif // ABSTRACT_CONTROL_MODE_H

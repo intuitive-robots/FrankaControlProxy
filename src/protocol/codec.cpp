@@ -15,6 +15,9 @@
 #include <franka/gripper.h>
 namespace protocol {
 
+
+// TODO: using header static consturctor for encode all the message?
+
 // header + payload (12-byte header)
 //payload only read
 std::vector<uint8_t> encodeMessage(const MessageHeader& header, const std::vector<uint8_t>& payload) {

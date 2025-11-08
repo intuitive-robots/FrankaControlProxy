@@ -1,6 +1,4 @@
-#ifndef FRANKA_SERVER_HPP
-#define FRANKA_SERVER_HPP
-
+#pragma once
 #include <zmq.hpp>
 #include <thread>
 #include <atomic>
@@ -16,7 +14,7 @@
 #include "protocol/franka_arm_state.hpp"
 #include "control_mode/abstract_control_mode.hpp"
 #include "protocol/franka_gripper_state.hpp"
-#include "utils/AtomicDoubleBuffer.hpp"
+#include "utils/atomic_double_buffer.hpp"
 #include "abstract_control_mode.hpp"
 
 class FrankaArmProxy {
@@ -90,7 +88,7 @@ private:
     AtomicDoubleBuffer<franka::RobotState> current_state_;
 
     // service registry
-    ServiceRegistry<FrankaArmProxy, protocol::MessageHeader> service_registry_;
+    ServiceRegistry service_registry_;
     
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;
@@ -98,5 +96,3 @@ private:
     static constexpr int SOCKET_TIMEOUT_MS = 100;
     static constexpr int MAX_MESSAGE_SIZE = 4096;
 };
-
-#endif // FRANKA_SERVER_HPP

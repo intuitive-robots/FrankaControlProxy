@@ -1,4 +1,4 @@
-#include "FrankaArmProxy.hpp"
+#include "franka_arm_proxy.hpp"
 #include "protocol/codec.hpp"
 #include "protocol/franka_arm_state.hpp"
 #include "protocol/franka_gripper_state.hpp"
@@ -10,12 +10,12 @@
 #include <csignal>
 #include <atomic>
 #include <algorithm>
-#include "RobotConfig.hpp"
+#include "robot_config.hpp"
 #include "debugger/state_debug.hpp"
 #include "protocol/mode_id.hpp"
 #include "protocol/request_result.hpp"
 #include "control_mode/control_mode_factory.hpp"
-#include "utils/ServiceRegistry.hpp"
+#include "utils/service_registry.hpp"
 
 
 static std::atomic<bool> running_flag{true};  // let ctrl-c stop the server
@@ -61,8 +61,8 @@ void FrankaArmProxy::initialize(const std::string& filename) {
     model_ = std::make_shared<franka::Model>(robot_->loadModel());
  
     // Register service handlers
-    service_registry_ = ServiceRegistry<FrankaArmProxy, protocol::MessageHeader>();
-    service_registry_.registerHandler<const std::string&, protocol::RequestResult>(&FrankaArmProxy::setControlMode);
+    service_registry_ = ServiceRegistry();
+    service_registry_.registerHandler("setControlMode", this, &FrankaArmProxy::setControlMode);
 
 }
 
@@ -156,7 +156,7 @@ void FrankaArmProxy::handleServiceRequest(const std::vector<uint8_t>& request, s
         std::cerr << "[FrankaArmProxy] Invalid request size: " << request.size() << ". Expected at least 12 bytes." << std::endl;
         return;
     }
-
+    // TODO: validate the header and return a error header if needed
     //parse the header
     const uint8_t* data = reinterpret_cast<const uint8_t*>(request.data());
     MessageHeader header = MessageHeader::decode(data);
@@ -169,7 +169,12 @@ void FrankaArmProxy::handleServiceRequest(const std::vector<uint8_t>& request, s
     std::vector<uint8_t> resp;
     uint8_t command = payload[0];
     //deal with different kinds of msg
-    service_registry_.handleMessage(header, payload, response);
+    response = service_registry_.handleMessage(header, payload);
+    // TODO: create response header based by the code out of handlemessage
+    // TODO: like timeout or wrong request issue and so on not the result of respnse handler
+    protocol::MessageHeader response_header;
+    // TODO: merge the response header and response payload
+    response_header.message_type = static_cast<uint8_t>(MsgID::SERVICE_RESPONSE);
     std::cout << "[FrankaArmProxy] Response prepared, size = " << response.size() << std::endl;
     //response.assign(reinterpret_cast<const char*>(resp.data()), resp.size());
 }

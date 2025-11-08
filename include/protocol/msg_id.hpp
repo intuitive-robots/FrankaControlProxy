@@ -10,7 +10,7 @@ namespace protocol {
     SET_FRANKA_ARM_CONTROL_MODE           = 2,    // Switch to desired mode
     GET_FRANKA_ARM_STATE_PUB_PORT         = 3,    // Query PUB port number
     MOVE_FRANKA_ARM_TO_JOINT_POSITION     = 4, // Move robot to a specific joint position
-    MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION = 5// Move robot to a specific cartesian position
+    MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION = 5, // Move robot to a specific cartesian position
     GET_FRANKA_GRIPPER_STATE              = 6,    // Request a single state of gripper
     MOVE_FRANKA_GRIPPER                   = 7,    // Move gripper
 
