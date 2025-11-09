@@ -37,52 +37,19 @@ std::vector<uint8_t> RequestResult::encodeMessage() const {
         flags |= FLAG_HAS_DETAIL;
     }
 
-    MessageHeader header{};
+    MsgHeader header{};
     header.message_type   = static_cast<uint8_t>(code_);
     header.flags          = flags;
     header.payload_length = static_cast<uint16_t>(payload.size());
     header.timestamp      = 0;
 
-    std::vector<uint8_t> frame(MessageHeader::SIZE + payload.size());
+    std::vector<uint8_t> frame(MsgHeader::SIZE + payload.size());
     header.encode(frame.data());
     if (!payload.empty()) {
-        std::memcpy(frame.data() + MessageHeader::SIZE, payload.data(), payload.size());
+        std::memcpy(frame.data() + MsgHeader::SIZE, payload.data(), payload.size());
     }
     return frame;
 }
-
-// RequestResult RequestResult::decodeMessage(const std::vector<uint8_t>& frame) {
-//     if (frame.size() < MessageHeader::SIZE) {
-//         throw std::runtime_error("frame too small");
-//     }
-//     const uint8_t* data = frame.data();
-//     const MessageHeader header = MessageHeader::decode(data);
-
-//     const size_t expected = static_cast<size_t>(MessageHeader::SIZE) + header.payload_length;
-//     if (frame.size() != expected) {
-//         throw std::runtime_error("frame size mismatch");
-//     }
-
-//     const auto code = static_cast<RequestResultCode>(header.message_type);
-//     std::string detail;
-//     if (header.flags & FLAG_HAS_DETAIL) {
-//         if (header.payload_length < 2) {
-//             throw std::runtime_error("detail flag set but payload too small");
-//         }
-//         const uint8_t* rptr = data + MessageHeader::SIZE;
-//         const uint16_t len = decode_u16(rptr);
-//         if (len != static_cast<uint16_t>(header.payload_length - 2)) {
-//             throw std::runtime_error("detail length mismatch");
-//         }
-//         detail.assign(reinterpret_cast<const char*>(rptr), len);
-//     } else {
-//         if (header.payload_length != 0) {
-//             throw std::runtime_error("payload present but detail flag not set");
-//         }
-//     }
-
-//     return RequestResult{code, std::move(detail)};
-// }
 
 } // namespace protocol
 

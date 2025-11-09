@@ -1,9 +1,9 @@
-#include "protocol/message_header.hpp"
+#include "protocol/msg_header.hpp"
 
 namespace protocol {
 
 // Encode 12-byte header in network byte order (big-endian)
-void MessageHeader::encode(uint8_t* buffer) const {
+void MsgHeader::encode(uint8_t* buffer) const {
     buffer[0] = message_type;
 
     buffer[1] = flags;
@@ -23,8 +23,8 @@ void MessageHeader::encode(uint8_t* buffer) const {
 }
 
 // Decode 12-byte header from network byte order (big-endian)
-MessageHeader MessageHeader::decode(const uint8_t* buffer) {
-    MessageHeader header{};
+MsgHeader MsgHeader::decode(const uint8_t* buffer) {
+    MsgHeader header{};
     header.message_type   = buffer[0];
 
     header.flags          = buffer[1];

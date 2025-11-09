@@ -3,7 +3,7 @@
 #include "protocol/franka_arm_state.hpp"
 #include "protocol/franka_gripper_state.hpp"
 #include "protocol/msg_id.hpp"
-#include "protocol/message_header.hpp"
+#include "protocol/msg_header.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -63,6 +63,12 @@ void FrankaArmProxy::initialize(const std::string& filename) {
     // Register service handlers
     service_registry_ = ServiceRegistry();
     service_registry_.registerHandler("setControlMode", this, &FrankaArmProxy::setControlMode);
+
+    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE, this, &FrankaArmProxy::GET_FRANKA_ARM_STATE);
+    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::GET_FRANKA_ARM_CONTROL_MODE);
+    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE_PUB_PORT, this, &FrankaArmProxy::GET_FRANKA_ARM_STATE_PUB_PORT);
+    service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_JOINT_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_JOINT_POSITION);
+    service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION);
 
 }
 
@@ -147,37 +153,37 @@ void FrankaArmProxy::responseSocketThread() {
     }
 }
 
-//TODO: error message have not done
 void FrankaArmProxy::handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) {
-    //check the request size 
     using namespace protocol;
-    if (request.size() < MessageHeader::SIZE) {
-        response = encodeErrorMessage(0x01);
-        std::cerr << "[FrankaArmProxy] Invalid request size: " << request.size() << ". Expected at least 12 bytes." << std::endl;
-        return;
-    }
-    // TODO: validate the header and return a error header if needed
-    //parse the header
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(request.data());
-    MessageHeader header = MessageHeader::decode(data);
-    // if (request.size() != 4 + header.len) {
-    //     response = encodeErrorMessage(0x02);
-    //     return;
-    // }
-    
-    const std::vector<uint8_t> payload = data + MessageHeader::SIZE;
-    std::vector<uint8_t> resp;
-    uint8_t command = payload[0];
-    //deal with different kinds of msg
-    response = service_registry_.handleMessage(header, payload);
-    // TODO: create response header based by the code out of handlemessage
-    // TODO: like timeout or wrong request issue and so on not the result of respnse handler
-    protocol::MessageHeader response_header;
-    // TODO: merge the response header and response payload
-    response_header.message_type = static_cast<uint8_t>(MsgID::SERVICE_RESPONSE);
-    std::cout << "[FrankaArmProxy] Response prepared, size = " << response.size() << std::endl;
-    //response.assign(reinterpret_cast<const char*>(resp.data()), resp.size());
-}
+
+        if (request.size() < MsgHeader::SIZE) {
+            response = RequestResult(RequestResultCode::INVALID_ARG, "Bad header").encodeMessage();
+            return;
+        }
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(request.data());
+        const MsgHeader req_header = MsgHeader::decode(data);//get header
+
+        // Validate payload length
+        const size_t expect = static_cast<size_t>(MsgHeader::SIZE) + req_header.payload_length;
+        if (request.size() != expect) {
+            response = RequestResult(RequestResultCode::INVALID_ARG, "Truncated payload").encodeMessage();
+            return;
+        }
+        std::vector<uint8_t> payload(data + MsgHeader::SIZE, data + MsgHeader::SIZE + req_header.payload_length);//get payload
+
+        // get handler response payload
+        std::vector<uint8_t> resp_payload;
+        try {
+            resp_payload = service_registry_.handleMessage(req_header, payload);
+        } catch (const std::exception& e) {
+            response = RequestResult(RequestResultCode::FAIL, e.what()).encodeMessage();
+            return;
+        }
+        // respond with proper header
+        const MsgHeader resp_header = createHeader(req_header.message_type,
+                                                static_cast<uint16_t>(resp_payload.size()));
+        response = encodeMessage(resp_header, resp_payload);
+        }
 
 protocol::RequestResult FrankaArmProxy::setControlMode(const std::string& mode) {
     if (current_mode_.get() != nullptr) {
@@ -192,3 +198,22 @@ protocol::RequestResult FrankaArmProxy::setControlMode(const std::string& mode) 
     return protocol::RequestResult(protocol::RequestResultCode::SUCCESS);
 }
 
+franka::RobotState FrankaArmProxy::GET_FRANKA_ARM_STATE() {
+    return current_state_.read();
+}
+
+uint8_t FrankaArmProxy::GET_FRANKA_ARM_CONTROL_MODE() {
+    if (!current_mode_) {
+        throw std::runtime_error("No active control mode");
+    }
+    return static_cast<uint8_t>(current_mode_->getModeID());
+}
+uint16_t FrankaArmProxy::GET_FRANKA_ARM_STATE_PUB_PORT() {
+    // Extract port from state_pub_addr_
+    std::string prefix = "tcp://*:";
+    if (state_pub_addr_.find(prefix) != 0) {
+        throw std::runtime_error("Invalid state_pub_addr_ format");
+    }
+    std::string port_str = state_pub_addr_.substr(prefix.size());
+    return static_cast<uint16_t>(std::stoi(port_str));
+}

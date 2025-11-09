@@ -89,6 +89,8 @@ private:
 
     // service registry
     ServiceRegistry service_registry_;
+    franka::RobotState GET_FRANKA_ARM_STATE();
+    uint8_t GET_FRANKA_ARM_CONTROL_MODE();
     
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;
