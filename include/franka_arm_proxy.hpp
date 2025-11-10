@@ -9,12 +9,10 @@
 #include <franka/robot.h>
 #include <franka/model.h>
 #include <franka/robot_state.h>
-#include <franka/gripper.h>
 #include <yaml-cpp/yaml.h>
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
-#include "abstract_control_mode.hpp"
-
+#include "utils/service_registry.hpp" 
 class FrankaArmProxy {
 
 public:
@@ -37,16 +35,19 @@ public:
 private:
     // Initialization
     void initialize(const std::string &filename);// Initializes the FrankaProxy with the given configuration file and set up communication sockets
-    //Start
-    bool startArm();// Starts the arm control loop and initializes the necessary threads
-    bool startGripper();// Starts the gripper control loop and initializes the necessary threads
-    //Stop
-    void stopArm();// Stops the arm control loop and cleans up resources
-    void stopGripper();// Stops the gripper control loop and cleans up resources
     // Thread functions
     void statePublishThread();// ZMQ PUB, Publishes the current state of the robot at a fixed rate
-    void gripperPublishThread();// ZMQ PUB, Publishes the current gripper state at a fixed rate
     void responseSocketThread();// ZMQ REP,responds to incoming requests from clients
+    // Service handler
+    void handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) ;
+
+
+
+    //Start
+    bool startArm();// Starts the arm control loop and initializes the necessary threads
+    //Stop
+    void stopArm();// Stops the arm control loop and cleans up resources
+
     void controlLoopThread();// Main control loop for processing commands and updating the robot state
     void stateSubscribeThread();// ZMQ SUB, Subscribes to the state updates from a leader robot (for follower mode)
     void gripperSubscribeThread();// ZMQ SUB, Subscribes to the gripper updates
@@ -86,6 +87,7 @@ private:
     ServiceRegistry service_registry_;
     franka::RobotState GET_FRANKA_ARM_STATE();
     uint8_t GET_FRANKA_ARM_CONTROL_MODE();
+    uint16_t GET_FRANKA_ARM_STATE_PUB_PORT();
     
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;
