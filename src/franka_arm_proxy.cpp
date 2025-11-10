@@ -1,7 +1,5 @@
 #include "franka_arm_proxy.hpp"
 #include "protocol/codec.hpp"
-#include "protocol/franka_arm_state.hpp"
-#include "protocol/franka_gripper_state.hpp"
 #include "protocol/msg_id.hpp"
 #include "protocol/msg_header.hpp"
 #include <iostream>
@@ -23,6 +21,7 @@ static void signalHandler(int signum) {
     std::cout << "\n[INFO] Caught signal " << signum << ", shutting down..." << std::endl;
     running_flag = false;
 }
+// Todo: may add to config file later
 franka::RobotState default_state = []{
     franka::RobotState state;
     state.q = {{0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785}};  //default joint positions
@@ -38,9 +37,9 @@ franka::RobotState default_state = []{
 
 ////main Proxy
 FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
-    : context_(1), // Initialize ZMQ context with 2 I/O threads,it can be adjusted
-    state_pub_socket_(context_, ZMQ_PUB),
-    res_socket_(context_, ZMQ_REP), 
+    : context_(1), 
+    state_pub_socket_(context_, ZMQ_PUB),//arm state publish socket
+    res_socket_(context_, ZMQ_REP), //service socket
     is_running(false) 
     {
         initialize(config_path);
@@ -48,15 +47,18 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
 
 void FrankaArmProxy::initialize(const std::string& filename) {
     RobotConfig config(filename);
-    type_ = config.getValue("type", "Arm"); // Default to "Arm" if not specified
+    // type_ = config.getValue("type", "Arm"); // Default to "Arm" if not specified
     robot_ip_ = config.getValue("robot_ip");
-    res_socket_.set(zmq::sockopt::rcvtimeo, SOCKET_TIMEOUT_MS);
+    //bind state pub socket
     state_pub_addr_ = config.getValue("state_pub_addr");
     std::cout<<"state_pub"<<state_pub_addr_ <<std::endl;
     state_pub_socket_.bind(state_pub_addr_);
+    //bind service socket
+    res_socket_.set(zmq::sockopt::rcvtimeo, SOCKET_TIMEOUT_MS);
     service_addr_ = config.getValue("service_addr");
-    //std::cout<<"service_addr"<<service_addr_ <<std::endl;
+    //std::cout<<"service_addr"<<service_addr_ <<std::endl;//debug
     res_socket_.bind(service_addr_);
+    //initialize franka robot
     robot_ = std::make_shared<franka::Robot>(robot_ip_);
     model_ = std::make_shared<franka::Model>(robot_->loadModel());
  
@@ -83,7 +85,7 @@ bool FrankaArmProxy::start(){
     std::cout << robot_<<"robot"<< std::endl;
     current_state_.write(robot_->readOnce());
     state_pub_thread_ = std::thread(&FrankaArmProxy::statePublishThread, this);
-    std::cout << "done arm pub"<< std::endl;
+    std::cout << "done arm state pub"<< std::endl;
     service_thread_ = std::thread(&FrankaArmProxy::responseSocketThread, this);
     std::cout << "done service"<< std::endl;
     return true;
@@ -126,10 +128,17 @@ void FrankaArmProxy::displayConfig() const {
 
 // publish threads
 void FrankaArmProxy::statePublishThread() {
+    using namespace protocol;
     while (is_running) {
-        protocol::FrankaArmState proto_state = protocol::FrankaArmState::fromRobotState(getCurrentState());
-        auto msg = protocol::encodeStateMessage(proto_state);
-        state_pub_socket_.send(zmq::buffer(msg), zmq::send_flags::none);
+        const franka::RobotState rs = current_state_.read();
+
+        // Encode payload & wrap with header
+        const std::vector<uint8_t> payload = encode(rs);
+        const MsgHeader header = createHeader(static_cast<uint8_t>(MsgID::FRANKA_ARM_STATE_PUB),
+                                              static_cast<uint16_t>(payload.size()));
+        std::vector<uint8_t> frame = encodeMessage(header, payload);
+        // Publish over ZMQ PUB socket
+        state_pub_socket_.send(zmq::buffer(frame), zmq::send_flags::none);
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / STATE_PUB_RATE_HZ));
     }
 }
@@ -140,22 +149,21 @@ void FrankaArmProxy::responseSocketThread() {
         //get request from client
         zmq::message_t request;
         if (!res_socket_.recv(request, zmq::recv_flags::none)) continue;//skip,if fail
-        
         std::vector<uint8_t> req_data(static_cast<uint8_t*>(request.data()),//begin
                                       static_cast<uint8_t*>(request.data()) + request.size());//end
-        std::cout << "[FrankaArmProxy] Received request: msg size = " << req_data.size() << std::endl;
+        std::cout << "[FrankaArmProxy] Received request: msg size = " << req_data.size() << std::endl;//debug
         //std::string response;
         std::vector<uint8_t> response;
         handleServiceRequest(req_data, response);
         //send response
         res_socket_.send(zmq::buffer(response), zmq::send_flags::none);
-        std::cout << "[FrankaArmProxy] Sent response: msg size = " << response.size() << std::endl;
+        std::cout << "[FrankaArmProxy] Sent response: msg size = " << response.size() << std::endl;//debug
     }
 }
 
 void FrankaArmProxy::handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) {
     using namespace protocol;
-
+        // Validate header length
         if (request.size() < MsgHeader::SIZE) {
             response = RequestResult(RequestResultCode::INVALID_ARG, "Bad header").encodeMessage();
             return;
