@@ -117,22 +117,6 @@ inline bool decode_bool(const uint8_t*& ptr) {
     return byte_val != 0; // Convert uint8_t back to bool
 }
 
-// // TODO: could you use overload function for encodeMessage? like encode for all the message type
-// std::vector<uint8_t> encodeMessage(const MsgHeader& header, const std::vector<uint8_t>& payload);
-// std::vector<uint8_t> encodeStateMessage(const FrankaArmState& state);
-// std::vector<uint8_t> encodeModeMessage(uint8_t mode_code);
-// //Todo:check if need vector of following 2 functions
-// std::vector<uint8_t> encodeRequestResultMessage(const RequestResult& result); // Todo: implement RequestResult class
-// std::vector<uint8_t> encodePubPortMessage(uint16_t Pubport);//Todo:implement, and whta Pubport old name
-// //Todo:check if return bool
-// // TODO: also the same for decode
-// bool decodeModeMessage(const std::vector<uint8_t>& data, uint8_t& mode_code);//Todo:change into FrankaArmControl
-// bool decodeCommandMessage(const std::vector<uint8_t>& data, uint8_t& command);
-// //Todo: think of the exact command class name? check with the header 11 for Command
-// //Than the exact type of commmand should be switch by the following 0-5
-
-
-
 // ------------------------------------------------------------
 // Generic payload-level codec (overloads + template decode)
 // Note: These operate on payload only (no 12-byte header)
@@ -142,10 +126,8 @@ inline bool decode_bool(const uint8_t*& ptr) {
 std::vector<uint8_t> encode(const std::string& v);
 std::vector<uint8_t> encode(uint8_t v);
 std::vector<uint8_t> encode(uint16_t v);
-
-// Response helper: minimal payload encoding for RequestResult (1-byte code)
-// If you need detail string, extend to include length + bytes and set header.flags outside.
-std::vector<uint8_t> encode(const RequestResult& v);
+std::vector<uint8_t> encode(const franka::RobotState& rs);
+//RequestResult has it own enocdeMessage function, due to flag need to indicate presence of detail string
 
 // decode must be template, since return type alone cannot overload in C++
 template <typename T>
@@ -154,29 +136,24 @@ T decode(const std::vector<uint8_t>& payload);
 // explicit specializations declarations
 template <>
 std::string decode<std::string>(const std::vector<uint8_t>& payload);
-
 template <>
 uint8_t decode<uint8_t>(const std::vector<uint8_t>& payload);
-
 template <>
 uint16_t decode<uint16_t>(const std::vector<uint8_t>& payload);
 
 
 // libfranka control types
 // payload-only encoder extracting required fields from full RobotState
-std::vector<uint8_t> encode(const franka::RobotState& rs);
-
 template <>
 franka::JointPositions decode<franka::JointPositions>(const std::vector<uint8_t>& payload);
-
 template <>
 franka::CartesianPose decode<franka::CartesianPose>(const std::vector<uint8_t>& payload);
-
 template <>
 franka::CartesianVelocities decode<franka::CartesianVelocities>(const std::vector<uint8_t>& payload);
-
 template <>
 franka::JointVelocities decode<franka::JointVelocities>(const std::vector<uint8_t>& payload);
+template <>
+franka::Torques decode<franka::Torques>(const std::vector<uint8_t>& payload);
 
 
 

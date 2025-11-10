@@ -3,7 +3,6 @@
 
 #include "abstract_control_mode.hpp"
 #include <franka/robot_state.h>
-#include <franka/robot_state.h>
 #include <functional>
 #include "utils/AtomicDoubleBuffer.hpp"
 

@@ -448,7 +448,7 @@ void FrankaProxy::responseSocketThread() {
 void FrankaProxy::handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) {
     //check the request size 
     using namespace protocol;
-    if (request.size() < MessageHeader::SIZE) {
+    if (request.size() < MsgHeader::SIZE) {
         response = encodeErrorMessage(0x01);
         std::cerr << "[FrankaProxy] Invalid request size: " << request.size() << ". Expected at least 12 bytes." << std::endl;
         return;
@@ -456,13 +456,13 @@ void FrankaProxy::handleServiceRequest(const std::vector<uint8_t>& request, std:
 
     //parse the header
     const uint8_t* data = reinterpret_cast<const uint8_t*>(request.data());
-    MessageHeader header = MessageHeader::decode(data);
+    MsgHeader header = MsgHeader::decode(data);
     // if (request.size() != 4 + header.len) {
     //     response = encodeErrorMessage(0x02);
     //     return;
     // }
     
-    const uint8_t* payload = data + MessageHeader::SIZE;
+    const uint8_t* payload = data + MsgHeader::SIZE;
     std::vector<uint8_t> resp;
     uint8_t command = payload[0];
     //deal with different kinds of msg

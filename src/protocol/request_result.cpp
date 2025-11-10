@@ -20,7 +20,7 @@ const char* RequestResult::description(RequestResultCode code) {
         default:                                return "Unknown";
     }
 }
-
+//RequestResult has it own enocdeMessage function, due to flag need to indicate presence of detail string
 std::vector<uint8_t> RequestResult::encodeMessage() const {
     std::vector<uint8_t> payload;
     uint8_t flags = 0;
