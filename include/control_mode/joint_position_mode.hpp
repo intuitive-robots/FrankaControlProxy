@@ -3,7 +3,7 @@
 #include <franka/robot_state.h>
 #include <array>
 #include <functional>
-#include "utils/AtomicDoubleBuffer.hpp"
+#include "utils/atomic_double_buffer.hpp"
 
 class JointPositionMode : public AbstractControlMode {
 public:

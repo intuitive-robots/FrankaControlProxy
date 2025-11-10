@@ -1,16 +1,13 @@
-#ifndef CODEC_HPP
-#define CODEC_HPP
+#pragma once
 #include "protocol/byte_order.hpp"
-#include "protocol/message_header.hpp"
 #include "protocol/msg_id.hpp"
-#include "protocol/franka_arm_state.hpp"
-#include "protocol/franka_gripper_state.hpp"
 #include "protocol/mode_id.hpp"
 #include <cstdint>
 #include <cstring>
 #include <array>
 #include <vector>
 #include <franka/robot_state.h>
+#include <franka/model.h>
 
 namespace protocol {
 
@@ -129,34 +126,19 @@ std::vector<uint8_t> encode(uint16_t v);
 std::vector<uint8_t> encode(const franka::RobotState& rs);
 //RequestResult has it own enocdeMessage function, due to flag need to indicate presence of detail string
 
-// decode must be template, since return type alone cannot overload in C++
-template <typename T>
-T decode(const std::vector<uint8_t>& payload);
 
 // explicit specializations declarations
-template <>
-std::string decode<std::string>(const std::vector<uint8_t>& payload);
-template <>
-uint8_t decode<uint8_t>(const std::vector<uint8_t>& payload);
-template <>
-uint16_t decode<uint16_t>(const std::vector<uint8_t>& payload);
-
+void decode(const std::vector<uint8_t>& payload, std::string& output);
+void decode(const std::vector<uint8_t>& payload, uint8_t& output);
+void decode(const std::vector<uint8_t>& payload, uint16_t& output);
 
 // libfranka control types
 // payload-only encoder extracting required fields from full RobotState
-template <>
-franka::JointPositions decode<franka::JointPositions>(const std::vector<uint8_t>& payload);
-template <>
-franka::CartesianPose decode<franka::CartesianPose>(const std::vector<uint8_t>& payload);
-template <>
-franka::CartesianVelocities decode<franka::CartesianVelocities>(const std::vector<uint8_t>& payload);
-template <>
-franka::JointVelocities decode<franka::JointVelocities>(const std::vector<uint8_t>& payload);
-template <>
-franka::Torques decode<franka::Torques>(const std::vector<uint8_t>& payload);
-
-
-
+void decode(const std::vector<uint8_t>& payload, franka::JointPositions& output);
+void decode(const std::vector<uint8_t>& payload, franka::CartesianPose& output);
+void decode(const std::vector<uint8_t>& payload, franka::CartesianVelocities& output);
+void decode(const std::vector<uint8_t>& payload, franka::JointVelocities& output);
+void decode(const std::vector<uint8_t>& payload, franka::Torques& output);
 
 }  // namespace protocol
-#endif // CODEC_HPP
+

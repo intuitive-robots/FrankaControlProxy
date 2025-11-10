@@ -4,7 +4,7 @@
 #include "abstract_control_mode.hpp"
 #include <franka/robot_state.h>
 #include <functional>
-#include "utils/AtomicDoubleBuffer.hpp"
+#include "utils/atomic_double_buffer.hpp"
 
 /**
  * @brief Cartesian position control mode.
@@ -17,7 +17,7 @@ public:
     CartesianPositionMode();
     ~CartesianPositionMode() override;
 
-    void start() override;
+    void start();
     void stop() override;
     int getModeID() const override;
 

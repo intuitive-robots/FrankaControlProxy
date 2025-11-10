@@ -1,6 +1,4 @@
-﻿#ifndef PROTOCOL_REQUEST_RESULT_HPP
-#define PROTOCOL_REQUEST_RESULT_HPP
-
+﻿#pragma once
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -55,5 +53,3 @@ private:
 };
 
 } // namespace protocol
-
-#endif // PROTOCOL_REQUEST_RESULT_HPP

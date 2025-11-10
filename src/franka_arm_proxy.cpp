@@ -1,7 +1,5 @@
 #include "franka_arm_proxy.hpp"
 #include "protocol/codec.hpp"
-#include "protocol/franka_arm_state.hpp"
-#include "protocol/franka_gripper_state.hpp"
 #include "protocol/msg_id.hpp"
 #include "protocol/msg_header.hpp"
 #include <iostream>
@@ -62,13 +60,12 @@ void FrankaArmProxy::initialize(const std::string& filename) {
  
     // Register service handlers
     service_registry_ = ServiceRegistry();
-    service_registry_.registerHandler("setControlMode", this, &FrankaArmProxy::setControlMode);
-
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE, this, &FrankaArmProxy::GET_FRANKA_ARM_STATE);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::GET_FRANKA_ARM_CONTROL_MODE);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE_PUB_PORT, this, &FrankaArmProxy::GET_FRANKA_ARM_STATE_PUB_PORT);
-    service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_JOINT_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_JOINT_POSITION);
-    service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION);
+    service_registry_.registerHandler(protocol::MsgID::SET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::setControlMode);
+    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE, this, &FrankaArmProxy::getCurrentState);
+    // service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::GET_FRANKA_ARM_CONTROL_MODE);
+    // service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE_PUB_PORT, this, &FrankaArmProxy::GET_FRANKA_ARM_STATE_PUB_PORT);
+    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_JOINT_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_JOINT_POSITION);
+    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION);
 
 }
 

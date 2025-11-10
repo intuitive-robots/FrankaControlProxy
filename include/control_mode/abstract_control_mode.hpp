@@ -11,7 +11,6 @@
 #include <zmq.hpp>
 
 #include "utils/atomic_double_buffer.hpp"
-#include "protocol/franka_arm_state.hpp"
 
 //todo:reform and check the leadter state get and the is_running
 class AbstractControlMode {

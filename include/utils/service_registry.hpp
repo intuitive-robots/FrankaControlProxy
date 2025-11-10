@@ -26,15 +26,6 @@ public:
         };
     }
 
-    // Overload: no-payload handler returning typed ResponseType
-    template <typename ClassT, typename ResponseType>
-    void registerHandler(const protocol::MsgID& name, ClassT* instance, ResponseType (ClassT::*method)()) {
-        handlers_[name] = [instance, method](const std::vector<uint8_t>& /*payload*/) -> std::vector<uint8_t> {
-            ResponseType ret = (instance->*method)();
-            return protocol::encode(ret);
-        };
-    }
-
     std::vector<uint8_t> handleMessage(const protocol::MsgHeader& header, const std::vector<uint8_t>& payload) {
         auto it = handlers_.find(static_cast<protocol::MsgID>(header.message_type));
         if (it == handlers_.end()) {

@@ -1,5 +1,4 @@
-#ifndef MODE_ID_HPP
-#define MODE_ID_HPP
+#pragma once
 #include <cstdint>
 #include <string>
 
@@ -51,4 +50,3 @@ inline std::string toString(ModeID mode) {
 // }
 
 }  // namespace protocol
-#endif // MODE_ID_HPP    

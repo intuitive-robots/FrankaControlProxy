@@ -1,5 +1,4 @@
-#ifndef MSG_HEADER_HPP
-#define MSG_HEADER_HPP
+#pragma once
 #include <cstdint>
 #include <cstddef>
 #include <chrono>
@@ -33,4 +32,3 @@ static MsgHeader createHeader(uint8_t message_type, uint16_t payload_length) {
 
 
 }  // namespace protocol
-#endif // MSG_HEADER_HPP

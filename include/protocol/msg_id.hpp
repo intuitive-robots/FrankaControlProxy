@@ -1,5 +1,4 @@
-#ifndef MSG_ID_HPP
-#define MSG_ID_HPP
+#pragma once
 #include <cstdint>
 
 namespace protocol {
@@ -59,4 +58,3 @@ namespace protocol {
 // };
 
 }  // namespace protocol
-#endif // MSG_ID_HPP

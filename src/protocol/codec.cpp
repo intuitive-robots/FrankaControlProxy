@@ -1,8 +1,6 @@
 #include "protocol/codec.hpp"
 #include "protocol/msg_header.hpp" 
 #include "protocol/msg_id.hpp"
-#include "protocol/franka_arm_state.hpp"
-#include "protocol/franka_gripper_state.hpp"
 #include "protocol/mode_id.hpp"
 #include "protocol/request_result.hpp"
 #include <cstring>
@@ -88,87 +86,108 @@ std::vector<uint8_t> encode(const franka::RobotState& rs) {
     return out;
 }
 
-//string: FrankaArmControl payload(Mode_ID+URL)
-template <>
-std::string decode<std::string>(const std::vector<uint8_t>& payload) {
+// string: FrankaArmControl payload(Mode_ID+URL)
+void decode(const std::vector<uint8_t>& payload, std::string& output) {
     if (payload.size() < 2) {
         throw std::runtime_error("decode<string>: payload too small");
     }
+
     const uint8_t* rptr = payload.data();
     const uint16_t len = decode_u16(rptr);
     const size_t expected = static_cast<size_t>(2 + len);
     if (payload.size() != expected) {
         throw std::runtime_error("decode<string>: length mismatch");
     }
-    return std::string(reinterpret_cast<const char*>(rptr), len);
+
+    output.assign(reinterpret_cast<const char*>(rptr), len);
 }
+
+void decode(const std::vector<uint8_t>& payload, uint8_t& output) {
+    if (payload.size() != 1) {
+        throw std::runtime_error("decode<uint8_t>: payload size mismatch");
+    }
+    output = payload[0];
+}
+
+void decode(const std::vector<uint8_t>& payload, uint16_t& output) {
+    if (payload.size() != 2) {
+        throw std::runtime_error("decode<uint16_t>: payload size mismatch");
+    }
+    const uint8_t* rptr = payload.data();
+    output = decode_u16(rptr);
+}
+
+// ============================================================================
 // libfranka control types
-template <>
-franka::JointPositions decode<franka::JointPositions>(const std::vector<uint8_t>& payload) {
+// ============================================================================
+
+void decode(const std::vector<uint8_t>& payload, franka::JointPositions& output) {
     constexpr size_t kDoF = 7;
     constexpr size_t kSize = kDoF * sizeof(double);
+
     if (payload.size() != kSize) {
         throw std::runtime_error("decode<franka::JointPositions>: payload size mismatch");
     }
+
     const uint8_t* rptr = payload.data();
     std::array<double, kDoF> q{};
     decode_array_f64(rptr, q);
-    franka::JointPositions jp{};
-    jp.q = q;
-    return jp;
+    output.q = q;
 }
-template <>
-franka::JointVelocities decode<franka::JointVelocities>(const std::vector<uint8_t>& payload) {
+
+void decode(const std::vector<uint8_t>& payload, franka::JointVelocities& output) {
     constexpr size_t kDoF = 7;
     constexpr size_t kSize = kDoF * sizeof(double);
+
     if (payload.size() != kSize) {
         throw std::runtime_error("decode<franka::JointVelocities>: payload size mismatch");
     }
+
     const uint8_t* rptr = payload.data();
     std::array<double, kDoF> dq{};
     decode_array_f64(rptr, dq);
-    franka::JointVelocities jv{};
-    jv.dq = dq;
-    return jv;
+    output.dq = dq;
 }
-template <>
-franka::CartesianPose decode<franka::CartesianPose>(const std::vector<uint8_t>& payload) {
+
+void decode(const std::vector<uint8_t>& payload, franka::CartesianPose& output) {
     constexpr size_t kSize = 16 * sizeof(double);
+
     if (payload.size() != kSize) {
         throw std::runtime_error("decode<franka::CartesianPose>: payload size mismatch");
     }
+
     const uint8_t* rptr = payload.data();
     std::array<double, 16> pose{};
     decode_array_f64(rptr, pose);
-    return franka::CartesianPose{pose};
+    output = franka::CartesianPose{pose};
 }
 
-template <>
-franka::CartesianVelocities decode<franka::CartesianVelocities>(const std::vector<uint8_t>& payload) {
+void decode(const std::vector<uint8_t>& payload, franka::CartesianVelocities& output) {
     constexpr size_t kSize = 6 * sizeof(double);
+
     if (payload.size() != kSize) {
         throw std::runtime_error("decode<franka::CartesianVelocities>: payload size mismatch");
     }
+
     const uint8_t* rptr = payload.data();
     std::array<double, 6> vel{};
     decode_array_f64(rptr, vel);
-    return franka::CartesianVelocities{vel};
+    output = franka::CartesianVelocities{vel};
 }
 
-template <>
-franka::Torques decode<franka::Torques>(const std::vector<uint8_t>& payload) {
+void decode(const std::vector<uint8_t>& payload, franka::Torques& output) {
     constexpr size_t kDoF = 7;
     constexpr size_t kSize = kDoF * sizeof(double);
+
     if (payload.size() != kSize) {
         throw std::runtime_error("decode<franka::Torques>: payload size mismatch");
     }
+
     const uint8_t* rptr = payload.data();
     std::array<double, kDoF> tau{};
     decode_array_f64(rptr, tau);
-    return franka::Torques{tau};
+    output = franka::Torques{tau};
 }
-
-
 
 
 

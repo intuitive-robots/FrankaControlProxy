@@ -241,9 +241,9 @@ void FrankaProxy::spin() {
     std::cout << "[INFO] Shutdown complete.\n";
 }
 
-////get current arm & gripper state
+//get current arm & gripper state
 //get current arm state
-franka::RobotState FrankaProxy::getCurrentState() {
+franka::RobotState FrankaProxy::getCurrentState(const std::string& request) {
     std::lock_guard<std::mutex> lock(control_mutex_);
     if (current_mode_) {
         return current_mode_->getRobotState();//robot should always in a control mode, when there is no command it is idle
@@ -251,27 +251,14 @@ franka::RobotState FrankaProxy::getCurrentState() {
         throw std::runtime_error("No control mode active.");
     }
 }
-//get current gripper state
-protocol::FrankaGripperState FrankaProxy::getCurrentGripper(){
-    franka::GripperState gripper_state = gripper_->readOnce();
-    protocol::FrankaGripperState proto_gripper_state = protocol::FrankaGripperState::fromGripperState(gripper_state);
-    return proto_gripper_state;
-}
 
 
-//// Control mode register
-void FrankaProxy::registerControlMode(const std::string& mode, std::unique_ptr<AbstractControlMode> control_mode) {
-    control_modes_map_[mode] = std::move(control_mode);
-    std::cout << "Registered mode: " << mode << "\n";
-}
-
-
-//// with RobotConfig
+// with RobotConfig
 void FrankaProxy::displayConfig() const {
     std::cout << proxy_config_ << std::endl;
 }
 
-//// publish threads
+// publish threads
 void FrankaProxy::statePublishThread() {
     while (in_control_) {
         protocol::FrankaArmState proto_state = protocol::FrankaArmState::fromRobotState(getCurrentState());

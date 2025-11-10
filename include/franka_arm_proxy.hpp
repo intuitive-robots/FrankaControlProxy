@@ -11,9 +11,7 @@
 #include <franka/robot_state.h>
 #include <franka/gripper.h>
 #include <yaml-cpp/yaml.h>
-#include "protocol/franka_arm_state.hpp"
 #include "control_mode/abstract_control_mode.hpp"
-#include "protocol/franka_gripper_state.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "abstract_control_mode.hpp"
 
@@ -30,11 +28,9 @@ public:
     void spin();// Main loop for processing requests
     std::string getType() const { return type_; } // Returns the type of the proxy (e.g., "Arm" or "Gripper")
     // State management
-    franka::RobotState getCurrentState();// Return the current state of the robot
-    protocol::FrankaGripperState getCurrentGripper();// Return the current state of the gripper
-    // Mode management
-    void registerControlMode(const std::string& mode, std::unique_ptr<AbstractControlMode> control_mode);//register the map
-    
+    protocol::RequestResult setControlMode(const std::string& mode);
+    franka::RobotState getCurrentState(const std::string& request);// Return the current state of the robot
+
     // Configuration
     void displayConfig() const;
     
@@ -56,7 +52,6 @@ private:
     void gripperSubscribeThread();// ZMQ SUB, Subscribes to the gripper updates
     // Message handling
     void handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) ;
-    protocol::RequestResult FrankaArmProxy::setControlMode(const std::string& mode);
     
 private:
     // Configuration
