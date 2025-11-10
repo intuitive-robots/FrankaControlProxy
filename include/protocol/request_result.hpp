@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "protocol/message_header.hpp"
+#include "protocol/msg_header.hpp"
 
 namespace protocol {
 

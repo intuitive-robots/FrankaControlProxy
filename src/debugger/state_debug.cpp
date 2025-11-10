@@ -13,7 +13,7 @@ void debugPrintFrankaArmStateBuffer(const std::vector<uint8_t>& buffer) {
         return;
     }
     // Step 1: Decode header
-    MessageHeader header = MessageHeader::decode(buffer.data());
+    MsgHeader header = MsgHeader::decode(buffer.data());
     std::cout << "\n[DEBUG] MessageHeader:\n";
     std::cout << "  ID  = " << static_cast<int>(header.id) << "\n";
     std::cout << "  len = " << header.len << "\n";
