@@ -1,8 +1,12 @@
 #include "cartesian_velocity_mode.hpp"
+#include "protocol/mode_id.hpp"
+#include "protocol/codec.hpp"
 #include <franka/exception.h>
 #include <iostream>
 
-CartesianVelocityMode::CartesianVelocityMode() = default;
+CartesianVelocityMode::CartesianVelocityMode():
+    desired_velocities_(franka::CartesianVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}})
+{};
 CartesianVelocityMode::~CartesianVelocityMode() = default;
 
 void CartesianVelocityMode::controlLoop() {
@@ -52,6 +56,12 @@ void CartesianVelocityMode::stop() {
     std::cout << "[CartesianVelocityMode] Stopped.\n";
 }
 
-int CartesianVelocityMode::getModeID() const {
-    return 4;
+const std::string& CartesianVelocityMode::getModeName() const {
+    return protocol::toString(protocol::ModeID::CARTESIAN_VELOCITY);
+}
+
+void CartesianVelocityMode::writeCommand(const std::vector<uint8_t>& data) {
+    franka::CartesianVelocities velocities = {};
+    protocol::decode(data, velocities);
+    desired_velocities_.write(velocities);
 }

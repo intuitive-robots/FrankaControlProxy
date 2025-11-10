@@ -52,6 +52,12 @@ std::vector<uint8_t> encode(uint16_t v) {
     return out;
 }
 
+std::vector<uint8_t> encode(const protocol::RequestResult& rr) {
+    std::vector<uint8_t> out(1);
+    out[0] = static_cast<uint8_t>(rr.code());
+    return out;
+}
+
 // franka::RobotState: FrankaArmState payload
 std::vector<uint8_t> encode(const franka::RobotState& rs) {
     // Layout (bytes):

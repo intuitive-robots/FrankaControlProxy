@@ -19,75 +19,46 @@
 template <typename T>
 class AtomicDoubleBuffer {
 public:
-    AtomicDoubleBuffer() {
-        front_buffer_ = &buffer1_;
-        back_buffer_  = &buffer2_;
-        active_.store(front_buffer_, std::memory_order_release);
-    }
+    explicit AtomicDoubleBuffer(const T& init_value)
+        : buffer1_(init_value),
+          buffer2_(init_value),
+          front_buffer_(&buffer1_),
+          back_buffer_(&buffer2_),
+          active_(&buffer1_) {}
 
-    // Non-copyable and non-assignable
+    // Non-copyable
     AtomicDoubleBuffer(const AtomicDoubleBuffer&) = delete;
     AtomicDoubleBuffer& operator=(const AtomicDoubleBuffer&) = delete;
 
-    /**
-     * @brief Write a new value into the buffer.
-     * 
-     * This replaces the contents of the inactive buffer, then atomically swaps
-     * the active pointer so that readers can see the new data immediately.
-     *
-     * Thread-safe and lock-free.
-     *
-     * @param value The new data to write.
-     */
     void write(const T& value) noexcept {
         *back_buffer_ = value;
         active_.store(back_buffer_, std::memory_order_release);
         swapBuffers();
     }
 
-    /**
-     * @brief Write using move semantics (if T supports move).
-     */
     void write(T&& value) noexcept {
         *back_buffer_ = std::move(value);
         active_.store(back_buffer_, std::memory_order_release);
         swapBuffers();
     }
 
-    /**
-     * @brief Get a copy of the most recent data snapshot.
-     *
-     * @return A copy of the currently active data.
-     */
     T read() const noexcept {
         return *active_.load(std::memory_order_acquire);
     }
 
-    /**
-     * @brief Get a pointer to the currently active buffer (read-only).
-     *
-     * @return const T* Pointer to the latest data.
-     */
     const T* readPtr() const noexcept {
         return active_.load(std::memory_order_acquire);
     }
 
 private:
-    /**
-     * @brief Swap the back and front buffer pointers.
-     */
     void swapBuffers() noexcept {
         back_buffer_ = (back_buffer_ == &buffer1_) ? &buffer2_ : &buffer1_;
     }
 
-    // Two buffers to alternate between writes and reads
     mutable T buffer1_;
     mutable T buffer2_;
-
-    // Pointers to current front/back buffers
     T* front_buffer_;
     T* back_buffer_;
-
-    // Atomic pointer to the currently active buffer
     std::atomic<T*> active_;
 };
+

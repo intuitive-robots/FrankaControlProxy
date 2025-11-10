@@ -2,10 +2,12 @@
 #include <franka/exception.h>
 #include <franka/robot_state.h>
 #include <iostream>
+#include "protocol/codec.hpp"
 
-
-// JointVelocityMode::JointVelocityMode() = default;
-// JointVelocityMode::~JointVelocityMode() = default;
+JointVelocityMode::JointVelocityMode():
+    desired_velocities_(franka::JointVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}})
+{};
+JointVelocityMode::~JointVelocityMode() = default;
 
 
 void JointVelocityMode::controlLoop() {
@@ -47,4 +49,19 @@ void JointVelocityMode::controlLoop() {
         }
         std::cout << "[JointVelocityMode] Exited.\n";
     }
+}
+
+void JointVelocityMode::stop() {
+    is_running_ = false;
+    std::cout << "[JointVelocityMode] Stopped.\n";
+}
+
+const std::string& JointVelocityMode::getModeName() const {
+    return protocol::toString(protocol::ModeID::JOINT_VELOCITY);
+}
+
+void JointVelocityMode::writeCommand(const std::vector<uint8_t>& data) {
+    franka::JointVelocities velocities = {};
+    protocol::decode(data, velocities);
+    desired_velocities_.write(velocities);
 }

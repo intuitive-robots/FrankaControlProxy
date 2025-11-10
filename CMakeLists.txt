@@ -1,9 +1,19 @@
-project(FrankaControlProxy)
 cmake_minimum_required(VERSION 3.10)
+project(FrankaControlProxy)
+
+# -----------------------------
+# C++ settings
+# -----------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-#include
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# -----------------------------
+# Include paths
+# -----------------------------
 include_directories(
     include
     include/control_mode
@@ -11,38 +21,53 @@ include_directories(
     include/debugger
 )
 
-# dependencies
+# -----------------------------
+# Dependencies
+# -----------------------------
 find_package(Franka REQUIRED)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZMQ REQUIRED libzmq)
 find_package(yaml-cpp REQUIRED)
 
-
-# collect source
+# -----------------------------
+# Source collection
+# -----------------------------
 file(GLOB_RECURSE SOURCES
     src/*.cpp
 )
 
-# Include directories
-include_directories(include ${YAML_CPP_INCLUDE_DIR} ${Franka_INCLUDE_DIRS})
+# -----------------------------
+# Build options
+# -----------------------------
+option(LOCAL_TESTING "Enable local test mode (skip robot connection etc.)" OFF)
 
-# build proxy
-add_executable(proxy ${SOURCES})
+if(LOCAL_TESTING)
+    message(STATUS "LOCAL_TESTING mode is ON")
+    add_compile_definitions(LOCAL_TESTING=1)
+else()
+    message(STATUS "LOCAL_TESTING mode is OFF")
+    add_compile_definitions(LOCAL_TESTING=0)
+endif()
 
-# connect with dependencies
+# -----------------------------
+# Executable
+# -----------------------------
+add_executable(proxy src/main.cpp ${SOURCES})
+
+# -----------------------------
+# Include dirs & libs
+# -----------------------------
+target_include_directories(proxy PRIVATE
+    include
+    ${Franka_INCLUDE_DIRS}
+    ${ZMQ_INCLUDE_DIRS}
+    ${YAML_CPP_INCLUDE_DIR}
+)
+
 target_link_libraries(proxy
     ${Franka_LIBRARIES}
     ${ZMQ_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
     Threads::Threads
 )
-
-#include path
-target_include_directories(proxy PRIVATE
-    ${franka_INCLUDE_DIRS}
-    ${ZMQ_INCLUDE_DIRS}
-)
-
-
-

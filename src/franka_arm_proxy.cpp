@@ -10,9 +10,10 @@
 #include <algorithm>
 #include "robot_config.hpp"
 #include "debugger/state_debug.hpp"
+#include "protocol/codec.hpp"
 #include "protocol/mode_id.hpp"
 #include "protocol/request_result.hpp"
-#include "control_mode/control_mode_factory.hpp"
+#include "control_mode/control_mode.hpp"
 #include "utils/service_registry.hpp"
 
 
@@ -24,7 +25,7 @@ static void signalHandler(int signum) {
 // Todo: may add to config file later
 franka::RobotState default_state = []{
     franka::RobotState state;
-    state.q = {{0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785}};  //default joint positions
+    state.q = {{0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785}};
     state.O_T_EE = {{
         1.0, 0.0, 0.0, 0.3,
         0.0, 1.0, 0.0, 0.0,
@@ -35,12 +36,12 @@ franka::RobotState default_state = []{
 }();
 
 
-////main Proxy
 FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     : context_(1), 
     state_pub_socket_(context_, ZMQ_PUB),//arm state publish socket
     res_socket_(context_, ZMQ_REP), //service socket
-    is_running(false) 
+    is_running(false),
+    current_state_(AtomicDoubleBuffer<franka::RobotState>(default_state))
     {
         initialize(config_path);
     }
@@ -51,27 +52,46 @@ void FrankaArmProxy::initialize(const std::string& filename) {
     robot_ip_ = config.getValue("robot_ip");
     //bind state pub socket
     state_pub_addr_ = config.getValue("state_pub_addr");
-    std::cout<<"state_pub"<<state_pub_addr_ <<std::endl;
+    std::cout<<"state_pub: "<< state_pub_addr_ <<std::endl;
     state_pub_socket_.bind(state_pub_addr_);
     //bind service socket
     res_socket_.set(zmq::sockopt::rcvtimeo, SOCKET_TIMEOUT_MS);
     service_addr_ = config.getValue("service_addr");
-    //std::cout<<"service_addr"<<service_addr_ <<std::endl;//debug
+    std::cout<<"service_addr: "<<service_addr_ <<std::endl;
     res_socket_.bind(service_addr_);
     //initialize franka robot
+#if !LOCAL_TESTING
     robot_ = std::make_shared<franka::Robot>(robot_ip_);
     model_ = std::make_shared<franka::Model>(robot_->loadModel());
- 
+ #endif
+    //initialize control modes
+    initializeControlMode();
+    // Register service handlers
+    initializeService();
+
+}
+
+void FrankaArmProxy::initializeControlMode() {
+    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::IDLE), []() { return std::make_shared<IdleControlMode>(); });
+    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::JOINT_POSITION), []() { return std::make_shared<JointPositionMode>(); });
+    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::JOINT_VELOCITY), []() { return std::make_shared<JointVelocityMode>(); });
+    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::CARTESIAN_POSE), []() { return std::make_shared<CartesianPoseMode>(); });
+    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::CARTESIAN_VELOCITY), []() { return std::make_shared<CartesianVelocityMode>(); });
+    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::JOINT_TORQUE), []() { return std::make_shared<ZeroTorqueMode>(); });
+}
+
+
+void FrankaArmProxy::initializeService() {
     // Register service handlers
     service_registry_ = ServiceRegistry();
     service_registry_.registerHandler(protocol::MsgID::SET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::setControlMode);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE, this, &FrankaArmProxy::getCurrentState);
-    // service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::GET_FRANKA_ARM_CONTROL_MODE);
-    // service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE_PUB_PORT, this, &FrankaArmProxy::GET_FRANKA_ARM_STATE_PUB_PORT);
-    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_JOINT_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_JOINT_POSITION);
-    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION, this, &FrankaArmProxy::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION);
-
+    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE, this, &FrankaArmProxy::getFrankaArmState);
+    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::getFrankaArmControlMode);
+    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE_PUB_PORT, this, &FrankaArmProxy::getFrankaArmStatePubPort);
+    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_JOINT_POSITION, this, &FrankaArmProxy::moveFrankaArmToJointPosition);
+    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION, this, &FrankaArmProxy::moveFrankaArmToCartesianPosition);
 }
+
 
 FrankaArmProxy::~FrankaArmProxy() {
     stop();
@@ -82,7 +102,11 @@ bool FrankaArmProxy::start(){
     is_running = true;
     std::cout << is_running <<"control"<< std::endl;
     std::cout << robot_<<"robot"<< std::endl;
+#if LOCAL_TESTING
+    current_state_.write(default_state);
+#else
     current_state_.write(robot_->readOnce());
+#endif
     state_pub_thread_ = std::thread(&FrankaArmProxy::statePublishThread, this);
     std::cout << "done arm state pub"<< std::endl;
     service_thread_ = std::thread(&FrankaArmProxy::responseSocketThread, this);
@@ -91,8 +115,14 @@ bool FrankaArmProxy::start(){
 }
 
 void FrankaArmProxy::stop() {
+    std::cout << "[INFO] Stopping FrankaArmProxy..." << std::endl;
     is_running = false;
-    current_mode_->stop();
+    std::cout << "Stop current_mode"<< std::endl;
+    if (current_mode_)
+        current_mode_->stop();
+    std::cout << "Joining threads..."<< std::endl;
+    if (state_pub_thread_.joinable()) state_pub_thread_.join();
+    if (service_thread_.joinable()) service_thread_.join();
     // try close ZeroMQ sockets
     try {
         state_pub_socket_.close();
@@ -101,18 +131,19 @@ void FrankaArmProxy::stop() {
         std::cerr << "[ZMQ ERROR] " << e.what() << "\n";
     }
     // wait for closing
-    if (state_pub_thread_.joinable()) state_pub_thread_.join();
-    if (service_thread_.joinable()) service_thread_.join();
+#if !LOCAL_TESTING
     robot_.reset();
     model_.reset();
+#endif
     current_mode_ = nullptr;// reset current control mode
+    std::cout << "[INFO] FrankaArmProxy stopped successfully." << std::endl;
 }
 
 // Main loop for processing requests, ctrl-c to stop the server
 void FrankaArmProxy::spin() {
     std::signal(SIGINT, signalHandler);  //  Catch Ctrl+C to stop the server
     std::cout << "[INFO] Entering main spin loop. Press Ctrl+C to exit." << std::endl;
-    std::cout << "running_flag" <<running_flag << std::endl;
+    std::cout << "running_flag " << running_flag << std::endl;
     while (running_flag) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -127,18 +158,18 @@ void FrankaArmProxy::displayConfig() const {
 
 // publish threads
 void FrankaArmProxy::statePublishThread() {
-    using namespace protocol;
     while (is_running) {
         const franka::RobotState rs = current_state_.read();
 
         // Encode payload & wrap with header
-        const std::vector<uint8_t> payload = encode(rs);
-        const MsgHeader header = createHeader(static_cast<uint8_t>(MsgID::FRANKA_ARM_STATE_PUB),
+        const std::vector<uint8_t> payload = protocol::encode(rs);
+        const protocol::MsgHeader header = protocol::createHeader(static_cast<uint8_t>(protocol::MsgID::FRANKA_ARM_STATE_PUB),
                                               static_cast<uint16_t>(payload.size()));
-        std::vector<uint8_t> frame = encodeMessage(header, payload);
+        std::vector<uint8_t> frame = protocol::encodeMessage(header, payload);
         // Publish over ZMQ PUB socket
         state_pub_socket_.send(zmq::buffer(frame), zmq::send_flags::none);
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / STATE_PUB_RATE_HZ));
+        std::cout << "[FrankaArmProxy] Published state message, size = " << frame.size() << " bytes." << std::endl;//debug
     }
 }
 
@@ -205,17 +236,17 @@ protocol::RequestResult FrankaArmProxy::setControlMode(const std::string& mode) 
     return protocol::RequestResult(protocol::RequestResultCode::SUCCESS);
 }
 
-franka::RobotState FrankaArmProxy::GET_FRANKA_ARM_STATE() {
+franka::RobotState FrankaArmProxy::getFrankaArmState() {
     return current_state_.read();
 }
 
-uint8_t FrankaArmProxy::GET_FRANKA_ARM_CONTROL_MODE() {
+uint8_t FrankaArmProxy::getFrankaArmControlMode() {
     if (!current_mode_) {
         throw std::runtime_error("No active control mode");
     }
     return static_cast<uint8_t>(current_mode_->getModeID());
 }
-uint16_t FrankaArmProxy::GET_FRANKA_ARM_STATE_PUB_PORT() {
+uint16_t FrankaArmProxy::getFrankaArmStatePubPort() {
     // Extract port from state_pub_addr_
     std::string prefix = "tcp://*:";
     if (state_pub_addr_.find(prefix) != 0) {

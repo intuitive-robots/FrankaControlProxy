@@ -15,16 +15,28 @@
 class ServiceRegistry {
 public:
     template <typename ClassT, typename RequestType, typename ResponseType>
-    void registerHandler(const protocol::MsgID& name, ClassT* instance, ResponseType (ClassT::*method)(RequestType)) {
+    void registerHandler(const protocol::MsgID& name, ClassT* instance, ResponseType (ClassT::*method)(const RequestType&)) {
         handlers_[name] = [instance, method](const std::vector<uint8_t>& payload) -> std::vector<uint8_t> {
             // Decode payload into RequestType via template decode<T>
-            RequestType arg = protocol::decode<RequestType>(payload);
+            RequestType arg = RequestType{};
+            protocol::decode(payload, arg);
             // Invoke bound member function
             ResponseType ret = (instance->*method)(arg);
             // Encode ResponseType back to payload bytes
             return protocol::encode(ret);
         };
     }
+
+
+    template <typename ClassT, typename ResponseType>
+    void registerHandler(const protocol::MsgID& name, ClassT* instance,
+                        ResponseType (ClassT::*method)()) {
+        handlers_[name] = [instance, method](const std::vector<uint8_t>&) -> std::vector<uint8_t> {
+            ResponseType ret = (instance->*method)();
+            return protocol::encode(ret);
+        };
+    }
+
 
     std::vector<uint8_t> handleMessage(const protocol::MsgHeader& header, const std::vector<uint8_t>& payload) {
         auto it = handlers_.find(static_cast<protocol::MsgID>(header.message_type));

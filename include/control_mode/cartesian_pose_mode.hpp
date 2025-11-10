@@ -1,6 +1,4 @@
-#ifndef CARTESIAN_POSITION_MODE_HPP
-#define CARTESIAN_POSITION_MODE_HPP
-
+#pragma once
 #include "abstract_control_mode.hpp"
 #include <franka/robot_state.h>
 #include <functional>
@@ -12,17 +10,18 @@
  * Controls the end-effector position and orientation in Cartesian space
  * using franka::CartesianPose commands.
  */
-class CartesianPositionMode : public AbstractControlMode {
+class CartesianPoseMode : public AbstractControlMode {
 public:
-    CartesianPositionMode();
-    ~CartesianPositionMode() override;
+    CartesianPoseMode();
+    ~CartesianPoseMode() override;
 
     void start();
     void stop() override;
-    int getModeID() const override;
+    const std::string& getModeName() const override;
 
 private:
     AtomicDoubleBuffer<franka::CartesianPose> desired_pose_;
+    void controlLoop() override;
+    void writeCommand(const std::vector<uint8_t>& data) override;
 };
 
-#endif // CARTESIAN_POSITION_MODE_HPP

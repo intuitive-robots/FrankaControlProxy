@@ -1,15 +1,24 @@
-#include "cartesian_position_mode.hpp"
+#include "control_mode/cartesian_pose_mode.hpp"
+#include "protocol/mode_id.hpp"
+#include "protocol/codec.hpp"
 #include <franka/exception.h>
 #include <iostream>
 
-CartesianPositionMode::CartesianPositionMode() = default;
-CartesianPositionMode::~CartesianPositionMode() = default;
+CartesianPoseMode::CartesianPoseMode():
+    desired_pose_(franka::CartesianPose{
+        {1.0, 0.0, 0.0, 0.0,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0}
+    })
+{};
+CartesianPoseMode::~CartesianPoseMode() = default;
 
-void CartesianPositionMode::controlLoop() {
-    std::cout << "[CartesianPositionMode] Started.\n";
+void CartesianPoseMode::controlLoop() {
+    std::cout << "[CartesianPoseMode] Started.\n";
     is_running_ = true;
 
-    // Initialize desired Cartesian pose to identity (no movement)
+    // Initialize desired Cartesian pose to identity (no movement)`
     desired_pose_.write(franka::CartesianPose{
         {1.0, 0.0, 0.0, 0.0,   // Row 1 (rotation)
          0.0, 1.0, 0.0, 0.0,   // Row 2 (rotation)
@@ -18,7 +27,7 @@ void CartesianPositionMode::controlLoop() {
     });
 
     if (!robot_ || !model_) {
-        std::cerr << "[CartesianPositionMode] Robot or model not set.\n";
+        std::cerr << "[CartesianPoseMode] Robot or model not set.\n";
         return;
     }
 
@@ -27,7 +36,7 @@ void CartesianPositionMode::controlLoop() {
     std::function<franka::CartesianPose(const franka::RobotState&, franka::Duration)> callback =
         [this](const franka::RobotState& state, franka::Duration) -> franka::CartesianPose {
             if (!is_running_) {
-                throw franka::ControlException("CartesianPositionMode stopped.");
+                throw franka::ControlException("CartesianPoseMode stopped.");
             }
 
             updateRobotState(state);
@@ -43,7 +52,7 @@ void CartesianPositionMode::controlLoop() {
     try {
         robot_->control(callback);
     } catch (const franka::ControlException& e) {
-        std::cerr << "[CartesianPositionMode] Exception: " << e.what() << std::endl;
+        std::cerr << "[CartesianPoseMode] Exception: " << e.what() << std::endl;
         if (std::string(e.what()).find("reflex") != std::string::npos) {
             std::cout << "Reflex detected, attempting automatic recovery...\n";
             try {
@@ -52,15 +61,21 @@ void CartesianPositionMode::controlLoop() {
                 std::cerr << "Recovery failed: " << recovery_error.what() << std::endl;
             }
         }
-        std::cout << "[CartesianPositionMode] Exited.\n";
+        std::cout << "[CartesianPoseMode] Exited.\n";
     }
 }
 
-void CartesianPositionMode::stop() {
+void CartesianPoseMode::stop() {
     is_running_ = false;
-    std::cout << "[CartesianPositionMode] Stopped.\n";
+    std::cout << "[CartesianPoseMode] Stopped.\n";
 }
 
-int CartesianPositionMode::getModeID() const {
-    return 5;
+const std::string& CartesianPoseMode::getModeName() const {
+    return protocol::toString(protocol::ModeID::CARTESIAN_POSE);
+}
+
+void CartesianPoseMode::writeCommand(const std::vector<uint8_t>& data) {
+    franka::CartesianPose pose = {};
+    protocol::decode(data, pose);
+    desired_pose_.write(pose);
 }

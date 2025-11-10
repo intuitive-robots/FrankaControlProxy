@@ -1,8 +1,11 @@
-#include "joint_position_mode.hpp"
+#include "control_mode/joint_position_mode.hpp"
 #include <franka/exception.h>
 #include <iostream>
+#include "protocol/codec.hpp"
 
-JointPositionMode::JointPositionMode() = default;
+JointPositionMode::JointPositionMode():
+    desired_positions_(franka::JointPositions{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}})
+{};
 JointPositionMode::~JointPositionMode() = default;
 
 void JointPositionMode::controlLoop() {
@@ -52,6 +55,12 @@ void JointPositionMode::stop() {
     std::cout << "[JointPositionMode] Stopped.\n";
 }
 
-int JointPositionMode::getModeID() const {
-    return 2;
+const std::string& JointPositionMode::getModeName() const {
+    return protocol::toString(protocol::ModeID::JOINT_POSITION);
+}
+
+void JointPositionMode::writeCommand(const std::vector<uint8_t>& data) {
+    franka::JointPositions positions = {};
+    protocol::decode(data, positions);
+    desired_positions_.write(positions);
 }

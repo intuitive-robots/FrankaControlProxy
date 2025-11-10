@@ -11,6 +11,7 @@
 #include <zmq.hpp>
 
 #include "utils/atomic_double_buffer.hpp"
+#include "protocol/mode_id.hpp"
 
 //todo:reform and check the leadter state get and the is_running
 class AbstractControlMode {
@@ -33,9 +34,12 @@ public:
         sub_thread.detach();
     };
 
-    virtual void stop() = 0;
+    virtual void stop() {
+        is_running_ = false;
+        std::cout << "[" << getModeName() << "] Stopped.\n";
+    };
     // Get the mode ID for this control mode
-    virtual int getModeID() const = 0; // Return the mode ID as an integer
+    virtual const std::string& getModeName() const = 0; // Return the mode ID as an integer
     void setRobot(std::shared_ptr<franka::Robot> robot) {
         robot_ = std::move(robot);
     }
@@ -45,12 +49,15 @@ public:
     
     // get current state of robot
     void updateRobotState(const franka::RobotState& new_state) {
-        current_state_.write(new_state);
+        current_state_->write(new_state);
+    }
+
+    protocol::ModeID getModeID() const {
+        return protocol::fromString(getModeName());
     }
 
 private:
     std::shared_ptr<zmq::context_t> context_;
-
 
 protected:
     // Protected constructor to prevent direct instantiation
@@ -58,13 +65,14 @@ protected:
     // Protected setup function for derived classes
     std::shared_ptr<franka::Robot> robot_;
     std::shared_ptr<franka::Model> model_;
-    AtomicDoubleBuffer<franka::RobotState> current_state_;
+    std::shared_ptr<AtomicDoubleBuffer<franka::RobotState>> current_state_;
     
     bool is_running_ = false;
 
     virtual void controlLoop() = 0;
 
     void commandSubscriptionLoop(const std::string& address) {
+        assert(context_ != nullptr && "ZMQ context must be initialized before starting subscription loop.");
         zmq::socket_t sub_socket_(*context_, ZMQ_SUB);
         sub_socket_.set(zmq::sockopt::rcvtimeo, 1000); // 1 second timeout
         sub_socket_.connect(address);
@@ -86,7 +94,5 @@ protected:
         }
     };
 
-    virtual void writeCommand(std::vector<uint8_t> data) {
-        // Implementation for writing commands to the robot
-    };
+    virtual void writeCommand(const std::vector<uint8_t>& data) = 0;
 };

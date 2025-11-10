@@ -1,11 +1,9 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <stdexcept>
 
 namespace protocol {
-
-#include <cstdint>
-#include <string>
 
 enum class ModeID : uint8_t {
     IDLE               = 0x00,  // Robot idle / no control command
@@ -28,6 +26,17 @@ inline std::string toString(ModeID mode) {
         case ModeID::GRAVITY_COMP:       return "GRAVITY_COMP";
         default:                         return "UNKNOWN_MODE";
     }
+}
+
+inline ModeID fromString(const std::string& mode_str) {
+    if (mode_str == "IDLE")               return ModeID::IDLE;
+    if (mode_str == "JOINT_POSITION")     return ModeID::JOINT_POSITION;
+    if (mode_str == "JOINT_VELOCITY")     return ModeID::JOINT_VELOCITY;
+    if (mode_str == "CARTESIAN_POSE")     return ModeID::CARTESIAN_POSE;
+    if (mode_str == "CARTESIAN_VELOCITY") return ModeID::CARTESIAN_VELOCITY;
+    if (mode_str == "JOINT_TORQUE")       return ModeID::JOINT_TORQUE;
+    if (mode_str == "GRAVITY_COMP")       return ModeID::GRAVITY_COMP;
+    throw std::invalid_argument("Unknown ModeID string: " + mode_str);
 }
 
 // enum class ModeID : uint8_t {

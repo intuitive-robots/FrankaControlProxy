@@ -2,6 +2,7 @@
 #include "protocol/byte_order.hpp"
 #include "protocol/msg_id.hpp"
 #include "protocol/mode_id.hpp"
+#include "protocol/msg_header.hpp"
 #include <cstdint>
 #include <cstring>
 #include <array>
@@ -118,11 +119,12 @@ inline bool decode_bool(const uint8_t*& ptr) {
 // Generic payload-level codec (overloads + template decode)
 // Note: These operate on payload only (no 12-byte header)
 // ------------------------------------------------------------
-
+std::vector<uint8_t> encodeMessage(const MsgHeader& header, const std::vector<uint8_t>& payload);
 // encode overloads by argument type (valid C++ overloading)
 std::vector<uint8_t> encode(const std::string& v);
 std::vector<uint8_t> encode(uint8_t v);
 std::vector<uint8_t> encode(uint16_t v);
+std::vector<uint8_t> encode(const protocol::RequestResult& jp);
 std::vector<uint8_t> encode(const franka::RobotState& rs);
 //RequestResult has it own enocdeMessage function, due to flag need to indicate presence of detail string
 

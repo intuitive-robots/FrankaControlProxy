@@ -1,10 +1,9 @@
-#ifndef JOINT_VELOCITY_MODE_HPP
-#define JOINT_VELOCITY_MODE_HPP
+#pragma once
 #include "abstract_control_mode.hpp"
 #include <franka/robot_state.h>
 #include <array>
 #include <functional>
-#include "utils/AtomicDoubleBuffer.hpp"
+#include "utils/atomic_double_buffer.hpp"
 
 class JointVelocityMode : public AbstractControlMode {
 public:
@@ -12,9 +11,9 @@ public:
     ~JointVelocityMode() override;
     void controlLoop() override;
     void stop() override;
-    int getModeID() const override;
+    const std::string& getModeName() const override;
 private:
     AtomicDoubleBuffer<franka::JointVelocities> desired_velocities_;
+    void writeCommand(const std::vector<uint8_t>& data) override;
 
 };
-#endif // JOINT_VELOCITY_MODE_HPP

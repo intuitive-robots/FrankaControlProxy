@@ -39,7 +39,7 @@ private:
     void statePublishThread();// ZMQ PUB, Publishes the current state of the robot at a fixed rate
     void responseSocketThread();// ZMQ REP,responds to incoming requests from clients
     // Service handler
-    void handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) ;
+    void handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response);
 
 
 
@@ -51,8 +51,7 @@ private:
     void controlLoopThread();// Main control loop for processing commands and updating the robot state
     void stateSubscribeThread();// ZMQ SUB, Subscribes to the state updates from a leader robot (for follower mode)
     void gripperSubscribeThread();// ZMQ SUB, Subscribes to the gripper updates
-    // Message handling
-    void handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) ;
+
     
 private:
     // Configuration
@@ -83,11 +82,15 @@ private:
     // Current robot state
     AtomicDoubleBuffer<franka::RobotState> current_state_;
 
+    // initialize
+    void initializeControlMode();
+    void initializeService();
+
     // service registry
     ServiceRegistry service_registry_;
-    franka::RobotState GET_FRANKA_ARM_STATE();
-    uint8_t GET_FRANKA_ARM_CONTROL_MODE();
-    uint16_t GET_FRANKA_ARM_STATE_PUB_PORT();
+    franka::RobotState getFrankaArmState();
+    uint8_t getFrankaArmControlMode();
+    uint16_t getFrankaArmStatePubPort();
     
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;

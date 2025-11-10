@@ -12,11 +12,14 @@
 
 class ZeroTorqueMode : public AbstractControlMode {
 public:
-    ZeroTorqueMode() = default;
-    ~ZeroTorqueMode() override = default;
+    ZeroTorqueMode();
+    ~ZeroTorqueMode() override;
 
     //void initialize(const franka::RobotState& initial_state) override;
     void controlLoop() override;
+    void start();
     void stop() override;
-    int getModeID() const override;
+    const std::string& getModeName() const override;
+private:
+    void writeCommand(const std::vector<uint8_t>& data) override;
 };

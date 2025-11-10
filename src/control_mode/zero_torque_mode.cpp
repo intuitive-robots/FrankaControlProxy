@@ -3,6 +3,9 @@
 #include <franka/exception.h>
 #include <iostream>
 
+ZeroTorqueMode::ZeroTorqueMode() = default;
+ZeroTorqueMode::~ZeroTorqueMode() = default;
+
 void ZeroTorqueMode::start() {
     is_running_ = true;
     std::cout << "[ZeroTorqueMode] Started.\n";
@@ -51,6 +54,17 @@ void ZeroTorqueMode::stop() {
     std::cout << "[ZeroTorqueMode] Stopping Zero Torque mode.\n";
 }
 
-int ZeroTorqueMode::getModeID() const {
-    return 4;
+const std::string& ZeroTorqueMode::getModeName() const {
+    return protocol::toString(protocol::ModeID::GRAVITY_COMP);
+}
+
+
+void ZeroTorqueMode::writeCommand(const std::vector<uint8_t>& data) {
+    // ZeroTorqueMode does not process external commands; ignore incoming data.
+    std::cout << "[ZeroTorqueMode] Received command data, but this mode does not accept commands.\n";
+}
+
+void ZeroTorqueMode::controlLoop() {
+    // ZeroTorqueMode control logic is handled in start(); this function is unused.
+    std::cout << "[ZeroTorqueMode] controlLoop() called, but control is managed in start().\n";
 }
