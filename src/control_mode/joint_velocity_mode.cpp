@@ -51,13 +51,9 @@ void JointVelocityMode::controlLoop() {
     }
 }
 
-void JointVelocityMode::stop() {
-    is_running_ = false;
-    std::cout << "[JointVelocityMode] Stopped.\n";
-}
 
-const std::string& JointVelocityMode::getModeName() const {
-    return protocol::toString(protocol::ModeID::JOINT_VELOCITY);
+protocol::ModeID JointVelocityMode::getModeID() const {
+    return protocol::ModeID::JOINT_VELOCITY;
 }
 
 void JointVelocityMode::writeCommand(const std::vector<uint8_t>& data) {

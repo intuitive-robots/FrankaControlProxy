@@ -10,8 +10,7 @@ public:
     JointPositionMode();
     ~JointPositionMode() override;
     void controlLoop() override;
-    void stop() override;
-    const std::string& getModeName() const override;
+    protocol::ModeID getModeID() const override;
 private:
     AtomicDoubleBuffer<franka::JointPositions> desired_positions_;
     void writeCommand(const std::vector<uint8_t>& data) override;

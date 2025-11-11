@@ -10,8 +10,7 @@ public:
     ~CartesianVelocityMode() override;
 
     void start();
-    void stop() override;
-    const std::string& getModeName() const override;
+    protocol::ModeID getModeID() const override;
 
 private:
     AtomicDoubleBuffer<franka::CartesianVelocities> desired_velocities_;

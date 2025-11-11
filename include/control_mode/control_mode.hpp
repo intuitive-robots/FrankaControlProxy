@@ -6,4 +6,4 @@
 #include <control_mode/cartesian_velocity_mode.hpp>
 #include <control_mode/joint_position_mode.hpp>
 #include <control_mode/joint_velocity_mode.hpp>
-#include <control_mode/zero_torque_mode.hpp>
+#include <control_mode/human_control_mode.hpp>

@@ -3,7 +3,7 @@
 #include <franka/model.h>
 #include <franka/robot_state.h>
 #include <franka/exception.h>
-#include <memory>//for std::shared_ptr
+#include <memory>
 #include <mutex>
 #include <zmq.hpp>
 #include <iostream>
@@ -21,43 +21,57 @@ public:
     // Pure virtual public functions
     //virtual void initialize(const RobotState& initial_state);
     void start() {
+#if !LOCAL_TESTING
         if (!robot_ || !model_) {
-            std::cerr << "[CartesianVelocityMode] Robot or model not set.\n";
+            std::cerr << "[ " << getModeName() << "] Robot or model not set.\n";
             return;
         }
-        std::cout << "[CartesianVelocityMode] Started.\n";
+#endif
+        std::cout << "[" << getModeName() << "] Started.\n";
         is_running_ = true;
+#if !LOCAL_TESTING
         robot_->automaticErrorRecovery();
-        std::thread control_thread(&AbstractControlMode::controlLoop, this);
-        control_thread.detach();
-        std::thread sub_thread(&AbstractControlMode::commandSubscriptionLoop, this, "tcp://localhost:5556");
-        sub_thread.detach();
+#endif
+        control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
+        std::cout << "[" << getModeName() << "] Control thread launched.\n";
+        command_thread_ = std::thread(&AbstractControlMode::commandSubscriptionLoop, this);
+        std::cout << "[" << getModeName() << "] Command subscription thread launched.\n";
     };
 
     virtual void stop() {
         is_running_ = false;
+        control_thread_.join();
+        command_thread_.join();
         std::cout << "[" << getModeName() << "] Stopped.\n";
     };
     // Get the mode ID for this control mode
-    virtual const std::string& getModeName() const = 0; // Return the mode ID as an integer
+    virtual protocol::ModeID getModeID() const = 0; // Return the mode ID as an integer
     void setRobot(std::shared_ptr<franka::Robot> robot) {
         robot_ = std::move(robot);
     }
     void setModel(std::shared_ptr<franka::Model> model) {
         model_ = std::move(model);
     }
-    
+    void setCurrentStateBuffer(AtomicDoubleBuffer<franka::RobotState>* state_buffer) {
+        current_state_ = state_buffer;
+    }
+    void setupZMQContext(zmq::context_t* context) {
+        context_ = context;
+    }
+    void setupCommandSubscription(const std::string& address) {
+        command_sub_addr_ = address;
+    }
     // get current state of robot
     void updateRobotState(const franka::RobotState& new_state) {
         current_state_->write(new_state);
     }
 
-    protocol::ModeID getModeID() const {
-        return protocol::fromString(getModeName());
+    const std::string getModeName() const {
+        return protocol::toString(getModeID());
     }
 
 private:
-    std::shared_ptr<zmq::context_t> context_;
+    zmq::context_t* context_;
 
 protected:
     // Protected constructor to prevent direct instantiation
@@ -65,17 +79,24 @@ protected:
     // Protected setup function for derived classes
     std::shared_ptr<franka::Robot> robot_;
     std::shared_ptr<franka::Model> model_;
-    std::shared_ptr<AtomicDoubleBuffer<franka::RobotState>> current_state_;
+    AtomicDoubleBuffer<franka::RobotState>* current_state_ = nullptr;
     
-    bool is_running_ = false;
+    std::thread control_thread_;
+    std::thread command_thread_;
 
+    bool is_running_ = false;
+    std::string command_sub_addr_;
     virtual void controlLoop() = 0;
 
-    void commandSubscriptionLoop(const std::string& address) {
+    void commandSubscriptionLoop() {
         assert(context_ != nullptr && "ZMQ context must be initialized before starting subscription loop.");
         zmq::socket_t sub_socket_(*context_, ZMQ_SUB);
         sub_socket_.set(zmq::sockopt::rcvtimeo, 1000); // 1 second timeout
-        sub_socket_.connect(address);
+        if (command_sub_addr_.empty()) {
+            std::cerr << "[" << getModeName() << "] Command subscription address is empty. Exiting command subscription loop." << std::endl;
+            return;
+        }
+        sub_socket_.connect(command_sub_addr_);
         sub_socket_.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
         while (is_running_) {
             try {
@@ -92,6 +113,8 @@ protected:
                 break;
             }
         }
+        sub_socket_.close();
+        std::cout << "[" << getModeName() << "] Command subscription loop exited." << std::endl;
     };
 
     virtual void writeCommand(const std::vector<uint8_t>& data) = 0;

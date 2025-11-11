@@ -65,13 +65,8 @@ void CartesianPoseMode::controlLoop() {
     }
 }
 
-void CartesianPoseMode::stop() {
-    is_running_ = false;
-    std::cout << "[CartesianPoseMode] Stopped.\n";
-}
-
-const std::string& CartesianPoseMode::getModeName() const {
-    return protocol::toString(protocol::ModeID::CARTESIAN_POSE);
+protocol::ModeID CartesianPoseMode::getModeID() const {
+    return protocol::ModeID::CARTESIAN_POSE;
 }
 
 void CartesianPoseMode::writeCommand(const std::vector<uint8_t>& data) {

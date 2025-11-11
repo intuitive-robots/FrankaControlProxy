@@ -141,6 +141,6 @@ void decode(const std::vector<uint8_t>& payload, franka::CartesianPose& output);
 void decode(const std::vector<uint8_t>& payload, franka::CartesianVelocities& output);
 void decode(const std::vector<uint8_t>& payload, franka::JointVelocities& output);
 void decode(const std::vector<uint8_t>& payload, franka::Torques& output);
+void decode(const std::vector<uint8_t>& payload, FrankaArmControlMode& output);
 
 }  // namespace protocol
-

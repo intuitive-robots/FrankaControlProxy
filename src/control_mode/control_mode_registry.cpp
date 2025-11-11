@@ -6,6 +6,6 @@
 
 // void registerAllControlModes(FrankaProxy& proxy) {
 //     proxy.registerControlMode("idle", std::make_unique<IdleControlMode>());
-//     proxy.registerControlMode("zero_torque", std::make_unique<ZeroTorqueMode>());
+//     proxy.registerControlMode("zero_torque", std::make_unique<HumanControlMode>());
 //     proxy.registerControlMode("joint_pd", std::make_unique<JointPDControlMode>());
 // }

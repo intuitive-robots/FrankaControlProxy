@@ -34,7 +34,6 @@ void CartesianVelocityMode::controlLoop() {
             }
             return desired;
         };
-
     try {
         robot_->control(callback);
     } catch (const franka::ControlException& e) {
@@ -51,13 +50,9 @@ void CartesianVelocityMode::controlLoop() {
     }
 }
 
-void CartesianVelocityMode::stop() {
-    is_running_ = false;
-    std::cout << "[CartesianVelocityMode] Stopped.\n";
-}
 
-const std::string& CartesianVelocityMode::getModeName() const {
-    return protocol::toString(protocol::ModeID::CARTESIAN_VELOCITY);
+protocol::ModeID CartesianVelocityMode::getModeID() const {
+    return protocol::ModeID::CARTESIAN_VELOCITY;
 }
 
 void CartesianVelocityMode::writeCommand(const std::vector<uint8_t>& data) {

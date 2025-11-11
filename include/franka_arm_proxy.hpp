@@ -13,6 +13,8 @@
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/service_registry.hpp" 
+#include "protocol/codec.hpp"
+
 class FrankaArmProxy {
 
 public:
@@ -26,7 +28,7 @@ public:
     void spin();// Main loop for processing requests
     std::string getType() const { return type_; } // Returns the type of the proxy (e.g., "Arm" or "Gripper")
     // State management
-    protocol::RequestResult setControlMode(const std::string& mode);
+    protocol::RequestResult setControlMode(const protocol::FrankaArmControlMode& mode);// Sets the current control mode of the Franka arm
     franka::RobotState getCurrentState(const std::string& request);// Return the current state of the robot
 
     // Configuration
@@ -90,7 +92,7 @@ private:
     ServiceRegistry service_registry_;
     franka::RobotState getFrankaArmState();
     uint8_t getFrankaArmControlMode();
-    uint16_t getFrankaArmStatePubPort();
+    const std::string& getFrankaArmStatePubPort();
     
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;

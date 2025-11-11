@@ -16,12 +16,10 @@ public:
     ~CartesianPoseMode() override;
 
     void start();
-    void stop() override;
-    const std::string& getModeName() const override;
+    protocol::ModeID getModeID() const override;
 
 private:
     AtomicDoubleBuffer<franka::CartesianPose> desired_pose_;
     void controlLoop() override;
     void writeCommand(const std::vector<uint8_t>& data) override;
 };
-

@@ -50,13 +50,9 @@ void JointPositionMode::controlLoop() {
     }
 }
 
-void JointPositionMode::stop() {
-    is_running_ = false;
-    std::cout << "[JointPositionMode] Stopped.\n";
-}
 
-const std::string& JointPositionMode::getModeName() const {
-    return protocol::toString(protocol::ModeID::JOINT_POSITION);
+protocol::ModeID JointPositionMode::getModeID() const {
+    return protocol::ModeID::JOINT_POSITION;
 }
 
 void JointPositionMode::writeCommand(const std::vector<uint8_t>& data) {

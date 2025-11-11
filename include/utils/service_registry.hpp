@@ -40,6 +40,7 @@ public:
 
     std::vector<uint8_t> handleMessage(const protocol::MsgHeader& header, const std::vector<uint8_t>& payload) {
         auto it = handlers_.find(static_cast<protocol::MsgID>(header.message_type));
+        std::cout << "[ServiceRegistry] Handling message of type " << static_cast<int>(header.message_type) << std::endl;
         if (it == handlers_.end()) {
             // Encode FAIL code + detail string payload (u16 len + bytes)
             const std::string err = "Unknown handler";

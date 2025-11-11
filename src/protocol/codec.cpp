@@ -195,7 +195,13 @@ void decode(const std::vector<uint8_t>& payload, franka::Torques& output) {
     output = franka::Torques{tau};
 }
 
-
+void decode(const std::vector<uint8_t>& payload, FrankaArmControlMode& output) {
+    if (payload.size() < 3) {
+        throw std::runtime_error("decode<FrankaArmControlMode>: payload too small");
+    }
+    output.id = static_cast<ModeID>(payload[0]);
+    output.url = payload.size() > 1 ? std::string(reinterpret_cast<const char*>(&payload[1]), payload.size() - 1) : "";
+}
 
 
 }  // namespace protocol
