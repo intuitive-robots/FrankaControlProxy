@@ -18,8 +18,7 @@ public:
     void registerHandler(const protocol::MsgID& name, ClassT* instance, ResponseType (ClassT::*method)(const RequestType&)) {
         handlers_[name] = [instance, method](const std::vector<uint8_t>& payload) -> std::vector<uint8_t> {
             // Decode payload into RequestType via template decode<T>
-            RequestType arg = RequestType{};
-            protocol::decode(payload, arg);
+            RequestType arg = protocol::decode<RequestType>(payload);
             // Invoke bound member function
             ResponseType ret = (instance->*method)(arg);
             // Encode ResponseType back to payload bytes

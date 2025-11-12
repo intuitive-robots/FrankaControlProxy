@@ -93,7 +93,8 @@ std::vector<uint8_t> encode(const franka::RobotState& rs) {
 }
 
 // string: FrankaArmControl payload(Mode_ID+URL)
-void decode(const std::vector<uint8_t>& payload, std::string& output) {
+template <>
+std::string decode(const std::vector<uint8_t>& payload) {
     if (payload.size() < 2) {
         throw std::runtime_error("decode<string>: payload too small");
     }
@@ -105,29 +106,32 @@ void decode(const std::vector<uint8_t>& payload, std::string& output) {
         throw std::runtime_error("decode<string>: length mismatch");
     }
 
-    output.assign(reinterpret_cast<const char*>(rptr), len);
+    return std::string(reinterpret_cast<const char*>(rptr), len);
 }
 
-void decode(const std::vector<uint8_t>& payload, uint8_t& output) {
+template <>
+uint8_t decode(const std::vector<uint8_t>& payload) {
     if (payload.size() != 1) {
         throw std::runtime_error("decode<uint8_t>: payload size mismatch");
     }
-    output = payload[0];
+    return payload[0];
 }
 
-void decode(const std::vector<uint8_t>& payload, uint16_t& output) {
+template <>
+uint16_t decode(const std::vector<uint8_t>& payload) {
     if (payload.size() != 2) {
         throw std::runtime_error("decode<uint16_t>: payload size mismatch");
     }
     const uint8_t* rptr = payload.data();
-    output = decode_u16(rptr);
+    return decode_u16(rptr);
 }
 
 // ============================================================================
 // libfranka control types
 // ============================================================================
 
-void decode(const std::vector<uint8_t>& payload, franka::JointPositions& output) {
+template <>
+franka::JointPositions decode(const std::vector<uint8_t>& payload) {
     constexpr size_t kDoF = 7;
     constexpr size_t kSize = kDoF * sizeof(double);
 
@@ -138,10 +142,11 @@ void decode(const std::vector<uint8_t>& payload, franka::JointPositions& output)
     const uint8_t* rptr = payload.data();
     std::array<double, kDoF> q{};
     decode_array_f64(rptr, q);
-    output.q = q;
+    return franka::JointPositions(q);
 }
 
-void decode(const std::vector<uint8_t>& payload, franka::JointVelocities& output) {
+template <>
+franka::JointVelocities decode<franka::JointVelocities>(const std::vector<uint8_t>& payload) {
     constexpr size_t kDoF = 7;
     constexpr size_t kSize = kDoF * sizeof(double);
 
@@ -152,10 +157,11 @@ void decode(const std::vector<uint8_t>& payload, franka::JointVelocities& output
     const uint8_t* rptr = payload.data();
     std::array<double, kDoF> dq{};
     decode_array_f64(rptr, dq);
-    output.dq = dq;
+    return franka::JointVelocities(dq);
 }
 
-void decode(const std::vector<uint8_t>& payload, franka::CartesianPose& output) {
+template <>
+franka::CartesianPose decode<franka::CartesianPose>(const std::vector<uint8_t>& payload) {
     constexpr size_t kSize = 16 * sizeof(double);
 
     if (payload.size() != kSize) {
@@ -165,10 +171,11 @@ void decode(const std::vector<uint8_t>& payload, franka::CartesianPose& output) 
     const uint8_t* rptr = payload.data();
     std::array<double, 16> pose{};
     decode_array_f64(rptr, pose);
-    output = franka::CartesianPose{pose};
+    return franka::CartesianPose{pose};
 }
 
-void decode(const std::vector<uint8_t>& payload, franka::CartesianVelocities& output) {
+template <>
+franka::CartesianVelocities decode<franka::CartesianVelocities>(const std::vector<uint8_t>& payload) {
     constexpr size_t kSize = 6 * sizeof(double);
 
     if (payload.size() != kSize) {
@@ -178,10 +185,11 @@ void decode(const std::vector<uint8_t>& payload, franka::CartesianVelocities& ou
     const uint8_t* rptr = payload.data();
     std::array<double, 6> vel{};
     decode_array_f64(rptr, vel);
-    output = franka::CartesianVelocities{vel};
+    return franka::CartesianVelocities{vel};
 }
 
-void decode(const std::vector<uint8_t>& payload, franka::Torques& output) {
+template <>
+franka::Torques decode<franka::Torques>(const std::vector<uint8_t>& payload) {
     constexpr size_t kDoF = 7;
     constexpr size_t kSize = kDoF * sizeof(double);
 
@@ -192,15 +200,18 @@ void decode(const std::vector<uint8_t>& payload, franka::Torques& output) {
     const uint8_t* rptr = payload.data();
     std::array<double, kDoF> tau{};
     decode_array_f64(rptr, tau);
-    output = franka::Torques{tau};
+    return franka::Torques{tau};
 }
 
-void decode(const std::vector<uint8_t>& payload, FrankaArmControlMode& output) {
+template <>
+protocol::FrankaArmControlMode decode<protocol::FrankaArmControlMode>(const std::vector<uint8_t>& payload) {
     if (payload.size() < 3) {
         throw std::runtime_error("decode<FrankaArmControlMode>: payload too small");
     }
-    output.id = static_cast<ModeID>(payload[0]);
+    protocol::FrankaArmControlMode output;
+    output.id = static_cast<protocol::ModeID>(payload[0]);
     output.url = payload.size() > 1 ? std::string(reinterpret_cast<const char*>(&payload[1]), payload.size() - 1) : "";
+    return output;
 }
 
 

@@ -70,7 +70,6 @@ protocol::ModeID CartesianPoseMode::getModeID() const {
 }
 
 void CartesianPoseMode::writeCommand(const std::vector<uint8_t>& data) {
-    franka::CartesianPose pose = {};
-    protocol::decode(data, pose);
+    franka::CartesianPose pose = protocol::decode<franka::CartesianPose>(data);
     desired_pose_.write(pose);
 }

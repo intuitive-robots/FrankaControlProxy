@@ -57,7 +57,6 @@ protocol::ModeID JointVelocityMode::getModeID() const {
 }
 
 void JointVelocityMode::writeCommand(const std::vector<uint8_t>& data) {
-    franka::JointVelocities velocities = {};
-    protocol::decode(data, velocities);
+    franka::JointVelocities velocities = protocol::decode<franka::JointVelocities>(data);
     desired_velocities_.write(velocities);
 }

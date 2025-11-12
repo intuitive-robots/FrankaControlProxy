@@ -128,19 +128,32 @@ std::vector<uint8_t> encode(const protocol::RequestResult& jp);
 std::vector<uint8_t> encode(const franka::RobotState& rs);
 //RequestResult has it own enocdeMessage function, due to flag need to indicate presence of detail string
 
+template <typename T>
+T decode(const std::vector<uint8_t>& payload);
 
 // explicit specializations declarations
-void decode(const std::vector<uint8_t>& payload, std::string& output);
-void decode(const std::vector<uint8_t>& payload, uint8_t& output);
-void decode(const std::vector<uint8_t>& payload, uint16_t& output);
+template <>
+std::string decode(const std::vector<uint8_t>& payload);
+template <>
+uint8_t decode(const std::vector<uint8_t>& payload);
+template <>
+uint16_t decode(const std::vector<uint8_t>& payload);
 
 // libfranka control types
 // payload-only encoder extracting required fields from full RobotState
-void decode(const std::vector<uint8_t>& payload, franka::JointPositions& output);
-void decode(const std::vector<uint8_t>& payload, franka::CartesianPose& output);
-void decode(const std::vector<uint8_t>& payload, franka::CartesianVelocities& output);
-void decode(const std::vector<uint8_t>& payload, franka::JointVelocities& output);
-void decode(const std::vector<uint8_t>& payload, franka::Torques& output);
-void decode(const std::vector<uint8_t>& payload, FrankaArmControlMode& output);
+template <>
+franka::RobotState decode<franka::RobotState>(const std::vector<uint8_t>& payload);
+template <>
+franka::JointPositions decode<franka::JointPositions>(const std::vector<uint8_t>& payload);
+template <>
+franka::CartesianPose decode<franka::CartesianPose>(const std::vector<uint8_t>& payload);
+template <>
+franka::CartesianVelocities decode<franka::CartesianVelocities>(const std::vector<uint8_t>& payload);
+template <>
+franka::JointVelocities decode<franka::JointVelocities>(const std::vector<uint8_t>& payload);
+template <>
+franka::Torques decode<franka::Torques>(const std::vector<uint8_t>& payload);
+template <>
+FrankaArmControlMode decode<FrankaArmControlMode>(const std::vector<uint8_t>& payload);
 
 }  // namespace protocol
