@@ -113,7 +113,7 @@ bool FrankaArmProxy::start(){
 #if LOCAL_TESTING
     current_state_.write(default_state);
 #else
-    current_state_.write(robot_->readOnce());
+    // current_state_.write(robot_->readOnce());
 #endif
     state_pub_thread_ = std::thread(&FrankaArmProxy::statePublishThread, this);
     std::cout << "done arm state pub"<< std::endl;

@@ -2,6 +2,7 @@
 #include "protocol/mode_id.hpp"
 #include "protocol/codec.hpp"
 #include <franka/exception.h>
+#include <franka/control_types.h>
 #include <iostream>
 
 CartesianVelocityMode::CartesianVelocityMode():
@@ -24,9 +25,6 @@ void CartesianVelocityMode::controlLoop() {
 
     std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)> callback =
         [this](const franka::RobotState& state, franka::Duration) -> franka::CartesianVelocities {
-            if (!is_running_) {
-                throw franka::ControlException("CartesianVelocityMode stopped.");
-            }
             updateRobotState(state);
             auto desired = desired_velocities_.read();
             if (!is_running_) {
@@ -35,7 +33,7 @@ void CartesianVelocityMode::controlLoop() {
             return desired;
         };
     try {
-        robot_->control(callback);
+        robot_->control(callback, franka::ControllerMode::kCartesianImpedance, true, 1);
     } catch (const franka::ControlException& e) {
         std::cerr << "[CartesianVelocityMode] Exception: " << e.what() << std::endl;
         if (std::string(e.what()).find("reflex") != std::string::npos) {
