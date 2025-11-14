@@ -23,7 +23,12 @@ void CartesianVelocityMode::controlLoop() {
 
     robot_->automaticErrorRecovery();
 
-    std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)> callback =
+    // Stiffness
+    const std::array<double, 7> k_gains = {{600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0}};
+    // Damping
+    const std::array<double, 7> d_gains = {{50.0, 50.0, 50.0, 50.0, 30.0, 25.0, 15.0}};
+
+    std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)> motion_generator_callback =
         [this](const franka::RobotState& state, franka::Duration) -> franka::CartesianVelocities {
             updateRobotState(state);
             auto desired = desired_velocities_.read();
@@ -32,8 +37,26 @@ void CartesianVelocityMode::controlLoop() {
             }
             return desired;
         };
+    std::function<franka::Torques(const franka::RobotState&, franka::Duration)>
+        impedance_control_callback =
+            [this, k_gains, d_gains](
+                const franka::RobotState& state, franka::Duration /*period*/) -> franka::Torques {
+      // Read current coriolis terms from model.
+      std::array<double, 7> coriolis = model_->coriolis(state);
+
+      // Compute torque command from joint impedance control law.
+      // Note: The answer to our Cartesian pose inverse kinematics is always in state.q_d with one
+      // time step delay.
+      std::array<double, 7> tau_d_calculated;
+      for (size_t i = 0; i < 7; i++) {
+        tau_d_calculated[i] =
+            k_gains[i] * (state.q_d[i] - state.q[i]) - d_gains[i] * state.dq[i] + coriolis[i];
+      }
+      // Send torque command.
+      return tau_d_calculated;
+    };
     try {
-        robot_->control(callback, franka::ControllerMode::kCartesianImpedance, true, 1);
+        robot_->control(impedance_control_callback, motion_generator_callback, 1);
     } catch (const franka::ControlException& e) {
         std::cerr << "[CartesianVelocityMode] Exception: " << e.what() << std::endl;
         if (std::string(e.what()).find("reflex") != std::string::npos) {
