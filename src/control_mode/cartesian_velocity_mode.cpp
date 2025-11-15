@@ -4,6 +4,7 @@
 #include <franka/exception.h>
 #include <franka/control_types.h>
 #include <iostream>
+#include <unistd.h>
 
 CartesianVelocityMode::CartesianVelocityMode():
     desired_velocities_(franka::CartesianVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}})
@@ -55,19 +56,32 @@ void CartesianVelocityMode::controlLoop() {
       // Send torque command.
       return tau_d_calculated;
     };
-    try {
-        robot_->control(impedance_control_callback, motion_generator_callback, 1);
-    } catch (const franka::ControlException& e) {
-        std::cerr << "[CartesianVelocityMode] Exception: " << e.what() << std::endl;
-        if (std::string(e.what()).find("reflex") != std::string::npos) {
-            std::cout << "Reflex detected, attempting automatic recovery...\n";
+    bool is_robot_operational = true;
+    while (is_running_ && is_robot_operational) {
+        try {
+            // robot_->control(impedance_control_callback, motion_generator_callback, true, 1);
+            robot_->control(motion_generator_callback, franka::ControllerMode::kCartesianImpedance, true, 1);
+        } catch (const std::exception &ex) {
+            std::cout << "Robot is unable to be controlled: " << ex.what() << std::endl;
+            is_robot_operational = false;
+        }
+        for (int i = 0; i < 3; i++) {
+            std::cout << "[CartesianVelocityMode] Waiting " << 3
+                        << " seconds before recovery attempt...\n";
+
+            // Wait
+            usleep(1000 * 3);
+
+            // Attempt recovery
             try {
                 robot_->automaticErrorRecovery();
-            } catch (const franka::Exception& recovery_error) {
-                std::cerr << "Recovery failed: " << recovery_error.what() << std::endl;
+                std::cout << "[CartesianVelocityMode] Robot operation recovered.\n";
+                is_robot_operational = true;
+                break;
+            } catch (const std::exception &ex) {
+                std::cout << "[CartesianVelocityMode] Recovery failed: " << ex.what() << std::endl;
             }
         }
-        std::cout << "[CartesianVelocityMode] Exited.\n";
     }
 }
 
