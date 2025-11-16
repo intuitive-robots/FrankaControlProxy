@@ -1,7 +1,6 @@
 #include "control_mode/joint_position_mode.hpp"
 #include <franka/exception.h>
 #include <iostream>
-#include "protocol/codec.hpp"
 
 JointPositionMode::JointPositionMode():
     desired_positions_(franka::JointPositions{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}})

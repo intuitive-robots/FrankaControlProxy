@@ -1,8 +1,6 @@
 #pragma once
-#include "protocol/byte_order.hpp"
-#include "protocol/msg_id.hpp"
-#include "protocol/mode_id.hpp"
-#include "protocol/msg_header.hpp"
+#include "generated/message_generated.h"
+#include "generated/service_generated.h"
 #include <cstdint>
 #include <cstring>
 #include <array>
@@ -129,31 +127,30 @@ std::vector<uint8_t> encode(const franka::RobotState& rs);
 //RequestResult has it own enocdeMessage function, due to flag need to indicate presence of detail string
 
 template <typename T>
-T decode(const std::vector<uint8_t>& payload);
+T decode(const uint8_t* payload);
 
 // explicit specializations declarations
 template <>
-std::string decode(const std::vector<uint8_t>& payload);
-template <>
-uint8_t decode(const std::vector<uint8_t>& payload);
-template <>
-uint16_t decode(const std::vector<uint8_t>& payload);
+std::string decode(const uint8_t* payload);
+// template <>
+// uint8_t decode(const uint8_t* payload);
+// template <>
+// uint16_t decode(const uint8_t* payload);
 
 // libfranka control types
 // payload-only encoder extracting required fields from full RobotState
 template <>
-franka::RobotState decode<franka::RobotState>(const std::vector<uint8_t>& payload);
+franka::RobotState decode<franka::RobotState>(const uint8_t* payload);
 template <>
-franka::JointPositions decode<franka::JointPositions>(const std::vector<uint8_t>& payload);
+franka::JointPositions decode<franka::JointPositions>(const uint8_t* payload);
 template <>
-franka::CartesianPose decode<franka::CartesianPose>(const std::vector<uint8_t>& payload);
+franka::CartesianPose decode<franka::CartesianPose>(const uint8_t* payload);
 template <>
-franka::CartesianVelocities decode<franka::CartesianVelocities>(const std::vector<uint8_t>& payload);
+franka::CartesianVelocities decode<franka::CartesianVelocities>(const uint8_t* payload);
 template <>
-franka::JointVelocities decode<franka::JointVelocities>(const std::vector<uint8_t>& payload);
+franka::JointVelocities decode<franka::JointVelocities>(const uint8_t* payload);
 template <>
-franka::Torques decode<franka::Torques>(const std::vector<uint8_t>& payload);
+franka::Torques decode<franka::Torques>(const uint8_t* payload);
 template <>
-FrankaArmControlMode decode<FrankaArmControlMode>(const std::vector<uint8_t>& payload);
-
+FrankaArmControlMode decode<FrankaArmControlMode>(const uint8_t* payload);
 }  // namespace protocol

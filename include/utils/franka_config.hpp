@@ -3,12 +3,12 @@
 #include <string>
 #include <map>
 
-class RobotConfig {
+class FrankaConfig {
 public:
     std::map<std::string, std::string> config_data;
 
     // Constructor to initialize and load the configuration from a file
-    RobotConfig(const std::string& file_path) {
+    FrankaConfig(const std::string& file_path) {
         loadFromFile(file_path);
     }
 

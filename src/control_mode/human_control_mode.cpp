@@ -49,8 +49,8 @@ void HumanControlMode::start() {
     }
 }
 
-protocol::ModeID HumanControlMode::getModeID() const {
-    return protocol::ModeID::HUMAN_CONTROL;
+const std::string& HumanControlMode::getModeName() {
+    return ModeID::HUMAN_CONTROL;
 }
 
 

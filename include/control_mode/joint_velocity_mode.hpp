@@ -10,7 +10,7 @@ public:
     JointVelocityMode();
     ~JointVelocityMode() override;
     void controlLoop() override;
-    protocol::ModeID getModeID() const override;
+    const std::string& getModeName() override;
 private:
     AtomicDoubleBuffer<franka::JointVelocities> desired_velocities_;
     void writeCommand(const std::vector<uint8_t>& data) override;

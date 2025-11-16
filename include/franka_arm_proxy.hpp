@@ -13,7 +13,6 @@
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/service_registry.hpp" 
-#include "protocol/codec.hpp"
 
 class FrankaArmProxy {
 
@@ -89,9 +88,9 @@ private:
     void initializeService();
 
     // service registry
-    ServiceRegistry service_registry_;
+    ServiceRegistry* service_registry_;
     franka::RobotState getFrankaArmState();
-    uint8_t getFrankaArmControlMode();
+    const std::string& getFrankaArmControlMode();
     const std::string& getFrankaArmStatePubPort();
     
     // TODO: put all the Constants to a config file

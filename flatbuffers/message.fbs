@@ -1,0 +1,69 @@
+namespace protocol;
+
+// =========================
+// =====   ARM STATE   =====
+// =========================
+
+它把了 FrankaArmState {
+    timestamp_ms:uint32;
+
+    O_T_EE:[double];
+    O_T_EE_d:[double];
+
+    q:[double];
+    q_d:[double];
+
+    dq:[double];
+    dq_d:[double];
+
+    tau_ext_hat_filtered:[double];
+    O_F_ext_hat_K:[double];
+    K_F_ext_hat_K:[double];
+}
+
+// ================================
+// =====   ARM COMMAND TYPES   =====
+// ================================
+
+table JointPositionCommand {
+    q:[double];
+}
+
+table JointVelocityCommand {
+    dq:[double];
+}
+
+table JointTorqueCommand {
+    tau:[double];
+}
+
+table CartesianPoseCommand {
+    O_T_EE_d:[double];
+    elbow:[double];
+}
+
+table CartesianVelocityCommand {
+    vel:[double];
+}
+
+// ============================
+// =====  GRIPPER STATE   =====
+// ============================
+
+table FrankaGripperState {
+    timestamp_ms:uint64;
+    width:double;
+    max_width:double;
+    grasped:bool;
+    temperature:uint16;
+}
+
+// ===============================
+// =====  GRIPPER COMMANDS  ======
+// ===============================
+
+table FrankaGripperCommand {
+    width:double;
+    speed:double;
+    force:double;
+}

@@ -16,7 +16,7 @@ public:
     ~IdleControlMode() override ;
 
     //void initialize(const franka::RobotState& initial_state) override;
-    protocol::ModeID getModeID() const override;
+    const std::string& getModeName() override;
 
 private:
     void controlLoop() override;

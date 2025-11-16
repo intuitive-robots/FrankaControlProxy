@@ -3,6 +3,7 @@
 #include <franka/model.h>
 #include <franka/robot_state.h>
 #include <franka/exception.h>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <zmq.hpp>
@@ -11,9 +12,17 @@
 #include <zmq.hpp>
 
 #include "utils/atomic_double_buffer.hpp"
-#include "protocol/mode_id.hpp"
 
-//todo:reform and check the leadter state get and the is_running
+struct ModeID {
+    static constexpr const char* IDLE             = "IDLE";
+    static constexpr const char* JOINT_POSITION   = "JOINT_POSITION";
+    static constexpr const char* JOINT_VELOCITY   = "JOINT_VELOCITY";
+    static constexpr const char* CARTESIAN_POSE   = "CARTESIAN_POSE";
+    static constexpr const char* CARTESIAN_VELOCITY = "CARTESIAN_VELOCITY";
+    static constexpr const char* JOINT_TORQUE       = "JOINT_TORQUE";
+    static constexpr const char* HUMAN_CONTROL = "HUMAN_CONTROL";
+};
+
 class AbstractControlMode {
 public:
     // Virtual destructor for proper cleanup in derived classes
@@ -45,7 +54,6 @@ public:
         std::cout << "[" << getModeName() << "] Stopped.\n";
     };
     // Get the mode ID for this control mode
-    virtual protocol::ModeID getModeID() const = 0; // Return the mode ID as an integer
     void setRobot(std::shared_ptr<franka::Robot> robot) {
         robot_ = std::move(robot);
     }
@@ -66,9 +74,7 @@ public:
         current_state_->write(new_state);
     }
 
-    const std::string getModeName() const {
-        return protocol::toString(getModeID());
-    }
+    virtual const std::string& getModeName() = 0;
 
 private:
     zmq::context_t* context_;

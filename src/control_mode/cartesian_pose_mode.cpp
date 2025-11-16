@@ -1,6 +1,4 @@
 #include "control_mode/cartesian_pose_mode.hpp"
-#include "protocol/mode_id.hpp"
-#include "protocol/codec.hpp"
 #include <franka/exception.h>
 #include <iostream>
 
@@ -65,8 +63,8 @@ void CartesianPoseMode::controlLoop() {
     }
 }
 
-protocol::ModeID CartesianPoseMode::getModeID() const {
-    return protocol::ModeID::CARTESIAN_POSE;
+const std::string& CartesianPoseMode::getModeName() {
+    return ModeID::CARTESIAN_POSE;
 }
 
 void CartesianPoseMode::writeCommand(const std::vector<uint8_t>& data) {

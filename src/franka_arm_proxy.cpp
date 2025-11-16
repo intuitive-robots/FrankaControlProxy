@@ -5,16 +5,11 @@
 #include <atomic>
 #include <algorithm>
 #include "franka_arm_proxy.hpp"
-#include "protocol/codec.hpp"
-#include "protocol/msg_id.hpp"
-#include "protocol/msg_header.hpp"
-#include "robot_config.hpp"
-#include "debugger/state_debug.hpp"
-#include "protocol/codec.hpp"
-#include "protocol/mode_id.hpp"
-#include "protocol/request_result.hpp"
+#include "utils/franka_config.hpp"
 #include "control_mode/control_mode.hpp"
 #include "utils/service_registry.hpp"
+#include "generated/message_generated.h"
+#include "generated/service_generated.h"
 
 
 static std::atomic<bool> running_flag{true};  // let ctrl-c stop the server
@@ -47,7 +42,7 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     }
 
 void FrankaArmProxy::initialize(const std::string& filename) {
-    RobotConfig config(filename);
+    FrankaConfig config(filename);
     // type_ = config.getValue("type", "Arm"); // Default to "Arm" if not specified
     robot_ip_ = config.getValue("robot_ip");
     //bind state pub socket
@@ -76,28 +71,30 @@ void FrankaArmProxy::initialize(const std::string& filename) {
     initializeControlMode();
     // Register service handlers
     initializeService();
-    setControlMode(protocol::FrankaArmControlMode{protocol::ModeID::IDLE, ""});
+    setControlMode(protocol::FrankaArmControlMode{ModeID::IDLE, ""});
 }
 
 void FrankaArmProxy::initializeControlMode() {
-    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::IDLE), []() { return std::make_shared<IdleControlMode>(); });
-    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::JOINT_POSITION), []() { return std::make_shared<JointPositionMode>(); });
-    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::JOINT_VELOCITY), []() { return std::make_shared<JointVelocityMode>(); });
-    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::CARTESIAN_POSE), []() { return std::make_shared<CartesianPoseMode>(); });
-    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::CARTESIAN_VELOCITY), []() { return std::make_shared<CartesianVelocityMode>(); });
-    ControlModeFactory::registerMode(protocol::toString(protocol::ModeID::JOINT_TORQUE), []() { return std::make_shared<HumanControlMode>(); });
+    ControlModeFactory::registerMode(ModeID::IDLE, []() { return std::make_shared<IdleControlMode>(); });
+    ControlModeFactory::registerMode(ModeID::JOINT_POSITION, []() { return std::make_shared<JointPositionMode>(); });
+    ControlModeFactory::registerMode(ModeID::JOINT_VELOCITY, []() { return std::make_shared<JointVelocityMode>(); });
+    ControlModeFactory::registerMode(ModeID::CARTESIAN_POSE, []() { return std::make_shared<CartesianPoseMode>(); });
+    ControlModeFactory::registerMode(ModeID::CARTESIAN_VELOCITY, []() { return std::make_shared<CartesianVelocityMode>(); });
+    ControlModeFactory::registerMode(ModeID::JOINT_TORQUE, []() { return std::make_shared<HumanControlMode>(); });
 }
 
 
 void FrankaArmProxy::initializeService() {
+    if (!service_registry_) {
+        service_registry_ = new ServiceRegistry(context_, service_addr_);
+    }
     // Register service handlers
-    service_registry_ = ServiceRegistry();
-    service_registry_.registerHandler(protocol::MsgID::SET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::setControlMode);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE, this, &FrankaArmProxy::getFrankaArmState);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::getFrankaArmControlMode);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE_PUB_PORT, this, &FrankaArmProxy::getFrankaArmStatePubPort);
-    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_JOINT_POSITION, this, &FrankaArmProxy::moveFrankaArmToJointPosition);
-    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION, this, &FrankaArmProxy::moveFrankaArmToCartesianPosition);
+    service_registry_->registerHandler("SET_FRANKA_ARM_CONTROL_MODE", this, &FrankaArmProxy::setControlMode);
+    service_registry_->registerHandler("GET_FRANKA_ARM_STATE", this, &FrankaArmProxy::getFrankaArmState);
+    service_registry_->registerHandler("GET_FRANKA_ARM_CONTROL_MODE", this, &FrankaArmProxy::getFrankaArmControlMode);
+    service_registry_->registerHandler("GET_FRANKA_ARM_STATE_PUB_PORT", this, &FrankaArmProxy::getFrankaArmStatePubPort);
+    // service_registry_->registerHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", this, &FrankaArmProxy::moveFrankaArmToJointPosition);
+    // service_registry_->registerHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", this, &FrankaArmProxy::moveFrankaArmToCartesianPosition);
 }
 
 
@@ -179,56 +176,6 @@ void FrankaArmProxy::statePublishThread() {
     }
 }
 
-//response socket thread, used for service request
-void FrankaArmProxy::responseSocketThread() {
-    while (is_running) {
-        //get request from client
-        zmq::message_t request;
-        if (!res_socket_.recv(request, zmq::recv_flags::none)) continue;//skip,if fail
-        std::vector<uint8_t> req_data(static_cast<uint8_t*>(request.data()),//begin
-                                      static_cast<uint8_t*>(request.data()) + request.size());//end
-        std::cout << "[FrankaArmProxy] Received request: msg size = " << req_data.size() << std::endl;//debug
-        //std::string response;
-        std::vector<uint8_t> response;
-        handleServiceRequest(req_data, response);
-        //send response
-        res_socket_.send(zmq::buffer(response), zmq::send_flags::none);
-        std::cout << "[FrankaArmProxy] Sent response: msg size = " << response.size() << std::endl;//debug
-    }
-}
-
-void FrankaArmProxy::handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) {
-    using namespace protocol;
-        // Validate header length
-        if (request.size() < MsgHeader::SIZE) {
-            response = RequestResult(RequestResultCode::INVALID_ARG, "Bad header").encodeMessage();
-            return;
-        }
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(request.data());
-        const MsgHeader req_header = MsgHeader::decode(data);//get header
-
-        // Validate payload length
-        // const size_t expect = static_cast<size_t>(MsgHeader::SIZE) + req_header.payload_length;
-        // if (request.size() != expect) {
-        //     response = RequestResult(RequestResultCode::INVALID_ARG, "Truncated payload").encodeMessage();
-        //     return;
-        // }
-        std::vector<uint8_t> payload(data + MsgHeader::SIZE, data + MsgHeader::SIZE + req_header.payload_length);//get payload
-
-        // get handler response payload
-        std::vector<uint8_t> resp_payload;
-        try {
-            resp_payload = service_registry_.handleMessage(req_header, payload);
-        } catch (const std::exception& e) {
-            response = RequestResult(RequestResultCode::FAIL, e.what()).encodeMessage();
-            return;
-        }
-        // respond with proper header
-        const MsgHeader resp_header = createHeader(static_cast<uint8_t>(protocol::MsgID::SUCCESS),
-                                                static_cast<uint16_t>(resp_payload.size()));
-        response = encodeMessage(resp_header, resp_payload);
-        }
-
 protocol::RequestResult FrankaArmProxy::setControlMode(const protocol::FrankaArmControlMode& mode) {
     if (current_mode_.get() != nullptr) {
         std::cout << "[Info] Stopping previous control mode...\n";
@@ -252,11 +199,11 @@ franka::RobotState FrankaArmProxy::getFrankaArmState() {
     return current_state_.read();
 }
 
-uint8_t FrankaArmProxy::getFrankaArmControlMode() {
+const std::string& FrankaArmProxy::getFrankaArmControlMode() {
     if (!current_mode_) {
         throw std::runtime_error("No active control mode");
     }
-    return static_cast<uint8_t>(current_mode_->getModeID());
+    return current_mode_->getModeName();
 }
 const std::string& FrankaArmProxy::getFrankaArmStatePubPort() {
     // return state_pub_addr_

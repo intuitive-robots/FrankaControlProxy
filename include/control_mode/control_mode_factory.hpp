@@ -1,6 +1,5 @@
 #pragma once
 #include "control_mode/abstract_control_mode.hpp"
-#include "protocol/mode_id.hpp"
 #include <unordered_map>
 #include <string>
 #include <functional>
@@ -14,9 +13,8 @@ public:
         getRegistry()[name] = std::move(creator);
     }
 
-    static std::shared_ptr<AbstractControlMode> create(const protocol::ModeID id) {
+    static std::shared_ptr<AbstractControlMode> create(const std::string& name) {
         auto& reg = getRegistry();
-        std::string name = protocol::toString(id);
         if (auto it = reg.find(name); it != reg.end())
             return it->second();
         throw std::runtime_error("Unknown mode: " + name);

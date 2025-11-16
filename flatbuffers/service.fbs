@@ -1,0 +1,6 @@
+namespace protocol;
+
+table FrankaArmControlMode {
+    mode:string;
+    command_url:string;
+}
