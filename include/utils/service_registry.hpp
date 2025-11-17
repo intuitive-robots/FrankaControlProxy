@@ -97,7 +97,7 @@ public:
             // out.insert(out.end(), detail.begin(), detail.end());
             // response = std::move(out);
             // result_code = protocol::RequestResultCode::FAIL;
-            // return;
+            return;
         }
         response.code = protocol::FrankaResponseCode::SUCCESS;
         try {
@@ -106,6 +106,7 @@ public:
             std::cerr << "[ServiceRegistry] Exception while handling " << service_name << " service request: " << e.what() << std::endl;
             response.code = protocol::FrankaResponseCode::FAIL;
         }
+        std::cout << "[ServiceRegistry] Found handler for service " << service_name << std::endl;
     }
 
     void clearHandlers() {

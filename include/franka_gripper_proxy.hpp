@@ -22,7 +22,10 @@ public:
     // Constructor & Destructor
     explicit FrankaGripperProxy(const std::string& config_path) {
         FrankaConfig config(config_path);
-        robot_ip_ = config.getValue("gripper_ip");
+        gripper_ip_ = config.getValue("gripper_ip");
+        std::cout<<"gripper ip: "<< gripper_ip_ <<std::endl;
+        gripper_ = std::make_shared<franka::Gripper>(gripper_ip_);
+        gripper_->homing();
         //bind state pub socket
         state_pub_addr_ = config.getValue("gripper_state_pub_addr");
         std::cout<<"gripper state_pub: "<< state_pub_addr_ <<std::endl;
@@ -75,15 +78,18 @@ private:
         std::cout << "[FrankaGripperProxy] Setting gripper width to " << command.width
                   << " with speed " << command.speed << " and force " << command.force << std::endl;
 # else
+        std::cout << "[FrankaGripperProxy] Setting gripper width to " << command.width
+                  << " with speed " << command.speed << " and force " << command.force << std::endl;
         try {
-            gripper_->grasp(command.width, command.speed, command.force);
+            gripper_->stop();
+            gripper_->grasp(command.width, command.speed, 1);
         } catch (const franka::Exception& e) {
             std::cerr << "[FrankaGripperProxy] Grasp failed: " << e.what() << std::endl;
         }
 # endif
     };
 
-    std::string robot_ip_;
+    std::string gripper_ip_;
     std::string service_addr_;
     std::string state_pub_addr_;
     // Franka robot
