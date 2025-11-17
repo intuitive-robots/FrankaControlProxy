@@ -225,11 +225,10 @@ protocol::GraspCommand decode<protocol::GraspCommand>(ByteView payload) {
     const double* rptr = reinterpret_cast<const double*>(payload.data);
     protocol::GraspCommand cmd;
     cmd.width = protocol::from_big_endian_f64(*rptr);
-    rptr += sizeof(double);
+    rptr++;
     cmd.speed = protocol::from_big_endian_f64(*rptr);
-    rptr += sizeof(double);
+    rptr++;
     cmd.force = protocol::from_big_endian_f64(*rptr);
-    rptr += sizeof(double);
     return cmd;
 }  // namespace protocol
 

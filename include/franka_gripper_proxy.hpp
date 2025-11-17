@@ -71,16 +71,17 @@ private:
     // Thread functions
     // void statePublishThread();
     void setGripperWidth(const protocol::GraspCommand& command) {
+# if LOCAL_TESTING
         std::cout << "[FrankaGripperProxy] Setting gripper width to " << command.width
                   << " with speed " << command.speed << " and force " << command.force << std::endl;
-        // try {
-        //     gripper_->grasp(command.width, command.speed, command.force);
-        //     return true;
-        // } catch (const franka::Exception& e) {
-        //     std::cerr << "[FrankaGripperProxy] Grasp failed: " << e.what() << std::endl;
-        //     return false;
-        // }
-    }
+# else
+        try {
+            gripper_->grasp(command.width, command.speed, command.force);
+        } catch (const franka::Exception& e) {
+            std::cerr << "[FrankaGripperProxy] Grasp failed: " << e.what() << std::endl;
+        }
+# endif
+    };
 
     std::string robot_ip_;
     std::string service_addr_;
