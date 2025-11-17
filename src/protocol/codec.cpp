@@ -16,12 +16,12 @@ namespace protocol {
 
 // header + payload (12-byte header)
 //payload only read
-std::vector<uint8_t> encodeMessage(const MsgHeader& header, const std::vector<uint8_t>& payload) {
-    std::vector<uint8_t> result(MsgHeader::SIZE + payload.size());
-    header.encode(result.data());  // write header
-    std::memcpy(result.data() + MsgHeader::SIZE, payload.data(), payload.size());
-    return result;
-}
+// std::vector<uint8_t> encodeMessage(const MsgHeader& header, const uint8_t* payload) {
+//     std::vector<uint8_t> result(MsgHeader::SIZE + payload.size());
+//     header.encode(result.data());  // write header
+//     std::memcpy(result.data() + MsgHeader::SIZE, payload.data(), payload.size());
+//     return result;
+// }
 
 // ------------------------------------------------------------
 // Generic payload-level codec implementations
@@ -49,12 +49,6 @@ std::vector<uint8_t> encode(uint16_t v) {
     std::vector<uint8_t> out(2);
     uint8_t* wptr = out.data();
     encode_u16(wptr, v);
-    return out;
-}
-
-std::vector<uint8_t> encode(const protocol::RequestResult& rr) {
-    std::vector<uint8_t> out(1);
-    out[0] = static_cast<uint8_t>(rr.code());
     return out;
 }
 
@@ -92,127 +86,151 @@ std::vector<uint8_t> encode(const franka::RobotState& rs) {
     return out;
 }
 
-// string: FrankaArmControl payload(Mode_ID+URL)
+// ============================================================================
+// std::string decode
+// ============================================================================
 template <>
-std::string decode(const std::vector<uint8_t>& payload) {
-    if (payload.size() < 2) {
-        throw std::runtime_error("decode<string>: payload too small");
+std::string decode<std::string>(ByteView payload) {
+    constexpr size_t kMaxLen = 1024;
+
+    if (!payload.data || payload.size == 0)
+        return std::string();
+
+    size_t real_len = 0;
+    while (real_len < payload.size && real_len < kMaxLen && payload.data[real_len] != 0) {
+        ++real_len;
     }
 
-    const uint8_t* rptr = payload.data();
-    const uint16_t len = decode_u16(rptr);
-    const size_t expected = static_cast<size_t>(2 + len);
-    if (payload.size() != expected) {
-        throw std::runtime_error("decode<string>: length mismatch");
-    }
-
-    return std::string(reinterpret_cast<const char*>(rptr), len);
+    return std::string(reinterpret_cast<const char*>(payload.data), real_len);
 }
 
-template <>
-uint8_t decode(const std::vector<uint8_t>& payload) {
-    if (payload.size() != 1) {
-        throw std::runtime_error("decode<uint8_t>: payload size mismatch");
-    }
-    return payload[0];
-}
 
+// ============================================================================
+// uint16_t decode
+// ============================================================================
 template <>
-uint16_t decode(const std::vector<uint8_t>& payload) {
-    if (payload.size() != 2) {
-        throw std::runtime_error("decode<uint16_t>: payload size mismatch");
+uint16_t decode<uint16_t>(ByteView payload) {
+    if (payload.size < sizeof(uint16_t)) {
+        throw std::runtime_error("decode<uint16_t>: payload too small");
     }
-    const uint8_t* rptr = payload.data();
+
+    const uint8_t* rptr = payload.data;
     return decode_u16(rptr);
 }
 
+
 // ============================================================================
-// libfranka control types
+// franka control objects
 // ============================================================================
 
 template <>
-franka::JointPositions decode(const std::vector<uint8_t>& payload) {
+franka::JointPositions decode<franka::JointPositions>(ByteView payload) {
     constexpr size_t kDoF = 7;
-    constexpr size_t kSize = kDoF * sizeof(double);
+    constexpr size_t kNeed = kDoF * sizeof(double);
 
-    if (payload.size() != kSize) {
-        throw std::runtime_error("decode<franka::JointPositions>: payload size mismatch");
-    }
+    if (payload.size < kNeed)
+        throw std::runtime_error("decode<JointPositions>: payload too small");
 
-    const uint8_t* rptr = payload.data();
+    const uint8_t* rptr = payload.data;
     std::array<double, kDoF> q{};
     decode_array_f64(rptr, q);
     return franka::JointPositions(q);
 }
 
+
 template <>
-franka::JointVelocities decode<franka::JointVelocities>(const std::vector<uint8_t>& payload) {
+franka::JointVelocities decode<franka::JointVelocities>(ByteView payload) {
     constexpr size_t kDoF = 7;
-    constexpr size_t kSize = kDoF * sizeof(double);
+    constexpr size_t kNeed = kDoF * sizeof(double);
 
-    if (payload.size() != kSize) {
-        throw std::runtime_error("decode<franka::JointVelocities>: payload size mismatch");
-    }
+    if (payload.size < kNeed)
+        throw std::runtime_error("decode<JointVelocities>: payload too small");
 
-    const uint8_t* rptr = payload.data();
+    const uint8_t* rptr = payload.data;
     std::array<double, kDoF> dq{};
     decode_array_f64(rptr, dq);
     return franka::JointVelocities(dq);
 }
 
+
 template <>
-franka::CartesianPose decode<franka::CartesianPose>(const std::vector<uint8_t>& payload) {
-    constexpr size_t kSize = 16 * sizeof(double);
+franka::CartesianPose decode<franka::CartesianPose>(ByteView payload) {
+    constexpr size_t kNeed = 16 * sizeof(double);
 
-    if (payload.size() != kSize) {
-        throw std::runtime_error("decode<franka::CartesianPose>: payload size mismatch");
-    }
+    if (payload.size < kNeed)
+        throw std::runtime_error("decode<CartesianPose>: payload too small");
 
-    const uint8_t* rptr = payload.data();
+    const uint8_t* rptr = payload.data;
     std::array<double, 16> pose{};
     decode_array_f64(rptr, pose);
     return franka::CartesianPose{pose};
 }
 
+
 template <>
-franka::CartesianVelocities decode<franka::CartesianVelocities>(const std::vector<uint8_t>& payload) {
-    constexpr size_t kSize = 6 * sizeof(double);
+franka::CartesianVelocities decode<franka::CartesianVelocities>(ByteView payload) {
+    constexpr size_t kNeed = 6 * sizeof(double);
 
-    if (payload.size() != kSize) {
-        throw std::runtime_error("decode<franka::CartesianVelocities>: payload size mismatch");
-    }
+    if (payload.size < kNeed)
+        throw std::runtime_error("decode<CartesianVelocities>: payload too small");
 
-    const uint8_t* rptr = payload.data();
+    const uint8_t* rptr = payload.data;
     std::array<double, 6> vel{};
     decode_array_f64(rptr, vel);
     return franka::CartesianVelocities{vel};
 }
 
+
 template <>
-franka::Torques decode<franka::Torques>(const std::vector<uint8_t>& payload) {
+franka::Torques decode<franka::Torques>(ByteView payload) {
     constexpr size_t kDoF = 7;
-    constexpr size_t kSize = kDoF * sizeof(double);
+    constexpr size_t kNeed = kDoF * sizeof(double);
 
-    if (payload.size() != kSize) {
-        throw std::runtime_error("decode<franka::Torques>: payload size mismatch");
-    }
+    if (payload.size < kNeed)
+        throw std::runtime_error("decode<Torques>: payload too small");
 
-    const uint8_t* rptr = payload.data();
+    const uint8_t* rptr = payload.data;
     std::array<double, kDoF> tau{};
     decode_array_f64(rptr, tau);
     return franka::Torques{tau};
 }
 
+
+// ============================================================================
+// protocol::FrankaArmControlMode
+// ============================================================================
+
 template <>
-protocol::FrankaArmControlMode decode<protocol::FrankaArmControlMode>(const std::vector<uint8_t>& payload) {
-    if (payload.size() < 3) {
-        throw std::runtime_error("decode<FrankaArmControlMode>: payload too small");
-    }
+protocol::FrankaArmControlMode decode<protocol::FrankaArmControlMode>(ByteView payload) {
+    if (payload.size == 0)
+        throw std::runtime_error("decode<FrankaArmControlMode>: payload empty");
+
     protocol::FrankaArmControlMode output;
-    output.id = static_cast<protocol::ModeID>(payload[0]);
-    output.url = payload.size() > 1 ? std::string(reinterpret_cast<const char*>(&payload[1]), payload.size() - 1) : "";
+    output.id = static_cast<protocol::ModeID>(payload.data[0]);
+
+    if (payload.size > 1) {
+        output.url = std::string(
+            reinterpret_cast<const char*>(payload.data + 1),
+            payload.size - 1
+        );
+    }
+
     return output;
 }
 
-
+template <>
+protocol::GraspCommand decode<protocol::GraspCommand>(ByteView payload) {
+    if (payload.size != 3 * sizeof(double))
+        throw std::runtime_error("decode<GraspCommand>: payload too small");
+    const double* rptr = reinterpret_cast<const double*>(payload.data);
+    protocol::GraspCommand cmd;
+    cmd.width = protocol::from_big_endian_f64(*rptr);
+    rptr += sizeof(double);
+    cmd.speed = protocol::from_big_endian_f64(*rptr);
+    rptr += sizeof(double);
+    cmd.force = protocol::from_big_endian_f64(*rptr);
+    rptr += sizeof(double);
+    return cmd;
 }  // namespace protocol
+
+}

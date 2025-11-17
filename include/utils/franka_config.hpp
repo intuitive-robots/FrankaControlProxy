@@ -3,12 +3,12 @@
 #include <string>
 #include <map>
 
-class RobotConfig {
+class FrankaConfig {
 public:
     std::map<std::string, std::string> config_data;
 
     // Constructor to initialize and load the configuration from a file
-    RobotConfig(const std::string& file_path) {
+    FrankaConfig(const std::string& file_path) {
         loadFromFile(file_path);
     }
 
@@ -26,11 +26,9 @@ public:
             if (delimiter_pos != std::string::npos) {
                 std::string key = trim(line.substr(0, delimiter_pos));
                 std::string value = trim(line.substr(delimiter_pos + 1));
-
                 config_data[key] = value;
             }
         }
-
         file.close();
     }
 

@@ -9,11 +9,10 @@ public:
     CartesianVelocityMode();
     ~CartesianVelocityMode() override;
 
-    void start();
     protocol::ModeID getModeID() const override;
 
 private:
     AtomicDoubleBuffer<franka::CartesianVelocities> desired_velocities_;
     void controlLoop() override;
-    void writeCommand(const std::vector<uint8_t>& data) override;
+    void writeCommand(const protocol::ByteView& data) override;
 };

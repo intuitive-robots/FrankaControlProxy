@@ -15,6 +15,7 @@ enum class ModeID : uint8_t {
     HUMAN_CONTROL       = 0x06   // human control mode
 };
 
+
 struct FrankaArmControlMode {
     ModeID id;
     std::string url; 

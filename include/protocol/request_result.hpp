@@ -7,49 +7,32 @@
 
 namespace protocol {
 
-// Request result codes (S -> C), values follow your table (200..207)
-enum class RequestResultCode : uint8_t {
-    SUCCESS        = 200,
-    FAIL           = 201,
-    INVALID_ARG    = 202,
-    BUSY           = 203,
-    UNSUPPORTED    = 204,
-    TIMEOUT        = 205,
-    COMM_ERROR     = 206,
-    INTERNAL_ERROR = 207,
-};
+namespace FrankaResponseCode {
+    constexpr std::string_view SUCCESS        = "SUCCESS";
+    constexpr std::string_view FAIL           = "FAIL";
+    constexpr std::string_view INVALID_ARG    = "INVALID_ARG";
+    constexpr std::string_view BUSY           = "BUSY";
+    constexpr std::string_view UNSUPPORTED    = "UNSUPPORTED";
+    constexpr std::string_view TIMEOUT        = "TIMEOUT";
+    constexpr std::string_view COMM_ERROR     = "COMM_ERROR";
+    constexpr std::string_view INTERNAL_ERROR = "INTERNAL_ERROR";
+}
 
-class RequestResult {
+
+class FrankaResponse {
 public:
     // flag indicates payload contains a detail string
     static constexpr uint8_t FLAG_HAS_DETAIL = 0x01;
 
-    RequestResult() = default;
-    explicit RequestResult(RequestResultCode code, std::string detail = {})
-        : code_(code), detail_(std::move(detail)) {}
-
-    RequestResultCode code() const { return code_; }
-    const std::string& detail() const { return detail_; }
-    bool ok() const { return code_ == RequestResultCode::SUCCESS; }
+    FrankaResponse() = default;
+    explicit FrankaResponse(std::string code, std::vector<uint8_t> payload = {})
+        : code(std::move(code)), payload(std::move(payload)) {}
 
     // Human-readable short description for the code
-    static const char* description(RequestResultCode code);
+    static const char* description(const std::string& code);
 
-    // Encode to a full message frame: 12-byte header + optional payload
-    // Header:
-    //  - message_type = static_cast<uint8_t>(code)
-    //  - flags: indicates presence of detail string
-    //  - payload_length: 0, or 2 + detail.size() (u16 length prefix + bytes)
-    //  - timestamp
-    std::vector<uint8_t> encodeMessage() const;
-
-    // Decode from a full message frame produced by encodeMessage()
-    // Throws std::runtime_error on malformed input
-    // static RequestResult decodeMessage(const std::vector<uint8_t>& frame);
-
-private:
-    RequestResultCode code_ { RequestResultCode::SUCCESS };
-    std::string detail_;
+    std::string code { std::string(FrankaResponseCode::SUCCESS) };
+    std::vector<uint8_t> payload;
 };
 
-} // namespace protocol
+}

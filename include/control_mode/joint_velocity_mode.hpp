@@ -13,6 +13,6 @@ public:
     protocol::ModeID getModeID() const override;
 private:
     AtomicDoubleBuffer<franka::JointVelocities> desired_velocities_;
-    void writeCommand(const std::vector<uint8_t>& data) override;
+    void writeCommand(const protocol::ByteView& data) override;
 
 };

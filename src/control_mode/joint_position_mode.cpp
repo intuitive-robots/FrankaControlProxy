@@ -55,7 +55,7 @@ protocol::ModeID JointPositionMode::getModeID() const {
     return protocol::ModeID::JOINT_POSITION;
 }
 
-void JointPositionMode::writeCommand(const std::vector<uint8_t>& data) {
+void JointPositionMode::writeCommand(const protocol::ByteView& data) {
     franka::JointPositions positions = protocol::decode<franka::JointPositions>(data);
     desired_positions_.write(positions);
 }

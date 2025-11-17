@@ -10,6 +10,13 @@ protocol::ModeID IdleControlMode::getModeID() const {
     return protocol::ModeID::IDLE;
 }
 
+void IdleControlMode::start() {
+    startRobot();
+    control_thread_ = std::thread(&IdleControlMode::controlLoop, this);
+    std::cout << "[" << getModeName() << "] Control thread launched.\n";
+}
+
+
 void IdleControlMode::controlLoop() {
 #if LOCAL_TESTING
     while (is_running_) {
@@ -37,7 +44,7 @@ void IdleControlMode::controlLoop() {
 #endif
 }
 
-void IdleControlMode::writeCommand(const std::vector<uint8_t>& data) {
+void IdleControlMode::writeCommand(const protocol::ByteView& data) {
     // Idle mode does not process commands
     // std::cout << "[IdleControlMode] Received command data, but idle mode does not accept commands.\n";
 }

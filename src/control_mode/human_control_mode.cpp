@@ -54,7 +54,7 @@ protocol::ModeID HumanControlMode::getModeID() const {
 }
 
 
-void HumanControlMode::writeCommand(const std::vector<uint8_t>& data) {
+void HumanControlMode::writeCommand(const protocol::ByteView& data) {
     // HumanControlMode does not process external commands; ignore incoming data.
     std::cout << "[HumanControlMode] Received command data, but this mode does not accept commands.\n";
 }

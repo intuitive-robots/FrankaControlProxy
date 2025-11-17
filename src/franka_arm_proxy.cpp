@@ -8,13 +8,14 @@
 #include "protocol/codec.hpp"
 #include "protocol/msg_id.hpp"
 #include "protocol/msg_header.hpp"
-#include "robot_config.hpp"
+#include "utils/franka_config.hpp"
 #include "debugger/state_debug.hpp"
 #include "protocol/codec.hpp"
 #include "protocol/mode_id.hpp"
 #include "protocol/request_result.hpp"
 #include "control_mode/control_mode.hpp"
 #include "utils/service_registry.hpp"
+
 
 
 static std::atomic<bool> running_flag{true};  // let ctrl-c stop the server
@@ -35,30 +36,20 @@ franka::RobotState default_state = []{
     return state;
 }();
 
-
 FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
-    : context_(1), 
-    state_pub_socket_(context_, ZMQ_PUB),//arm state publish socket
-    res_socket_(context_, ZMQ_REP), //service socket
-    is_running(false),
-    current_state_(AtomicDoubleBuffer<franka::RobotState>(default_state))
+    : state_pub_socket_(ZmqContext::instance(), ZMQ_PUB),//arm state publish socket
+      is_running(false),
+      current_state_(AtomicDoubleBuffer<franka::RobotState>(default_state)),
+      service_registry_()
     {
-        initialize(config_path);
-    }
-
-void FrankaArmProxy::initialize(const std::string& filename) {
-    RobotConfig config(filename);
+    FrankaConfig config(config_path);
     // type_ = config.getValue("type", "Arm"); // Default to "Arm" if not specified
     robot_ip_ = config.getValue("robot_ip");
     //bind state pub socket
     state_pub_addr_ = config.getValue("state_pub_addr");
     std::cout<<"state_pub: "<< state_pub_addr_ <<std::endl;
     state_pub_socket_.bind(state_pub_addr_);
-    //bind service socket
-    res_socket_.set(zmq::sockopt::rcvtimeo, SOCKET_TIMEOUT_MS);
-    service_addr_ = config.getValue("service_addr");
-    std::cout<<"service_addr: "<<service_addr_ <<std::endl;
-    res_socket_.bind(service_addr_);
+    service_registry_.bindSocket(config.getValue("service_addr"));
     //initialize franka robot
 #if !LOCAL_TESTING
     try
@@ -71,7 +62,7 @@ void FrankaArmProxy::initialize(const std::string& filename) {
         std::cerr << e.what() << '\n';
         this->stop();
     }
-    #endif
+#endif
     //initialize control modes
     initializeControlMode();
     // Register service handlers
@@ -91,13 +82,13 @@ void FrankaArmProxy::initializeControlMode() {
 
 void FrankaArmProxy::initializeService() {
     // Register service handlers
-    service_registry_ = ServiceRegistry();
-    service_registry_.registerHandler(protocol::MsgID::SET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::setControlMode);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE, this, &FrankaArmProxy::getFrankaArmState);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_CONTROL_MODE, this, &FrankaArmProxy::getFrankaArmControlMode);
-    service_registry_.registerHandler(protocol::MsgID::GET_FRANKA_ARM_STATE_PUB_PORT, this, &FrankaArmProxy::getFrankaArmStatePubPort);
-    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_JOINT_POSITION, this, &FrankaArmProxy::moveFrankaArmToJointPosition);
-    // service_registry_.registerHandler(protocol::MsgID::MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION, this, &FrankaArmProxy::moveFrankaArmToCartesianPosition);
+    service_registry_.registerHandler("SET_FRANKA_ARM_CONTROL_MODE", this, &FrankaArmProxy::setControlMode);
+    service_registry_.registerHandler("GET_FRANKA_ARM_STATE", this, &FrankaArmProxy::getFrankaArmState);
+    service_registry_.registerHandler("GET_FRANKA_ARM_CONTROL_MODE", this, &FrankaArmProxy::getFrankaArmControlMode);
+    service_registry_.registerHandler("GET_FRANKA_ARM_STATE_PUB_PORT", this, &FrankaArmProxy::getFrankaArmStatePubPort);
+    // service_registry_.registerHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", this, &FrankaArmProxy::moveFrankaArmToJointPosition);
+    // service_registry_.registerHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", this, &FrankaArmProxy::moveFrankaArmToCartesianPosition);
+    service_registry_.start();
 }
 
 
@@ -116,9 +107,9 @@ bool FrankaArmProxy::start(){
     // current_state_.write(robot_->readOnce());
 #endif
     state_pub_thread_ = std::thread(&FrankaArmProxy::statePublishThread, this);
-    std::cout << "done arm state pub"<< std::endl;
-    service_thread_ = std::thread(&FrankaArmProxy::responseSocketThread, this);
-    std::cout << "done service"<< std::endl;
+    // std::cout << "done arm state pub"<< std::endl;
+    // service_thread_ = std::thread(&FrankaArmProxy::responseSocketThread, this);
+    // std::cout << "done service"<< std::endl;
     return true;
 }
 
@@ -128,15 +119,15 @@ void FrankaArmProxy::stop() {
     if (current_mode_)
         current_mode_->stop();
     if (state_pub_thread_.joinable()) state_pub_thread_.join();
-    if (service_thread_.joinable()) service_thread_.join();
+    // if (service_thread_.joinable()) service_thread_.join();
     // try close ZeroMQ sockets
     try {
         state_pub_socket_.close();
-        res_socket_.close();
     } catch (const zmq::error_t& e) {
         std::cerr << "[ZMQ ERROR] " << e.what() << "\n";
     }
     // wait for closing
+    service_registry_.stop();
 #if !LOCAL_TESTING
     robot_.reset();
     model_.reset();
@@ -157,11 +148,6 @@ void FrankaArmProxy::spin() {
     std::cout << "[INFO] Shutdown complete.\n";
 }
 
-// with RobotConfig
-void FrankaArmProxy::displayConfig() const {
-    std::cout << proxy_config_ << std::endl;
-}
-
 // publish threads
 void FrankaArmProxy::statePublishThread() {
     while (is_running) {
@@ -169,67 +155,14 @@ void FrankaArmProxy::statePublishThread() {
 
         // Encode payload & wrap with header
         const std::vector<uint8_t> payload = protocol::encode(rs);
-        const protocol::MsgHeader header = protocol::createHeader(static_cast<uint8_t>(protocol::MsgID::FRANKA_ARM_STATE_PUB),
-                                              static_cast<uint16_t>(payload.size()));
-        std::vector<uint8_t> frame = protocol::encodeMessage(header, payload);
         // Publish over ZMQ PUB socket
-        state_pub_socket_.send(zmq::buffer(frame), zmq::send_flags::none);
+        state_pub_socket_.send(zmq::buffer(payload), zmq::send_flags::none);
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / STATE_PUB_RATE_HZ));
         // std::cout << "[FrankaArmProxy] Published state message, size = " << frame.size() << " bytes." << std::endl;//debug
     }
 }
 
-//response socket thread, used for service request
-void FrankaArmProxy::responseSocketThread() {
-    while (is_running) {
-        //get request from client
-        zmq::message_t request;
-        if (!res_socket_.recv(request, zmq::recv_flags::none)) continue;//skip,if fail
-        std::vector<uint8_t> req_data(static_cast<uint8_t*>(request.data()),//begin
-                                      static_cast<uint8_t*>(request.data()) + request.size());//end
-        std::cout << "[FrankaArmProxy] Received request: msg size = " << req_data.size() << std::endl;//debug
-        //std::string response;
-        std::vector<uint8_t> response;
-        handleServiceRequest(req_data, response);
-        //send response
-        res_socket_.send(zmq::buffer(response), zmq::send_flags::none);
-        std::cout << "[FrankaArmProxy] Sent response: msg size = " << response.size() << std::endl;//debug
-    }
-}
-
-void FrankaArmProxy::handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response) {
-    using namespace protocol;
-        // Validate header length
-        if (request.size() < MsgHeader::SIZE) {
-            response = RequestResult(RequestResultCode::INVALID_ARG, "Bad header").encodeMessage();
-            return;
-        }
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(request.data());
-        const MsgHeader req_header = MsgHeader::decode(data);//get header
-
-        // Validate payload length
-        // const size_t expect = static_cast<size_t>(MsgHeader::SIZE) + req_header.payload_length;
-        // if (request.size() != expect) {
-        //     response = RequestResult(RequestResultCode::INVALID_ARG, "Truncated payload").encodeMessage();
-        //     return;
-        // }
-        std::vector<uint8_t> payload(data + MsgHeader::SIZE, data + MsgHeader::SIZE + req_header.payload_length);//get payload
-
-        // get handler response payload
-        std::vector<uint8_t> resp_payload;
-        try {
-            resp_payload = service_registry_.handleMessage(req_header, payload);
-        } catch (const std::exception& e) {
-            response = RequestResult(RequestResultCode::FAIL, e.what()).encodeMessage();
-            return;
-        }
-        // respond with proper header
-        const MsgHeader resp_header = createHeader(static_cast<uint8_t>(protocol::MsgID::SUCCESS),
-                                                static_cast<uint16_t>(resp_payload.size()));
-        response = encodeMessage(resp_header, resp_payload);
-        }
-
-protocol::RequestResult FrankaArmProxy::setControlMode(const protocol::FrankaArmControlMode& mode) {
+void FrankaArmProxy::setControlMode(const protocol::FrankaArmControlMode& mode) {
     if (current_mode_.get() != nullptr) {
         std::cout << "[Info] Stopping previous control mode...\n";
         current_mode_->stop();  // stopMotion + is_running_ = false
@@ -240,12 +173,9 @@ protocol::RequestResult FrankaArmProxy::setControlMode(const protocol::FrankaArm
     current_mode_->setRobot(robot_);
     current_mode_->setModel(model_);
 #endif
-    current_mode_->setupZMQContext(&context_);
     current_mode_->setCurrentStateBuffer(&current_state_);
     current_mode_->setupCommandSubscription(mode.url);
     current_mode_->start();
-    // std::cout << "[Info] Switched to control mode: " << protocol::toString(mode.id) << " with URL: " << mode.url << std::endl;
-    return protocol::RequestResult(protocol::RequestResultCode::SUCCESS);
 }
 
 franka::RobotState FrankaArmProxy::getFrankaArmState() {

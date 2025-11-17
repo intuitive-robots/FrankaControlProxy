@@ -90,19 +90,8 @@ protocol::ModeID CartesianVelocityMode::getModeID() const {
     return protocol::ModeID::CARTESIAN_VELOCITY;
 }
 
-void CartesianVelocityMode::writeCommand(const std::vector<uint8_t>& data) {
-    // const uint8_t* data = reinterpret_cast<const uint8_t*>(data);
-    const protocol::MsgHeader req_header = protocol::MsgHeader::decode(data.data());//get header
-
-    // Validate payload length
-    // const size_t expect = static_cast<size_t>(MsgHeader::SIZE) + req_header.payload_length;
-    // if (request.size() != expect) {
-    //     response = RequestResult(RequestResultCode::INVALID_ARG, "Truncated payload").encodeMessage();
-    //     return;
-    // }
-    std::vector<uint8_t> payload(data.begin() + protocol::MsgHeader::SIZE, data.end());//get payload
-    protocol::MsgHeader header = protocol::MsgHeader::decode(data.data());
-    franka::CartesianVelocities velocities = protocol::decode<franka::CartesianVelocities>(payload);
+void CartesianVelocityMode::writeCommand(const protocol::ByteView& data) {
+    franka::CartesianVelocities velocities = protocol::decode<franka::CartesianVelocities>(data);
     std::cout << "[CartesianVelocityMode] Received velocities command: [";
     for (size_t i = 0; i < 6; ++i) {
         std::cout << velocities.O_dP_EE[i];

@@ -20,5 +20,5 @@ public:
     void start();
     protocol::ModeID getModeID() const override;
 private:
-    void writeCommand(const std::vector<uint8_t>& data) override;
+    void writeCommand(const protocol::ByteView& data) override;
 };

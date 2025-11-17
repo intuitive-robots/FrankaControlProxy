@@ -14,11 +14,11 @@ class IdleControlMode : public AbstractControlMode {
 public:
     IdleControlMode();
     ~IdleControlMode() override ;
-
+    void start() override;
     //void initialize(const franka::RobotState& initial_state) override;
     protocol::ModeID getModeID() const override;
 
 private:
     void controlLoop() override;
-    void writeCommand(const std::vector<uint8_t>& data) override;
+    void writeCommand(const protocol::ByteView& data) override;
 };

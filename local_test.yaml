@@ -1,5 +1,6 @@
-type: Arm
 robot_ip: 172.16.1.2
 service_addr: tcp://127.0.0.1:5555
 state_pub_addr: tcp://127.0.0.1:5556
-useGripper: true
+gripper_ip: 172.16.1.3
+gripper_service_addr: tcp://127.0.0.1:5557
+gripper_state_pub_addr: tcp://127.0.0.1:5558

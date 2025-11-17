@@ -11,7 +11,9 @@
 #include <zmq.hpp>
 
 #include "utils/atomic_double_buffer.hpp"
+#include "utils/zmq_context.hpp"
 #include "protocol/mode_id.hpp"
+#include "protocol/codec.hpp"
 
 //todo:reform and check the leadter state get and the is_running
 class AbstractControlMode {
@@ -20,28 +22,36 @@ public:
     virtual ~AbstractControlMode() = default;
     // Pure virtual public functions
     //virtual void initialize(const RobotState& initial_state);
-    void start() {
-#if !LOCAL_TESTING
-        if (!robot_ || !model_) {
-            std::cerr << "[ " << getModeName() << "] Robot or model not set.\n";
-            return;
-        }
-#endif
-        std::cout << "[" << getModeName() << "] Started.\n";
-        is_running_ = true;
-#if !LOCAL_TESTING
-        robot_->automaticErrorRecovery();
-#endif
+    virtual void start() {
+        startRobot();
         control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
         std::cout << "[" << getModeName() << "] Control thread launched.\n";
         command_thread_ = std::thread(&AbstractControlMode::commandSubscriptionLoop, this);
         std::cout << "[" << getModeName() << "] Command subscription thread launched.\n";
     };
 
+    void startRobot() {
+#if !LOCAL_TESTING
+        if (!robot_ || !model_) {
+            std::cerr << "[ " << getModeName() << "] Robot or model not set.\n";
+            return;
+        }
+        robot_->automaticErrorRecovery();
+#endif
+        std::cout << "[" << getModeName() << "] Robot control started.\n";
+        is_running_ = true;
+    };
+
     virtual void stop() {
         is_running_ = false;
-        control_thread_.join();
-        command_thread_.join();
+        if (control_thread_.joinable()) {
+            std::cout << "[" << getModeName() << "] Stopping control thread...\n";
+            control_thread_.join();
+        }
+        if (command_thread_.joinable()) {
+            std::cout << "[" << getModeName() << "] Stopping command subscription thread...\n";
+            command_thread_.join();
+        }
         std::cout << "[" << getModeName() << "] Stopped.\n";
     };
     // Get the mode ID for this control mode
@@ -55,9 +65,6 @@ public:
     void setCurrentStateBuffer(AtomicDoubleBuffer<franka::RobotState>* state_buffer) {
         current_state_ = state_buffer;
     }
-    void setupZMQContext(zmq::context_t* context) {
-        context_ = context;
-    }
     void setupCommandSubscription(const std::string& address) {
         command_sub_addr_ = address;
     }
@@ -69,9 +76,6 @@ public:
     const std::string getModeName() const {
         return protocol::toString(getModeID());
     }
-
-private:
-    zmq::context_t* context_;
 
 protected:
     // Protected constructor to prevent direct instantiation
@@ -89,8 +93,7 @@ protected:
     virtual void controlLoop() = 0;
 
     void commandSubscriptionLoop() {
-        assert(context_ != nullptr && "ZMQ context must be initialized before starting subscription loop.");
-        zmq::socket_t sub_socket_(*context_, ZMQ_SUB);
+        zmq::socket_t sub_socket_(ZmqContext::instance(), ZMQ_SUB);
         sub_socket_.set(zmq::sockopt::rcvtimeo, 1000); // 1 second timeout
         if (command_sub_addr_.empty()) {
             std::cerr << "[" << getModeName() << "] Command subscription address is empty. Exiting command subscription loop." << std::endl;
@@ -106,7 +109,10 @@ protected:
                     std::cerr << "[FrankaProxy] Failed to receive state message." << std::endl;
                     continue; // Skip this iteration if no message received
                 }
-                std::vector<uint8_t> data(static_cast<uint8_t*>(message.data()), static_cast<uint8_t*>(message.data()) + message.size());
+                protocol::ByteView data{
+                    static_cast<const uint8_t*>(message.data()),
+                    message.size()
+                };
                 writeCommand(data);
             } catch (const zmq::error_t& e) {
                 std::cerr << "[FrankaProxy] ZMQ recv error: " << e.what() << std::endl;
@@ -117,5 +123,5 @@ protected:
         std::cout << "[" << getModeName() << "] Command subscription loop exited." << std::endl;
     };
 
-    virtual void writeCommand(const std::vector<uint8_t>& data) = 0;
+    virtual void writeCommand(const protocol::ByteView& data) = 0;
 };

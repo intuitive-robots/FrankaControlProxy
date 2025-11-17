@@ -28,11 +28,8 @@ public:
     void spin();// Main loop for processing requests
     std::string getType() const { return type_; } // Returns the type of the proxy (e.g., "Arm" or "Gripper")
     // State management
-    protocol::RequestResult setControlMode(const protocol::FrankaArmControlMode& mode);// Sets the current control mode of the Franka arm
+    void setControlMode(const protocol::FrankaArmControlMode& mode);// Sets the current control mode of the Franka arm
     franka::RobotState getCurrentState(const std::string& request);// Return the current state of the robot
-
-    // Configuration
-    void displayConfig() const;
     
 private:
     // Initialization
@@ -41,7 +38,7 @@ private:
     void statePublishThread();// ZMQ PUB, Publishes the current state of the robot at a fixed rate
     void responseSocketThread();// ZMQ REP,responds to incoming requests from clients
     // Service handler
-    void handleServiceRequest(const std::vector<uint8_t>& request, std::vector<uint8_t>& response);
+    void handleServiceRequest(const std::string& service_name, const protocol::ByteView& request, std::vector<uint8_t>& response);
 
 
 
@@ -56,8 +53,6 @@ private:
 
     
 private:
-    // Configuration
-    YAML::Node proxy_config_;
     std::string type_;
     std::string robot_ip_;
     std::string service_addr_;
@@ -67,13 +62,10 @@ private:
     std::shared_ptr<franka::Model> model_;
     
     // ZMQ communication
-    zmq::context_t context_;
     zmq::socket_t state_pub_socket_;//arm state publish socket
-    zmq::socket_t res_socket_;//service socket
     
     // Threading
     std::thread state_pub_thread_;
-    std::thread service_thread_;
         
     // Synchronization
     std::atomic<bool> is_running; // for threads
