@@ -106,7 +106,7 @@ protected:
                 zmq::message_t message; 
                 auto result = sub_socket_.recv(message, zmq::recv_flags::none);
                 if (!result) {
-                    
+                    writeZeroCommand();
                     continue; // Skip this iteration if no message received
                 }
                 protocol::ByteView data{

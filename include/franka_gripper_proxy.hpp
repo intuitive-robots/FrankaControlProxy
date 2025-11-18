@@ -152,7 +152,7 @@ private:
                 std::cerr << e.what() << '\n';
             }
 #endif
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     };
 
@@ -173,7 +173,7 @@ private:
                 message.size()
             };
             command_.write(protocol::decode<protocol::GraspCommand>(data));
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            // std::this_thread::sleep_for(std::chrono::milliseconds(10));
             std::cout << "[FrankaGripperProxy] Received new gripper command: width="
                       << command_.read().width << ", speed=" << command_.read().speed
                       << ", force=" << command_.read().force << std::endl;

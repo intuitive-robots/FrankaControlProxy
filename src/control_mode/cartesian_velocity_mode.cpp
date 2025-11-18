@@ -92,12 +92,6 @@ protocol::ModeID CartesianVelocityMode::getModeID() const {
 
 void CartesianVelocityMode::writeCommand(const protocol::ByteView& data) {
     franka::CartesianVelocities velocities = protocol::decode<franka::CartesianVelocities>(data);
-    std::cout << "[CartesianVelocityMode] Received velocities command: [";
-    for (size_t i = 0; i < 6; ++i) {
-        std::cout << velocities.O_dP_EE[i];
-        if (i < 5) std::cout << ", ";
-    }
-    std::cout << "]" << std::endl;
     desired_velocities_.write(velocities);
 }
 
