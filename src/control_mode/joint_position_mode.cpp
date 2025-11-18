@@ -59,3 +59,8 @@ void JointPositionMode::writeCommand(const protocol::ByteView& data) {
     franka::JointPositions positions = protocol::decode<franka::JointPositions>(data);
     desired_positions_.write(positions);
 }
+
+void JointPositionMode::writeZeroCommand() {
+    franka::JointPositions current_positions = current_state_->read().q;
+    desired_positions_.write(current_positions);
+}

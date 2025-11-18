@@ -48,3 +48,7 @@ void IdleControlMode::writeCommand(const protocol::ByteView& data) {
     // Idle mode does not process commands
     // std::cout << "[IdleControlMode] Received command data, but idle mode does not accept commands.\n";
 }
+
+void IdleControlMode::writeZeroCommand() {
+    // No action needed for zero command in idle mode
+}

@@ -10,6 +10,7 @@
 #include <franka/robot_state.h>
 #include <franka/model.h>
 #include "protocol/grasp_command.hpp"
+#include <franka/gripper.h>
 
 namespace protocol {
 
@@ -130,6 +131,7 @@ std::vector<uint8_t> encode(const std::string& v);
 std::vector<uint8_t> encode(uint8_t v);
 std::vector<uint8_t> encode(uint16_t v);
 std::vector<uint8_t> encode(const franka::RobotState& rs);
+std::vector<uint8_t> encode(const franka::GripperState& gs);
 //RequestResult has it own enocdeMessage function, due to flag need to indicate presence of detail string
 
 // ============================================================================

@@ -106,7 +106,7 @@ protected:
                 zmq::message_t message; 
                 auto result = sub_socket_.recv(message, zmq::recv_flags::none);
                 if (!result) {
-                    std::cerr << "[FrankaProxy] Failed to receive state message." << std::endl;
+                    
                     continue; // Skip this iteration if no message received
                 }
                 protocol::ByteView data{
@@ -124,4 +124,5 @@ protected:
     };
 
     virtual void writeCommand(const protocol::ByteView& data) = 0;
+    virtual void writeZeroCommand() = 0;
 };

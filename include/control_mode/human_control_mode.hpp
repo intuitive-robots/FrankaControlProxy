@@ -21,4 +21,5 @@ public:
     protocol::ModeID getModeID() const override;
 private:
     void writeCommand(const protocol::ByteView& data) override;
+    void writeZeroCommand() override;
 };

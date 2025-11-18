@@ -15,4 +15,5 @@ private:
     AtomicDoubleBuffer<franka::CartesianVelocities> desired_velocities_;
     void controlLoop() override;
     void writeCommand(const protocol::ByteView& data) override;
+    void writeZeroCommand() override;
 };

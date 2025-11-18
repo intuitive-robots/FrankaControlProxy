@@ -21,4 +21,5 @@ public:
 private:
     void controlLoop() override;
     void writeCommand(const protocol::ByteView& data) override;
+    void writeZeroCommand() override;
 };

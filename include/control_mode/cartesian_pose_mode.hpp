@@ -21,4 +21,5 @@ private:
     AtomicDoubleBuffer<franka::CartesianPose> desired_pose_;
     void controlLoop() override;
     void writeCommand(const protocol::ByteView& data) override;
+    void writeZeroCommand() override;
 };

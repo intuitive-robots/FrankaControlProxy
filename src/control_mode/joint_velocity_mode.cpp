@@ -60,3 +60,7 @@ void JointVelocityMode::writeCommand(const protocol::ByteView& data) {
     franka::JointVelocities velocities = protocol::decode<franka::JointVelocities>(data);
     desired_velocities_.write(velocities);
 }
+
+void JointVelocityMode::writeZeroCommand() {
+    desired_velocities_.write(franka::JointVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
+}

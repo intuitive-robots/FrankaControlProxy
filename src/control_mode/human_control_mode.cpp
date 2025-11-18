@@ -63,3 +63,7 @@ void HumanControlMode::controlLoop() {
     // HumanControlMode control logic is handled in start(); this function is unused.
     std::cout << "[HumanControlMode] controlLoop() called, but control is managed in start().\n";
 }
+
+void HumanControlMode::writeZeroCommand() {
+    // No action needed for zero command in human control mode
+}

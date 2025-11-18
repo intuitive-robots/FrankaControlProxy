@@ -73,3 +73,8 @@ void CartesianPoseMode::writeCommand(const protocol::ByteView& data) {
     franka::CartesianPose pose = protocol::decode<franka::CartesianPose>(data);
     desired_pose_.write(pose);
 }
+
+void CartesianPoseMode::writeZeroCommand() {
+    franka::CartesianPose current_pose = current_state_->read().O_T_EE;
+    desired_pose_.write(current_pose);
+}

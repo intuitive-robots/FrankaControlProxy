@@ -100,3 +100,7 @@ void CartesianVelocityMode::writeCommand(const protocol::ByteView& data) {
     std::cout << "]" << std::endl;
     desired_velocities_.write(velocities);
 }
+
+void CartesianVelocityMode::writeZeroCommand() {
+    desired_velocities_.write(franka::CartesianVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
+}

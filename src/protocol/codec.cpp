@@ -86,6 +86,23 @@ std::vector<uint8_t> encode(const franka::RobotState& rs) {
     return out;
 }
 
+std::vector<uint8_t> encode(const franka::GripperState& gs) {
+    // Layout (bytes):
+    // 0   : f64  width
+    // 8   : f64  max_width
+    // 16  : bool is_grasped
+    // 17  : u16  temperature
+    // Total = 19 bytes
+    const size_t total_size = sizeof(double) * 2 + sizeof(bool) + sizeof(uint16_t);
+    std::vector<uint8_t> out(total_size);
+    uint8_t* wptr = out.data();
+    encode_f64(wptr, gs.width);
+    encode_f64(wptr, gs.max_width);
+    encode_bool(wptr, gs.is_grasped);
+    encode_u16(wptr, gs.temperature);
+    return out;
+}
+
 // ============================================================================
 // std::string decode
 // ============================================================================

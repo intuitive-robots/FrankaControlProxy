@@ -14,5 +14,5 @@ public:
 private:
     AtomicDoubleBuffer<franka::JointPositions> desired_positions_;
     void writeCommand(const protocol::ByteView& data) override;
-
+    void writeZeroCommand() override;
 };

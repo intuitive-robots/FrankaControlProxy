@@ -20,19 +20,26 @@ class FrankaGripperProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaGripperProxy(const std::string& config_path) {
+    explicit FrankaGripperProxy(const std::string& config_path):
+        is_running(false),
+        is_on_control_mode(false),
+        current_state_(AtomicDoubleBuffer<franka::GripperState>(franka::GripperState{})),
+        command_(AtomicDoubleBuffer<protocol::GraspCommand>(protocol::GraspCommand{}))
+    {
         FrankaConfig config(config_path);
         gripper_ip_ = config.getValue("gripper_ip");
-        std::cout<<"gripper ip: "<< gripper_ip_ <<std::endl;
-        gripper_ = std::make_shared<franka::Gripper>(gripper_ip_);
-        gripper_->homing();
-        //bind state pub socket
         state_pub_addr_ = config.getValue("gripper_state_pub_addr");
-        std::cout<<"gripper state_pub: "<< state_pub_addr_ <<std::endl;
-        state_pub_socket_ = zmq::socket_t(ZmqContext::instance(), ZMQ_PUB);
-        state_pub_socket_.bind(state_pub_addr_);
         service_registry_.bindSocket(config.getValue("gripper_service_addr"));
         //initialize franka gripper
+# if !LOCAL_TESTING
+        gripper_ = std::make_shared<franka::Gripper>(gripper_ip_);
+        gripper_->homing();
+        current_state_.write(gripper_->readOnce());
+        command_.write(protocol::GraspCommand{current_state_.read().width, 0.01f, 20.0f});
+# else
+        current_state_.write(franka::GripperState{0.0f, 0.0f, false, false, franka::Duration{}});
+        command_.write(protocol::GraspCommand{0.0f, 0.01f, 20.0f});
+# endif
         initializeService();
     };
     ~FrankaGripperProxy() {
@@ -45,6 +52,8 @@ public:
         std::cout << is_running <<"gripper control"<< std::endl;
         // state_pub_thread_ = std::thread(&FrankaGripperProxy::statePublishThread, this);
         service_registry_.start();
+        state_pub_thread_ = std::thread(&FrankaGripperProxy::statePubThread, this);
+        check_thread_ = std::thread(&FrankaGripperProxy::checkWidthThread, this);
     };
 
     void stop() {
@@ -52,11 +61,7 @@ public:
         is_running = false;
         if (state_pub_thread_.joinable()) state_pub_thread_.join();
         // try close ZeroMQ sockets
-        try {
-            state_pub_socket_.close();
-        } catch (const zmq::error_t& e) {
-            std::cerr << "[ZMQ ERROR] " << e.what() << "\n";
-        }
+
         // wait for closing
         service_registry_.stop();
         gripper_.reset();
@@ -67,26 +72,8 @@ private:
     // Initialization
     void initializeService() {
         // Register service handlers
-        service_registry_.registerHandler("SET_FRANKA_GRIPPER_WIDTH", this, &FrankaGripperProxy::setGripperWidth);
-        // service_registry_.registerHandler("GET_FRANKA_GRIPPER_STATE", this, &FrankaGripperProxy::getFrankaGripperState);
-        // service_registry_.registerHandler("GET_FRANKA_GRIPPER_STATE_PUB_PORT", this, &FrankaGripperProxy::getFrankaGripperStatePubPort);
-    };
-    // Thread functions
-    // void statePublishThread();
-    void setGripperWidth(const protocol::GraspCommand& command) {
-# if LOCAL_TESTING
-        std::cout << "[FrankaGripperProxy] Setting gripper width to " << command.width
-                  << " with speed " << command.speed << " and force " << command.force << std::endl;
-# else
-        std::cout << "[FrankaGripperProxy] Setting gripper width to " << command.width
-                  << " with speed " << command.speed << " and force " << command.force << std::endl;
-        try {
-            gripper_->stop();
-            gripper_->grasp(command.width, command.speed, 1);
-        } catch (const franka::Exception& e) {
-            std::cerr << "[FrankaGripperProxy] Grasp failed: " << e.what() << std::endl;
-        }
-# endif
+        service_registry_.registerHandler("START_FRANKA_GRIPPER_CONTROL", this, &FrankaGripperProxy::startFrankaGripperControl);
+        service_registry_.registerHandler("GET_FRANKA_GRIPPER_STATE_PUB_PORT", this, &FrankaGripperProxy::getFrankaGripperStatePubPort);
     };
 
     std::string gripper_ip_;
@@ -97,17 +84,124 @@ private:
     // ZMQ communication
     zmq::socket_t state_pub_socket_;//arm state publish socket
 
-    
     // Threading
     std::thread state_pub_thread_;
+    std::thread control_thread_;
+    std::thread check_thread_;
+    std::thread command_sub_thread_;
+    
+    // Threading Tasks
+    void controlLoopThread() {
+        while (is_running) {
+            float current_width = current_state_.read().width;
+            float target_width = command_.read().width;
+            if (abs(target_width - current_width) < 0.01f) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            try
+            {
+                if (current_width < target_width) {
+                    gripper_->move(target_width, command_.read().speed);
+                } else {
+                    gripper_->move(target_width, command_.read().speed);
+                }
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
+        }
+    };
+
+    void statePubThread() {
+        zmq::socket_t pub_socket_(ZmqContext::instance(), zmq::socket_type::pub);
+        pub_socket_.bind(state_pub_addr_);
+        while (is_running) {
+#if !LOCAL_TESTING
+            franka::GripperState gs = gripper_->readOnce();
+            current_state_.write(gs);
+            pub_socket_.send(zmq::const_buffer(protocol::encode(gs).data(),
+                                                protocol::encode(gs).size()),
+                                zmq::send_flags::none);
+#endif
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / GRIPPER_PUB_RATE_HZ));
+        }
+        try {
+            state_pub_socket_.close();
+        } catch (const zmq::error_t& e) {
+            std::cerr << "[ZMQ ERROR] " << e.what() << "\n";
+        }
+    };
+
+    void checkWidthThread() {
+        while (is_running) {
+#if !LOCAL_TESTING
+            float current_width = current_state_.read().width;
+            float target_width = command_.read().width;
+            if (abs(target_width - current_width) > 0.01f) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            try
+            {
+                gripper_->stop();
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
+#endif
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    };
+
+    void commandSubThread(const std::string& command_sub_addr) {
+        is_on_control_mode = true;
+        zmq::socket_t sub_socket_(ZmqContext::instance(), ZMQ_SUB);
+        sub_socket_.set(zmq::sockopt::rcvtimeo, 500); // 0.5 second timeout
+        sub_socket_.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
+        sub_socket_.connect(command_sub_addr);
+        while (is_running && is_on_control_mode) {
+            sub_socket_.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
+            zmq::message_t message;
+            if (!sub_socket_.recv(message, zmq::recv_flags::none)) {
+                continue;
+            }
+            protocol::ByteView data{
+                static_cast<const uint8_t*>(message.data()),
+                message.size()
+            };
+            command_.write(protocol::decode<protocol::GraspCommand>(data));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            std::cout << "[FrankaGripperProxy] Received new gripper command: width="
+                      << command_.read().width << ", speed=" << command_.read().speed
+                      << ", force=" << command_.read().force << std::endl;
+        }
+    };
+
+
     // Synchronization
     std::atomic<bool> is_running; // for threads
+    std::atomic<bool> is_on_control_mode;
     
+    AtomicDoubleBuffer<franka::GripperState> current_state_;
+    AtomicDoubleBuffer<protocol::GraspCommand> command_;
+
     // service registry
     ServiceRegistry service_registry_;
-    franka::GripperState getFrankaGripperState();
-    const std::string& getFrankaGripperStatePubPort();
-    
+    void startFrankaGripperControl(const std::string& command_sub_addr) {
+        if (is_on_control_mode) {
+            std::cout << "[FrankaGripperProxy] Already in control mode, now quit previous control mode." << std::endl;
+            is_on_control_mode = false;
+            if (command_sub_thread_.joinable()) command_sub_thread_.join();
+        }
+        command_sub_thread_ = std::thread(&FrankaGripperProxy::commandSubThread, this, command_sub_addr);
+    };
+    const std::string& getFrankaGripperStatePubPort() {
+        return state_pub_addr_;
+    };
+
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;
     static constexpr int GRIPPER_PUB_RATE_HZ = 100;

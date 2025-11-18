@@ -14,5 +14,5 @@ public:
 private:
     AtomicDoubleBuffer<franka::JointVelocities> desired_velocities_;
     void writeCommand(const protocol::ByteView& data) override;
-
+    void writeZeroCommand() override;
 };
