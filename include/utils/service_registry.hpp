@@ -7,8 +7,6 @@
 #include <stdexcept>
 #include <spdlog/spdlog.h>
 #include "protocol/codec.hpp"
-#include "protocol/msg_header.hpp"
-#include "protocol/msg_id.hpp"
 #include "protocol/request_result.hpp"
 #include "protocol/request_result.hpp"
 #include "utils/zmq_context.hpp"
