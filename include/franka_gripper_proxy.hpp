@@ -8,7 +8,6 @@
 
 #include <franka/gripper.h>
 #include <franka/robot_state.h>
-#include <yaml-cpp/yaml.h>
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/service_registry.hpp" 
@@ -62,7 +61,7 @@ public:
         std::cout << is_running <<"gripper control"<< std::endl;
         // state_pub_thread_ = std::thread(&FrankaGripperProxy::statePublishThread, this);
         service_registry_.start();
-        command_.write(protocol::GraspCommand{current_state_.read().width, 20.0f, 20.0f});
+        command_.write(protocol::GraspCommand{(float)current_state_.read().width, 20.0f, 20.0f});
         state_pub_thread_ = std::thread(&FrankaGripperProxy::statePubThread, this);
         check_thread_ = std::thread(&FrankaGripperProxy::checkWidthThread, this);
         control_thread_ = std::thread(&FrankaGripperProxy::controlLoopThread, this);

@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "protocol/msg_header.hpp"
-
 namespace protocol {
 
 namespace FrankaResponseCode {

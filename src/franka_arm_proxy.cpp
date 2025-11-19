@@ -6,8 +6,6 @@
 #include <algorithm>
 #include "franka_arm_proxy.hpp"
 #include "protocol/codec.hpp"
-#include "protocol/msg_id.hpp"
-#include "protocol/msg_header.hpp"
 #include "utils/franka_config.hpp"
 #include "debugger/state_debug.hpp"
 #include "protocol/codec.hpp"

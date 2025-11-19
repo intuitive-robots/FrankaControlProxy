@@ -1,6 +1,4 @@
 #include "protocol/codec.hpp"
-#include "protocol/msg_header.hpp" 
-#include "protocol/msg_id.hpp"
 #include "protocol/mode_id.hpp"
 #include "protocol/request_result.hpp"
 #include <cstring>

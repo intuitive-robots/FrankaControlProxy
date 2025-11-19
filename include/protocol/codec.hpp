@@ -1,8 +1,6 @@
 #pragma once
 #include "protocol/byte_order.hpp"
-#include "protocol/msg_id.hpp"
 #include "protocol/mode_id.hpp"
-#include "protocol/msg_header.hpp"
 #include <cstdint>
 #include <cstring>
 #include <array>
