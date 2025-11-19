@@ -1,7 +1,7 @@
 #include "joint_velocity_mode.hpp"
 #include <franka/exception.h>
 #include <franka/robot_state.h>
-#include <spdlog/spdlog.h>
+#include "utils/logger.hpp"
 #include "protocol/codec.hpp"
 
 JointVelocityMode::JointVelocityMode():
@@ -11,13 +11,13 @@ JointVelocityMode::~JointVelocityMode() = default;
 
 
 void JointVelocityMode::controlLoop() {
-    spdlog::info("[JointVelocityMode] Started.");
+    LOG_INFO("[JointVelocityMode] Started.");
     is_running_ = true;
     // Initialize desired velocities to zero
     desired_velocities_.write(franka::JointVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
     if (!robot_ || !model_) {
-        spdlog::error("[JointVelocityMode] Robot or model not set.");
+        LOG_ERROR("[JointVelocityMode] Robot or model not set.");
         return;
     }
     robot_->automaticErrorRecovery();
@@ -38,16 +38,16 @@ void JointVelocityMode::controlLoop() {
     try {
         robot_->control(joint_velocity_callback);
     } catch (const franka::ControlException& e) {
-        spdlog::error("[JointVelocityMode] Exception: {}", e.what());
+        LOG_ERROR("[JointVelocityMode] Exception: {}", e.what());
         if (std::string(e.what()).find("reflex") != std::string::npos) {
-            spdlog::warn("[JointVelocityMode] Reflex detected, attempting automatic recovery...");
+            LOG_WARN("[JointVelocityMode] Reflex detected, attempting automatic recovery...");
             try {
                 robot_->automaticErrorRecovery();
             } catch (const franka::Exception& recovery_error) {
-                spdlog::error("Recovery failed: {}", recovery_error.what());
+                LOG_ERROR("Recovery failed: {}", recovery_error.what());
             }
         }
-        spdlog::info("[JointVelocityMode] Exited.");
+        LOG_INFO("[JointVelocityMode] Exited.");
     }
 }
 

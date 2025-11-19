@@ -1,16 +1,16 @@
 
 #include "human_control_mode.hpp"
 #include <franka/exception.h>
-#include <spdlog/spdlog.h>
+#include "utils/logger.hpp"
 
 HumanControlMode::HumanControlMode() = default;
 HumanControlMode::~HumanControlMode() = default;
 
 void HumanControlMode::start() {
     is_running_ = true;
-    spdlog::info("[HumanControlMode] Started.");
+    LOG_INFO("[HumanControlMode] Started.");
     if (!robot_ || !model_) {
-        spdlog::error("[HumanControlMode] Robot or model not set.");
+        LOG_ERROR("[HumanControlMode] Robot or model not set.");
         return;
     }
     robot_->setCollisionBehavior(
@@ -36,16 +36,16 @@ void HumanControlMode::start() {
     try {
         robot_->control(callback);
     } catch (const franka::ControlException& e) {
-            spdlog::error("[HumanControlMode] Exception: {}", e.what());
+            LOG_ERROR("[HumanControlMode] Exception: {}", e.what());
         if (std::string(e.what()).find("reflex") != std::string::npos) {
-            spdlog::warn("Reflex detected, attempting automatic recovery...");
+            LOG_WARN("Reflex detected, attempting automatic recovery...");
             try {
                 robot_->automaticErrorRecovery();
             } catch (const franka::Exception& recovery_error) {
-                spdlog::error("Recovery failed: {}", recovery_error.what());
+                LOG_ERROR("Recovery failed: {}", recovery_error.what());
             }
         }
-        spdlog::info("[HumanControlMode] Exited.");
+        LOG_INFO("[HumanControlMode] Exited.");
     }
 }
 
@@ -56,12 +56,12 @@ protocol::ModeID HumanControlMode::getModeID() const {
 
 void HumanControlMode::writeCommand(const protocol::ByteView& data) {
     // HumanControlMode does not process external commands; ignore incoming data.
-    spdlog::warn("[HumanControlMode] Received command data, but this mode does not accept commands.");
+    LOG_WARN("[HumanControlMode] Received command data, but this mode does not accept commands.");
 }
 
 void HumanControlMode::controlLoop() {
     // HumanControlMode control logic is handled in start(); this function is unused.
-    spdlog::warn("[HumanControlMode] controlLoop() called, but control is managed in start().");
+    LOG_WARN("[HumanControlMode] controlLoop() called, but control is managed in start().");
 }
 
 void HumanControlMode::writeZeroCommand() {

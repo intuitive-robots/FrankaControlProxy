@@ -1,6 +1,6 @@
 #include "control_mode/joint_position_mode.hpp"
 #include <franka/exception.h>
-#include <spdlog/spdlog.h>
+#include "utils/logger.hpp"
 #include "protocol/codec.hpp"
 
 JointPositionMode::JointPositionMode():
@@ -9,13 +9,13 @@ JointPositionMode::JointPositionMode():
 JointPositionMode::~JointPositionMode() = default;
 
 void JointPositionMode::controlLoop() {
-    spdlog::info("[JointPositionMode] Started.");
+    LOG_INFO("[JointPositionMode] Started.");
     is_running_ = true;
 
     desired_positions_.write(franka::JointPositions{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
     if (!robot_ || !model_) {
-        spdlog::error("[JointPositionMode] Robot or model not set.");
+        LOG_ERROR("[JointPositionMode] Robot or model not set.");
         return;
     }
 
@@ -37,16 +37,16 @@ void JointPositionMode::controlLoop() {
     try {
         robot_->control(callback);
     } catch (const franka::ControlException& e) {
-        spdlog::error("[JointPositionMode] Exception: {}", e.what());
+        LOG_ERROR("[JointPositionMode] Exception: {}", e.what());
         if (std::string(e.what()).find("reflex") != std::string::npos) {
-            spdlog::warn("Reflex detected, attempting automatic recovery...");
+            LOG_WARN("Reflex detected, attempting automatic recovery...");
             try {
                 robot_->automaticErrorRecovery();
             } catch (const franka::Exception& recovery_error) {
-                spdlog::error("Recovery failed: {}", recovery_error.what());
+                LOG_ERROR("Recovery failed: {}", recovery_error.what());
             }
         }
-        spdlog::info("[JointPositionMode] Exited.");
+        LOG_INFO("[JointPositionMode] Exited.");
     }
 }
 

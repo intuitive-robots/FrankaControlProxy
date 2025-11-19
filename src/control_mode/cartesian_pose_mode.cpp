@@ -2,7 +2,8 @@
 #include "protocol/mode_id.hpp"
 #include "protocol/codec.hpp"
 #include <franka/exception.h>
-#include <spdlog/spdlog.h>
+#include "utils/logger.hpp"
+#include <unistd.h>
 //Note: Pose is represented as a 4x4 matrix in column-major format.
 CartesianPoseMode::CartesianPoseMode():
     desired_pose_(franka::CartesianPose{
@@ -15,7 +16,7 @@ CartesianPoseMode::CartesianPoseMode():
 CartesianPoseMode::~CartesianPoseMode() = default;
 
 void CartesianPoseMode::controlLoop() {
-    spdlog::info("[CartesianPoseMode] Started.");
+    LOG_INFO("[CartesianPoseMode] Started.");
     is_running_ = true;
 
     // Initialize desired Cartesian pose to identity (no movement)`
@@ -27,7 +28,7 @@ void CartesianPoseMode::controlLoop() {
     });
 
     if (!robot_ || !model_) {
-        spdlog::error("[CartesianPoseMode] Robot or model not set.");
+        LOG_ERROR("[CartesianPoseMode] Robot or model not set.");
         return;
     }
 
@@ -51,22 +52,22 @@ void CartesianPoseMode::controlLoop() {
         try {
             robot_->control(motion_generator_callback);
     } catch (const std::exception &ex) {
-        spdlog::error("[CartesianPoseMode] Robot is unable to be controlled: {}", ex.what());
+        LOG_ERROR("[CartesianPoseMode] Robot is unable to be controlled: {}", ex.what());
         is_robot_operational = false;
     }
     for (int i = 0; i < 3; i++) {
-        spdlog::warn("[CartesianPoseMode] Waiting {} seconds before recovery attempt...", 3);
+        LOG_WARN("[CartesianPoseMode] Waiting {} seconds before recovery attempt...", 3);
 
         // Wait
         usleep(1000 * 3);
         // Attempt recovery
         try {
             robot_->automaticErrorRecovery();
-            spdlog::info("[CartesianPoseMode] Robot operation recovered.");
+            LOG_INFO("[CartesianPoseMode] Robot operation recovered.");
             is_robot_operational = true;
             break;
             } catch (const std::exception &ex) {
-                spdlog::error("[CartesianPoseMode] Recovery failed: {}", ex.what());
+                LOG_ERROR("[CartesianPoseMode] Recovery failed: {}", ex.what());
             }
         }
     

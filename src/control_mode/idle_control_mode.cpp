@@ -1,5 +1,5 @@
 #include "idle_control_mode.hpp"
-#include <spdlog/spdlog.h>
+#include "utils/logger.hpp"
 
 
 IdleControlMode::IdleControlMode() = default;
@@ -14,7 +14,7 @@ protocol::ModeID IdleControlMode::getModeID() const {
     void IdleControlMode::start() {
         startRobot();
         control_thread_ = std::thread(&IdleControlMode::controlLoop, this);
-        spdlog::info("[{}] Control thread launched.", getModeName());
+        LOG_INFO("[{}] Control thread launched.", getModeName());
     }
 
 
@@ -28,7 +28,7 @@ void IdleControlMode::controlLoop() {
     }
 #else
     if (!robot_ || !model_) {
-        spdlog::error("[IdleControlMode] Robot or model not set.");
+        LOG_ERROR("[IdleControlMode] Robot or model not set.");
         return;
     }
     while (is_running_) {
@@ -38,10 +38,10 @@ void IdleControlMode::controlLoop() {
                     current_state_->write(state);
                 }
             } catch (const franka::Exception& e) {
-                spdlog::error("[IdleMode] readOnce() failed: {}", e.what());
+                LOG_ERROR("[IdleMode] readOnce() failed: {}", e.what());
             }
 }
-    spdlog::info("[IdleControlMode] Exited.");
+    LOG_INFO("[IdleControlMode] Exited.");
 #endif
 }
 

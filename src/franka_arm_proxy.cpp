@@ -3,7 +3,7 @@
 #include <csignal>
 #include <atomic>
 #include <algorithm>
-#include <spdlog/spdlog.h>
+#include "utils/logger.hpp"
 #include "franka_arm_proxy.hpp"
 #include "protocol/codec.hpp"
 #include "utils/franka_config.hpp"
@@ -18,7 +18,7 @@
 
 static std::atomic<bool> running_flag{true};  // let ctrl-c stop the server
 static void signalHandler(int signum) {
-    spdlog::info("Caught signal {}, shutting down...", signum);
+    LOG_INFO("Caught signal {}, shutting down...", signum);
     running_flag = false;
 }
 // Todo: may add to config file later
@@ -45,7 +45,7 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     robot_ip_ = config.getValue("robot_ip");
     //bind state pub socket
     state_pub_addr_ = config.getValue("state_pub_addr");
-    spdlog::info("State publisher bound to {}", state_pub_addr_);
+    LOG_INFO("State publisher bound to {}", state_pub_addr_);
     state_pub_socket_.bind(state_pub_addr_);
     service_registry_.bindSocket(config.getValue("service_addr"));
     //initialize franka robot
@@ -57,7 +57,7 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     }
     catch(const franka::NetworkException& e)
     {
-        spdlog::error("{}", e.what());
+        LOG_ERROR("{}", e.what());
         this->stop();
     }
 #endif
@@ -97,22 +97,19 @@ FrankaArmProxy::~FrankaArmProxy() {
 
 bool FrankaArmProxy::start(){
     is_running = true;
-    spdlog::info("Arm proxy running flag set to {}", is_running.load());
-    spdlog::info("Robot interface initialized: {}", robot_ != nullptr);
+    LOG_INFO("Arm proxy running flag set to {}", is_running.load());
+    LOG_INFO("Robot interface initialized: {}", robot_ != nullptr);
 #if LOCAL_TESTING
     current_state_.write(default_state);
 #else
     // current_state_.write(robot_->readOnce());
 #endif
     state_pub_thread_ = std::thread(&FrankaArmProxy::statePublishThread, this);
-    // std::cout << "done arm state pub"<< std::endl;
-    // service_thread_ = std::thread(&FrankaArmProxy::responseSocketThread, this);
-    // std::cout << "done service"<< std::endl;
     return true;
 }
 
 void FrankaArmProxy::stop() {
-    spdlog::info("Stopping FrankaArmProxy...");
+    LOG_INFO("Stopping FrankaArmProxy...");
     is_running = false;
     if (current_mode_)
         current_mode_->stop();
@@ -122,7 +119,7 @@ void FrankaArmProxy::stop() {
     try {
         state_pub_socket_.close();
     } catch (const zmq::error_t& e) {
-        spdlog::error("[ZMQ ERROR] {}", e.what());
+        LOG_ERROR("[ZMQ ERROR] {}", e.what());
     }
     // wait for closing
     service_registry_.stop();
@@ -131,19 +128,19 @@ void FrankaArmProxy::stop() {
     model_.reset();
 #endif
     current_mode_ = nullptr;// reset current control mode
-    spdlog::info("FrankaArmProxy stopped successfully.");
+    LOG_INFO("FrankaArmProxy stopped successfully.");
 }
 
 // Main loop for processing requests, ctrl-c to stop the server
 void FrankaArmProxy::spin() {
     std::signal(SIGINT, signalHandler);  //  Catch Ctrl+C to stop the server
-    spdlog::info("Entering main spin loop. Press Ctrl+C to exit.");
-    spdlog::info("Current running flag: {}", running_flag.load());
+    LOG_INFO("Entering main spin loop. Press Ctrl+C to exit.");
+    LOG_INFO("Current running flag: {}", running_flag.load());
     while (running_flag) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     stop(); 
-    spdlog::info("Shutdown complete.");
+    LOG_INFO("Shutdown complete.");
 }
 
 // publish threads
@@ -162,10 +159,10 @@ void FrankaArmProxy::statePublishThread() {
 
 void FrankaArmProxy::setControlMode(const protocol::FrankaArmControlMode& mode) {
     if (current_mode_.get() != nullptr) {
-        spdlog::info("Stopping previous control mode...");
+        LOG_INFO("Stopping previous control mode...");
         current_mode_->stop();  // stopMotion + is_running_ = false
     }
-    spdlog::info("Switching to control mode: {} (command URL: {})", protocol::toString(mode.id), mode.url);
+    LOG_INFO("Switching to control mode: {} (command URL: {})", protocol::toString(mode.id), mode.url);
     current_mode_ = ControlModeFactory::create(mode.id);
 #if !LOCAL_TESTING
     current_mode_->setRobot(robot_);

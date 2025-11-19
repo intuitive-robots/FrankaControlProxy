@@ -1,14 +1,20 @@
 #pragma once
+
 #include <memory>
-#include <mutex>
-#include <sstream>
 #include <string>
+#include <vector>
+#include <ctime>
+#include <filesystem>
 
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/async.h>
+#include <spdlog/async_logger.h>
 
 namespace utils {
 
+// Log levels for unified control
 enum class LogLevel {
     TRACE = 0,
     INFO,
@@ -19,50 +25,63 @@ enum class LogLevel {
 
 class Logger {
 public:
-    static Logger& instance() {
-        static Logger instance;
-        return instance;
-    }
+    // Initialize async logging system.
+    // enable_file_logging = true → console + file
+    // enable_file_logging = false → console only
+    static void init(bool enable_file_logging = false,
+                     const std::string& log_dir = "logs")
+    {
+        // Create async thread pool (1 thread, 8192 queue size)
+        spdlog::init_thread_pool(8192, 1);
 
-    void setLevel(LogLevel level) {
-        level_ = level;
-    }
+        std::vector<spdlog::sink_ptr> sinks;
 
-    void setOutputFile(const std::string& path) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        file_logger_ = spdlog::basic_logger_mt("utils_file_logger", path, true);
-    }
+        // Console sink
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        sinks.push_back(console_sink);
 
-    void enableColor(bool /*enable*/ = true) {
-        // color formatting handled by spdlog's default logger pattern
-    }
+        // Optional file sink
+        if (enable_file_logging) {
+            std::filesystem::create_directories(log_dir);
 
-    template <typename... Args>
-    void log(LogLevel level, Args&&... args) {
-        if (level < level_) return;
+            std::time_t t = std::time(nullptr);
+            char ts[32];
+            std::strftime(ts, sizeof(ts), "%Y%m%d_%H%M%S", std::localtime(&t));
 
-        std::ostringstream oss;
-        (oss << ... << args);
+            std::string file_path = log_dir + "/output_" + ts + ".txt";
 
-        const auto spd_level = toSpdLevel(level);
-        if (file_logger_) {
-            file_logger_->log(spd_level, oss.str());
-        } else {
-            spdlog::log(spd_level, oss.str());
+            auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+                file_path, true
+            );
+            sinks.push_back(file_sink);
         }
+
+        // Async logger using the global thread pool
+        auto async_logger = std::make_shared<spdlog::async_logger>(
+            "proxy_async_logger",
+            sinks.begin(),
+            sinks.end(),
+            spdlog::thread_pool(),
+            spdlog::async_overflow_policy::block
+        );
+
+        // Register and set as default logger
+        spdlog::set_default_logger(async_logger);
+
+        // Log formatting
+        // if want to see thread id:→ [%Y-%m-%d %H:%M:%S.%e] [T%t] [%^%l%$] %v
+        spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
     }
 
-    template <typename... Args> void trace(Args&&... a) { log(LogLevel::TRACE, std::forward<Args>(a)...); }
-    template <typename... Args> void info(Args&&... a)  { log(LogLevel::INFO,  std::forward<Args>(a)...); }
-    template <typename... Args> void warn(Args&&... a)  { log(LogLevel::WARN,  std::forward<Args>(a)...); }
-    template <typename... Args> void error(Args&&... a) { log(LogLevel::ERROR, std::forward<Args>(a)...); }
-    template <typename... Args> void fatal(Args&&... a) { log(LogLevel::FATAL, std::forward<Args>(a)...); }
+    // Set global logging level
+    static void setLevel(LogLevel lvl) {
+        spdlog::level::level_enum spd_lvl = toSpdLevel(lvl);
+        spdlog::set_level(spd_lvl);
+    }
 
 private:
-    Logger() = default;
-
-    static spdlog::level::level_enum toSpdLevel(LogLevel level) {
-        switch (level) {
+    static spdlog::level::level_enum toSpdLevel(LogLevel lvl) {
+        switch (lvl) {
             case LogLevel::TRACE: return spdlog::level::trace;
             case LogLevel::INFO:  return spdlog::level::info;
             case LogLevel::WARN:  return spdlog::level::warn;
@@ -71,16 +90,13 @@ private:
         }
         return spdlog::level::info;
     }
-
-    LogLevel level_ = LogLevel::TRACE;
-    std::shared_ptr<spdlog::logger> file_logger_;
-    std::mutex mutex_;
 };
 
 } // namespace utils
 
-#define LOG_TRACE(...) utils::Logger::instance().trace(__VA_ARGS__)
-#define LOG_INFO(...)  utils::Logger::instance().info(__VA_ARGS__)
-#define LOG_WARN(...)  utils::Logger::instance().warn(__VA_ARGS__)
-#define LOG_ERROR(...) utils::Logger::instance().error(__VA_ARGS__)
-#define LOG_FATAL(...) utils::Logger::instance().fatal(__VA_ARGS__)
+// Logging macros using async logger (supports {} format)
+#define LOG_TRACE(...) spdlog::trace(__VA_ARGS__)
+#define LOG_INFO(...)  spdlog::info(__VA_ARGS__)
+#define LOG_WARN(...)  spdlog::warn(__VA_ARGS__)
+#define LOG_ERROR(...) spdlog::error(__VA_ARGS__)
+#define LOG_FATAL(...) spdlog::critical(__VA_ARGS__)
