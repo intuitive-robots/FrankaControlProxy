@@ -94,7 +94,7 @@ protected:
 
     void commandSubscriptionLoop() {
         zmq::socket_t sub_socket_(ZmqContext::instance(), ZMQ_SUB);
-        sub_socket_.set(zmq::sockopt::rcvtimeo, 1000); // 1 second timeout
+        sub_socket_.set(zmq::sockopt::rcvtimeo, 200); // 100 ms timeout
         if (command_sub_addr_.empty()) {
             std::cerr << "[" << getModeName() << "] Command subscription address is empty. Exiting command subscription loop." << std::endl;
             return;
@@ -103,9 +103,8 @@ protected:
         sub_socket_.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
         while (is_running_) {
             try {
-                zmq::message_t message; 
-                auto result = sub_socket_.recv(message, zmq::recv_flags::none);
-                if (!result) {
+                zmq::message_t message;
+                if (!sub_socket_.recv(message, zmq::recv_flags::none)) {
                     writeZeroCommand();
                     continue; // Skip this iteration if no message received
                 }

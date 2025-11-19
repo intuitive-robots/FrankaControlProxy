@@ -16,6 +16,14 @@
 #include "protocol/codec.hpp"
 #include "protocol/grasp_command.hpp"
 
+enum class FrankaGripperFlag {
+    STOP = 0,
+    STOPPING = 1,
+    CLOSING = 2,
+    OPENING = 3,
+};
+
+
 class FrankaGripperProxy {
 
 public:
@@ -23,6 +31,7 @@ public:
     explicit FrankaGripperProxy(const std::string& config_path):
         is_running(false),
         is_on_control_mode(false),
+        gripper_flag(FrankaGripperFlag::STOP),
         current_state_(AtomicDoubleBuffer<franka::GripperState>(franka::GripperState{})),
         command_(AtomicDoubleBuffer<protocol::GraspCommand>(protocol::GraspCommand{}))
     {
@@ -49,18 +58,24 @@ public:
     // Core server operations
     void start() {
         is_running = true;
+        is_moving = false;
         std::cout << is_running <<"gripper control"<< std::endl;
         // state_pub_thread_ = std::thread(&FrankaGripperProxy::statePublishThread, this);
         service_registry_.start();
+        command_.write(protocol::GraspCommand{current_state_.read().width, 20.0f, 20.0f});
         state_pub_thread_ = std::thread(&FrankaGripperProxy::statePubThread, this);
         check_thread_ = std::thread(&FrankaGripperProxy::checkWidthThread, this);
+        control_thread_ = std::thread(&FrankaGripperProxy::controlLoopThread, this);
     };
 
     void stop() {
         std::cout << "[INFO] Stopping FrankaGripperProxy..." << std::endl;
         is_running = false;
+        is_on_control_mode = false;
         if (state_pub_thread_.joinable()) state_pub_thread_.join();
-        // try close ZeroMQ sockets
+        if (control_thread_.joinable()) control_thread_.join();
+        if (check_thread_.joinable()) check_thread_.join();
+        if (command_sub_thread_.joinable()) command_sub_thread_.join();
 
         // wait for closing
         service_registry_.stop();
@@ -95,15 +110,19 @@ private:
         while (is_running) {
             float current_width = current_state_.read().width;
             float target_width = command_.read().width;
-            if (abs(target_width - current_width) < 0.01f) {
+            if (gripper_flag.load() == FrankaGripperFlag::STOPPING) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 continue;
             }
             try
             {
-                if (current_width < target_width) {
-                    gripper_->move(target_width, command_.read().speed);
-                } else {
+                if (current_width > target_width + 0.01) {
+                    std::cout << "[Gripper Close] Closing gripper to target width: " << target_width << std::endl;
+                    gripper_flag.store(FrankaGripperFlag::CLOSING);
+                    gripper_->grasp(target_width, command_.read().speed, 60.0);
+                } else if (current_width < target_width - 0.01) {
+                    std::cout << "[Gripper Open] Opening gripper to target width: " << target_width << std::endl;
+                    gripper_flag.store(FrankaGripperFlag::OPENING);
                     gripper_->move(target_width, command_.read().speed);
                 }
             }
@@ -111,6 +130,7 @@ private:
             {
                 std::cerr << e.what() << '\n';
             }
+            gripper_flag.store(FrankaGripperFlag::STOP);
         }
     };
 
@@ -139,12 +159,19 @@ private:
 #if !LOCAL_TESTING
             float current_width = current_state_.read().width;
             float target_width = command_.read().width;
-            if (abs(target_width - current_width) > 0.01f) {
+            if (
+                gripper_flag.load() == FrankaGripperFlag::STOPPING
+            || (gripper_flag.load() == FrankaGripperFlag::CLOSING && current_width >= target_width + 0.01)
+            || (gripper_flag.load() == FrankaGripperFlag::OPENING && current_width <= target_width - 0.01)
+            || (gripper_flag.load() == FrankaGripperFlag::STOP && std::abs(current_width - target_width) <= 0.01)
+            ) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 continue;
             }
             try
             {
+                std::cout << "[Gripper Stop] Gripper reached target width: " << target_width << std::endl;
+                gripper_flag.store(FrankaGripperFlag::STOP);
                 gripper_->stop();
             }
             catch(const std::exception& e)
@@ -174,16 +201,18 @@ private:
             };
             command_.write(protocol::decode<protocol::GraspCommand>(data));
             // std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            std::cout << "[FrankaGripperProxy] Received new gripper command: width="
-                      << command_.read().width << ", speed=" << command_.read().speed
-                      << ", force=" << command_.read().force << std::endl;
+            // std::cout << "[FrankaGripperProxy] Received new gripper command: width="
+            //           << command_.read().width << ", speed=" << command_.read().speed
+            //           << ", force=" << command_.read().force << std::endl;
         }
     };
 
 
     // Synchronization
     std::atomic<bool> is_running; // for threads
+    std::atomic<bool> is_moving;
     std::atomic<bool> is_on_control_mode;
+    std::atomic<FrankaGripperFlag> gripper_flag;
     
     AtomicDoubleBuffer<franka::GripperState> current_state_;
     AtomicDoubleBuffer<protocol::GraspCommand> command_;
