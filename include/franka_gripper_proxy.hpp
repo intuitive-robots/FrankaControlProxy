@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <memory>
+#include <spdlog/spdlog.h>
 
 #include <franka/gripper.h>
 #include <franka/robot_state.h>
@@ -49,7 +50,7 @@ public:
     // Core server operations
     void start() {
         is_running = true;
-        std::cout << is_running <<"gripper control"<< std::endl;
+        spdlog::info("Gripper proxy running flag set to {}", is_running.load());
         // state_pub_thread_ = std::thread(&FrankaGripperProxy::statePublishThread, this);
         service_registry_.start();
         state_pub_thread_ = std::thread(&FrankaGripperProxy::statePubThread, this);
@@ -57,7 +58,7 @@ public:
     };
 
     void stop() {
-        std::cout << "[INFO] Stopping FrankaGripperProxy..." << std::endl;
+        spdlog::info("Stopping FrankaGripperProxy...");
         is_running = false;
         if (state_pub_thread_.joinable()) state_pub_thread_.join();
         // try close ZeroMQ sockets
@@ -65,7 +66,7 @@ public:
         // wait for closing
         service_registry_.stop();
         gripper_.reset();
-        std::cout << "[INFO] FrankaGripperProxy stopped successfully." << std::endl;
+        spdlog::info("FrankaGripperProxy stopped successfully.");
     };
 
 private:
@@ -109,7 +110,7 @@ private:
             }
             catch(const std::exception& e)
             {
-                std::cerr << e.what() << '\n';
+                spdlog::error("{}", e.what());
             }
         }
     };
@@ -130,7 +131,7 @@ private:
         try {
             state_pub_socket_.close();
         } catch (const zmq::error_t& e) {
-            std::cerr << "[ZMQ ERROR] " << e.what() << "\n";
+            spdlog::error("[ZMQ ERROR] {}", e.what());
         }
     };
 
@@ -149,7 +150,7 @@ private:
             }
             catch(const std::exception& e)
             {
-                std::cerr << e.what() << '\n';
+                spdlog::error("{}", e.what());
             }
 #endif
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -174,9 +175,9 @@ private:
             };
             command_.write(protocol::decode<protocol::GraspCommand>(data));
             // std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            std::cout << "[FrankaGripperProxy] Received new gripper command: width="
-                      << command_.read().width << ", speed=" << command_.read().speed
-                      << ", force=" << command_.read().force << std::endl;
+            const auto cmd = command_.read();
+            spdlog::info("[FrankaGripperProxy] Received new gripper command: width={}, speed={}, force={}",
+                         cmd.width, cmd.speed, cmd.force);
         }
     };
 
@@ -192,7 +193,7 @@ private:
     ServiceRegistry service_registry_;
     void startFrankaGripperControl(const std::string& command_sub_addr) {
         if (is_on_control_mode) {
-            std::cout << "[FrankaGripperProxy] Already in control mode, now quit previous control mode." << std::endl;
+            spdlog::warn("[FrankaGripperProxy] Already in control mode, stopping previous command subscriber.");
             is_on_control_mode = false;
             if (command_sub_thread_.joinable()) command_sub_thread_.join();
         }

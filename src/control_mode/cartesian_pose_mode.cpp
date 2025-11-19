@@ -2,66 +2,74 @@
 #include "protocol/mode_id.hpp"
 #include "protocol/codec.hpp"
 #include <franka/exception.h>
-#include <iostream>
-
+#include <spdlog/spdlog.h>
+//Note: Pose is represented as a 4x4 matrix in column-major format.
 CartesianPoseMode::CartesianPoseMode():
     desired_pose_(franka::CartesianPose{
         {1.0, 0.0, 0.0, 0.0,
          0.0, 1.0, 0.0, 0.0,
          0.0, 0.0, 1.0, 0.0,
-         0.0, 0.0, 0.0, 1.0}
+         0.306, 0.0, 0.485, 1.0}
     })
 {};
 CartesianPoseMode::~CartesianPoseMode() = default;
 
 void CartesianPoseMode::controlLoop() {
-    std::cout << "[CartesianPoseMode] Started.\n";
+    spdlog::info("[CartesianPoseMode] Started.");
     is_running_ = true;
 
     // Initialize desired Cartesian pose to identity (no movement)`
     desired_pose_.write(franka::CartesianPose{
-        {1.0, 0.0, 0.0, 0.0,   // Row 1 (rotation)
-         0.0, 1.0, 0.0, 0.0,   // Row 2 (rotation)
-         0.0, 0.0, 1.0, 0.0,   // Row 3 (rotation)
-         0.0, 0.0, 0.0, 1.0}   // Row 4 (translation, homogeneous)
+        {1.0, 0.0, 0.0, 0.0,   // col 1 (rotationx 0)
+         0.0, 1.0, 0.0, 0.0,   // col 2 (rotationy 0)
+         0.0, 0.0, 1.0, 0.0,   // col 3 (rotationz 0)
+         0.306, 0.0, 0.485}   // col 4 (translation 1)
     });
 
     if (!robot_ || !model_) {
-        std::cerr << "[CartesianPoseMode] Robot or model not set.\n";
+        spdlog::error("[CartesianPoseMode] Robot or model not set.");
         return;
     }
 
     robot_->automaticErrorRecovery();
 
-    std::function<franka::CartesianPose(const franka::RobotState&, franka::Duration)> callback =
+    std::function<franka::CartesianPose(const franka::RobotState&, franka::Duration)> motion_generator_callback =
         [this](const franka::RobotState& state, franka::Duration) -> franka::CartesianPose {
-            if (!is_running_) {
-                throw franka::ControlException("CartesianPoseMode stopped.");
-            }
-
+            // if (!is_running_) {
+            //     throw franka::ControlException("CartesianPoseMode stopped.");
+            // }
             updateRobotState(state);
             auto desired = desired_pose_.read();
-
             if (!is_running_) {
                 return franka::MotionFinished(desired);
             }
 
             return desired;
         };
+    bool is_robot_operational = true;
+    while (is_running_ && is_robot_operational) {
+        try {
+            robot_->control(motion_generator_callback);
+    } catch (const std::exception &ex) {
+        spdlog::error("[CartesianPoseMode] Robot is unable to be controlled: {}", ex.what());
+        is_robot_operational = false;
+    }
+    for (int i = 0; i < 3; i++) {
+        spdlog::warn("[CartesianPoseMode] Waiting {} seconds before recovery attempt...", 3);
 
-    try {
-        robot_->control(callback);
-    } catch (const franka::ControlException& e) {
-        std::cerr << "[CartesianPoseMode] Exception: " << e.what() << std::endl;
-        if (std::string(e.what()).find("reflex") != std::string::npos) {
-            std::cout << "Reflex detected, attempting automatic recovery...\n";
-            try {
-                robot_->automaticErrorRecovery();
-            } catch (const franka::Exception& recovery_error) {
-                std::cerr << "Recovery failed: " << recovery_error.what() << std::endl;
+        // Wait
+        usleep(1000 * 3);
+        // Attempt recovery
+        try {
+            robot_->automaticErrorRecovery();
+            spdlog::info("[CartesianPoseMode] Robot operation recovered.");
+            is_robot_operational = true;
+            break;
+            } catch (const std::exception &ex) {
+                spdlog::error("[CartesianPoseMode] Recovery failed: {}", ex.what());
             }
         }
-        std::cout << "[CartesianPoseMode] Exited.\n";
+    
     }
 }
 

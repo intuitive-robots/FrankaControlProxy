@@ -1,4 +1,4 @@
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include <fstream>
 #include <string>
 #include <map>
@@ -16,7 +16,7 @@ public:
     void loadFromFile(const std::string& file_path) {
         std::ifstream file(file_path);
         if (!file.is_open()) {
-            std::cerr << "Error: Could not open config file: " << file_path << std::endl;
+            spdlog::error("Error: Could not open config file: {}", file_path);
             return;
         }
 
@@ -39,7 +39,7 @@ public:
         if (it != config_data.end()) {
             return it->second;
         } else {
-        std::cerr << "Warning: Key not found in config: " << key << ", using default: " << default_value << std::endl;
+        spdlog::warn("Warning: Key not found in config: {}, using default: {}", key, default_value);
         return default_value;
         }
     }   
@@ -48,7 +48,7 @@ public:
     // Function to display the loaded configuration
     void display() const {
         for (const auto& pair : config_data) {
-            std::cout << pair.first << ": " << pair.second << std::endl;
+            spdlog::info("{}: {}", pair.first, pair.second);
         }
     }
 

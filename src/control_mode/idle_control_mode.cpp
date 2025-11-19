@@ -1,4 +1,5 @@
 #include "idle_control_mode.hpp"
+#include <spdlog/spdlog.h>
 
 
 IdleControlMode::IdleControlMode() = default;
@@ -10,11 +11,11 @@ protocol::ModeID IdleControlMode::getModeID() const {
     return protocol::ModeID::IDLE;
 }
 
-void IdleControlMode::start() {
-    startRobot();
-    control_thread_ = std::thread(&IdleControlMode::controlLoop, this);
-    std::cout << "[" << getModeName() << "] Control thread launched.\n";
-}
+    void IdleControlMode::start() {
+        startRobot();
+        control_thread_ = std::thread(&IdleControlMode::controlLoop, this);
+        spdlog::info("[{}] Control thread launched.", getModeName());
+    }
 
 
 void IdleControlMode::controlLoop() {
@@ -27,7 +28,7 @@ void IdleControlMode::controlLoop() {
     }
 #else
     if (!robot_ || !model_) {
-        std::cerr << "[IdleControlMode] Robot or model not set.\n";
+        spdlog::error("[IdleControlMode] Robot or model not set.");
         return;
     }
     while (is_running_) {
@@ -37,10 +38,10 @@ void IdleControlMode::controlLoop() {
                     current_state_->write(state);
                 }
             } catch (const franka::Exception& e) {
-                std::cerr << "[IdleMode] readOnce() failed: " << e.what() << std::endl;
+                spdlog::error("[IdleMode] readOnce() failed: {}", e.what());
             }
 }
-    std::cout << "[IdleControlMode] Exited.\n";
+    spdlog::info("[IdleControlMode] Exited.");
 #endif
 }
 
