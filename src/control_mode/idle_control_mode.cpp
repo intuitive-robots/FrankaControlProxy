@@ -1,44 +1,54 @@
 #include "idle_control_mode.hpp"
 
-// void IdleControlMode::initialize(const franka::RobotState& initial_state) {
-//     //todo:write recover
-    
-//     current_state_ = initial_state;
-//     std::cout << "[IdleControlMode] Initialized with initial state." << std::endl;
-// }
+
+IdleControlMode::IdleControlMode() = default;
+IdleControlMode::~IdleControlMode() = default;
+
+
+
+protocol::ModeID IdleControlMode::getModeID() const {
+    return protocol::ModeID::IDLE;
+}
+
 void IdleControlMode::start() {
-    std::cout << "[IdleControlMode] Entering idle mode. Reading state once..." << std::endl;
-    is_running_ = true;
+    startRobot();
+    control_thread_ = std::thread(&IdleControlMode::controlLoop, this);
+    std::cout << "[" << getModeName() << "] Control thread launched.\n";
+}
+
+
+void IdleControlMode::controlLoop() {
+#if LOCAL_TESTING
+    while (is_running_) {
+        franka::RobotState state = franka::RobotState{};
+        current_state_->write(state);
+        // In local testing, just keep the loop alive
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+#else
+    if (!robot_ || !model_) {
+        std::cerr << "[IdleControlMode] Robot or model not set.\n";
+        return;
+    }
     while (is_running_) {
             try {
                 if (robot_) {
                     franka::RobotState state = robot_->readOnce();
-                    setCurrentState(state);
+                    current_state_->write(state);
                 }
             } catch (const franka::Exception& e) {
                 std::cerr << "[IdleMode] readOnce() failed: " << e.what() << std::endl;
             }
-        //     // test get leader state
-        //     auto leader_ptr = getLeaderState();
-        //     if (leader_ptr) {
-        //     const auto& leader = *leader_ptr;
-
-        //     // print leader state
-        //     std::cout << "[Leader q] ";
-        //     for (double q_i : leader.q) {
-        //         std::cout << q_i << " ";
-        //     }
-        //     std::cout << std::endl;
-        // } else {
-        //     std::cout << "No leader state available." << std::endl;
-        // }
 }
     std::cout << "[IdleControlMode] Exited.\n";
+#endif
 }
-void IdleControlMode::stop() {
-    is_running_ = false;
-    std::cout << "[IdleControlMode] Stopping idle mode." << std::endl;
+
+void IdleControlMode::writeCommand(const protocol::ByteView& data) {
+    // Idle mode does not process commands
+    // std::cout << "[IdleControlMode] Received command data, but idle mode does not accept commands.\n";
 }
-int IdleControlMode::getModeID() const {
-    return 5; // Return a unique ID for the idle mode
+
+void IdleControlMode::writeZeroCommand() {
+    // No action needed for zero command in idle mode
 }

@@ -1,5 +1,4 @@
-#ifndef BYTE_ORDER_HPP
-#define BYTE_ORDER_HPP
+#pragma once
 #include <cstdint>
 #include <cstring>
 
@@ -86,4 +85,3 @@ inline double from_big_endian_f64(double val) {
 }
 
 } // namespace protocol
-#endif // BYTE_ORDER_HPP

@@ -1,25 +1,25 @@
 #pragma once
+
 #include "abstract_control_mode.hpp"
 #include <franka/robot.h>
 #include <franka/model.h>
 #include <franka/robot_state.h>
 #include <franka/exception.h>
-#include <memory>
+#include <memory>//for std::shared_ptr
 #include <mutex>
 #include <franka/exception.h>
 #include <iostream>
 
-
-class IdleControlMode : public AbstractControlMode {
+class HumanControlMode : public AbstractControlMode {
 public:
-    IdleControlMode();
-    ~IdleControlMode() override ;
-    void start() override;
-    //void initialize(const franka::RobotState& initial_state) override;
-    protocol::ModeID getModeID() const override;
+    HumanControlMode();
+    ~HumanControlMode() override;
 
-private:
+    //void initialize(const franka::RobotState& initial_state) override;
     void controlLoop() override;
+    void start();
+    protocol::ModeID getModeID() const override;
+private:
     void writeCommand(const protocol::ByteView& data) override;
     void writeZeroCommand() override;
 };
