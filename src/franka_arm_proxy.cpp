@@ -1,3 +1,4 @@
+#include <array>
 #include <chrono>
 #include <thread>
 #include <csignal>
@@ -21,39 +22,66 @@ static void signalHandler(int signum) {
     LOG_INFO("Caught signal {}, shutting down...", signum);
     running_flag = false;
 }
-// Todo: may add to config file later
-franka::RobotState default_state = []{
-    franka::RobotState state;
-    state.q = {{0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785}};
-    state.O_T_EE = {{
-        1.0, 0.0, 0.0, 0.3,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.5,
-        0.0, 0.0, 0.0, 1.0
-    }};
-    return state;
-}();
+namespace {
+franka::RobotState makeDefaultState(const FrankaConfigData& cfg) {
+    franka::RobotState state{};
+    std::array<double, 7> q{};
+    const auto& q_src = cfg.arm_default_state_q.size() == 7
+                        ? cfg.arm_default_state_q
+                        : std::vector<double>{{0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785}};
+    std::copy(q_src.begin(), q_src.begin() + 7, q.begin());
+    state.q = q;
 
-FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
+    std::array<double, 16> pose = cfg.arm_default_state_O_T_EE;
+    if (pose == std::array<double, 16>{}) {
+        pose = {{
+            1.0, 0.0, 0.0, 0.3,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.5,
+            0.0, 0.0, 0.0, 1.0
+        }};
+    }
+    state.O_T_EE = pose;
+    return state;
+}
+}
+
+FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config)
     : state_pub_socket_(ZmqContext::instance(), ZMQ_PUB),//arm state publish socket
       is_running(false),
-      current_state_(AtomicDoubleBuffer<franka::RobotState>(default_state)),
+      current_state_(AtomicDoubleBuffer<franka::RobotState>(makeDefaultState(config))),
+      config_(config),
+      default_state_(makeDefaultState(config)),
       service_registry_()
     {
-    FrankaConfig config(config_path);
-    // type_ = config.getValue("type", "Arm"); // Default to "Arm" if not specified
-    robot_ip_ = config.getValue("robot_ip");
+    robot_ip_ = config_.robot_ip;
     //bind state pub socket
-    state_pub_addr_ = config.getValue("state_pub_addr");
+    state_pub_addr_ = config_.state_pub_addr;
     LOG_INFO("State publisher bound to {}", state_pub_addr_);
     state_pub_socket_.bind(state_pub_addr_);
-    service_registry_.bindSocket(config.getValue("service_addr"));
+    service_registry_.bindSocket(config_.service_addr);
     //initialize franka robot
 #if !LOCAL_TESTING
     try
     {
         robot_ = std::make_shared<franka::Robot>(robot_ip_);
         model_ = std::make_shared<franka::Model>(robot_->loadModel());
+        // set collision behavior thresholds from config
+        try {
+            robot_->setCollisionBehavior(
+                config_.arm_col_lower_torque_acc,
+                config_.arm_col_upper_torque_acc,
+                config_.arm_col_lower_torque_nom,
+                config_.arm_col_upper_torque_nom,
+                config_.arm_col_lower_force_acc,
+                config_.arm_col_upper_force_acc,
+                config_.arm_col_lower_force_nom,
+                config_.arm_col_upper_force_nom
+            );
+        } catch (const franka::CommandException& e) {
+            LOG_ERROR("Failed to set collision behavior: {}", e.what());
+            throw;
+        }
     }
     catch(const franka::NetworkException& e)
     {
@@ -100,7 +128,7 @@ bool FrankaArmProxy::start(){
     LOG_INFO("Arm proxy running flag set to {}", is_running.load());
     LOG_INFO("Robot interface initialized: {}", robot_ != nullptr);
 #if LOCAL_TESTING
-    current_state_.write(default_state);
+    current_state_.write(default_state_);
 #else
     // current_state_.write(robot_->readOnce());
 #endif
@@ -152,7 +180,8 @@ void FrankaArmProxy::statePublishThread() {
         const std::vector<uint8_t> payload = protocol::encode(rs);
         // Publish over ZMQ PUB socket
         state_pub_socket_.send(zmq::buffer(payload), zmq::send_flags::none);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / STATE_PUB_RATE_HZ));
+        const int rate = config_.arm_state_pub_rate_hz > 0 ? config_.arm_state_pub_rate_hz : STATE_PUB_RATE_HZ;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / rate));
         // std::cout << "[FrankaArmProxy] Published state message, size = " << frame.size() << " bytes." << std::endl;//debug
     }
 }
