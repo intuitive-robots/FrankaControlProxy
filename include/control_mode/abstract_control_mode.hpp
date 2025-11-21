@@ -6,9 +6,9 @@
 #include <memory>
 #include <mutex>
 #include <zmq.hpp>
-#include <iostream>
 #include <thread>
 #include <zmq.hpp>
+#include "utils/logger.hpp"
 
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/zmq_context.hpp"
@@ -25,34 +25,34 @@ public:
     virtual void start() {
         startRobot();
         control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
-        std::cout << "[" << getModeName() << "] Control thread launched.\n";
+        LOG_INFO("[{}] Control thread launched.", getModeName());
         command_thread_ = std::thread(&AbstractControlMode::commandSubscriptionLoop, this);
-        std::cout << "[" << getModeName() << "] Command subscription thread launched.\n";
+        LOG_INFO("[{}] Command subscription thread launched.", getModeName());
     };
 
     void startRobot() {
 #if !LOCAL_TESTING
         if (!robot_ || !model_) {
-            std::cerr << "[ " << getModeName() << "] Robot or model not set.\n";
+            LOG_ERROR("[{}] Robot or model not set.", getModeName());
             return;
         }
         robot_->automaticErrorRecovery();
 #endif
-        std::cout << "[" << getModeName() << "] Robot control started.\n";
+        LOG_INFO("[{}] Robot control started.", getModeName());
         is_running_ = true;
     };
 
     virtual void stop() {
         is_running_ = false;
         if (control_thread_.joinable()) {
-            std::cout << "[" << getModeName() << "] Stopping control thread...\n";
+            LOG_INFO("[{}] Stopping control thread...", getModeName());
             control_thread_.join();
         }
         if (command_thread_.joinable()) {
-            std::cout << "[" << getModeName() << "] Stopping command subscription thread...\n";
+            LOG_INFO("[{}] Stopping command subscription thread...", getModeName());
             command_thread_.join();
         }
-        std::cout << "[" << getModeName() << "] Stopped.\n";
+        LOG_INFO("[{}] Stopped.", getModeName());
     };
     // Get the mode ID for this control mode
     virtual protocol::ModeID getModeID() const = 0; // Return the mode ID as an integer
@@ -96,7 +96,7 @@ protected:
         zmq::socket_t sub_socket_(ZmqContext::instance(), ZMQ_SUB);
         sub_socket_.set(zmq::sockopt::rcvtimeo, 200); // 100 ms timeout
         if (command_sub_addr_.empty()) {
-            std::cerr << "[" << getModeName() << "] Command subscription address is empty. Exiting command subscription loop." << std::endl;
+            LOG_WARN("[{}] Command subscription address is empty. Exiting command subscription loop.", getModeName());
             return;
         }
         sub_socket_.connect(command_sub_addr_);
@@ -114,12 +114,12 @@ protected:
                 };
                 writeCommand(data);
             } catch (const zmq::error_t& e) {
-                std::cerr << "[FrankaProxy] ZMQ recv error: " << e.what() << std::endl;
+                LOG_ERROR("[FrankaProxy] ZMQ recv error: {}", e.what());
                 break;
             }
         }
         sub_socket_.close();
-        std::cout << "[" << getModeName() << "] Command subscription loop exited." << std::endl;
+        LOG_INFO("[{}] Command subscription loop exited.", getModeName());
     };
 
     virtual void writeCommand(const protocol::ByteView& data) = 0;

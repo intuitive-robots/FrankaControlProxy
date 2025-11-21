@@ -4,13 +4,14 @@
 #include <unordered_map>
 #include <string>
 #include <functional>
+#include "utils/logger.hpp"
 
 
 class ControlModeFactory {
 public:
 
     static void registerMode(const std::string& name, std::function<std::shared_ptr<AbstractControlMode>()> creator) {
-        std::cout << "[ControlModeFactory] Registering mode: " << name << std::endl;
+        LOG_INFO("[ControlModeFactory] Registering mode: {}", name);
         getRegistry()[name] = std::move(creator);
     }
 

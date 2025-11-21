@@ -1,16 +1,16 @@
 
 #include "human_control_mode.hpp"
 #include <franka/exception.h>
-#include <iostream>
+#include "utils/logger.hpp"
 
 HumanControlMode::HumanControlMode() = default;
 HumanControlMode::~HumanControlMode() = default;
 
 void HumanControlMode::start() {
     is_running_ = true;
-    std::cout << "[HumanControlMode] Started.\n";
+    LOG_INFO("[HumanControlMode] Started.");
     if (!robot_ || !model_) {
-        std::cerr << "[HumanControlMode] Robot or model not set.\n";
+        LOG_ERROR("[HumanControlMode] Robot or model not set.");
         return;
     }
     robot_->setCollisionBehavior(
@@ -36,16 +36,16 @@ void HumanControlMode::start() {
     try {
         robot_->control(callback);
     } catch (const franka::ControlException& e) {
-            std::cerr << "[HumanControlMode] Exception: " << e.what() << std::endl;
+            LOG_ERROR("[HumanControlMode] Exception: {}", e.what());
         if (std::string(e.what()).find("reflex") != std::string::npos) {
-            std::cout << "Reflex detected, attempting automatic recovery...\n";
+            LOG_WARN("Reflex detected, attempting automatic recovery...");
             try {
                 robot_->automaticErrorRecovery();
             } catch (const franka::Exception& recovery_error) {
-                std::cerr << "Recovery failed: " << recovery_error.what() << std::endl;
+                LOG_ERROR("Recovery failed: {}", recovery_error.what());
             }
         }
-        std::cout << "[HumanControlMode] Exited.\n";
+        LOG_INFO("[HumanControlMode] Exited.");
     }
 }
 
@@ -56,12 +56,12 @@ protocol::ModeID HumanControlMode::getModeID() const {
 
 void HumanControlMode::writeCommand(const protocol::ByteView& data) {
     // HumanControlMode does not process external commands; ignore incoming data.
-    std::cout << "[HumanControlMode] Received command data, but this mode does not accept commands.\n";
+    LOG_WARN("[HumanControlMode] Received command data, but this mode does not accept commands.");
 }
 
 void HumanControlMode::controlLoop() {
     // HumanControlMode control logic is handled in start(); this function is unused.
-    std::cout << "[HumanControlMode] controlLoop() called, but control is managed in start().\n";
+    LOG_WARN("[HumanControlMode] controlLoop() called, but control is managed in start().");
 }
 
 void HumanControlMode::writeZeroCommand() {

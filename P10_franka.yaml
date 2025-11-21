@@ -1,0 +1,41 @@
+########################
+# communication
+########################
+robot_ip: 172.16.1.2
+service_addr: tcp://127.0.0.1:5555
+state_pub_addr: tcp://127.0.0.1:5556
+gripper_ip: 172.16.1.3
+gripper_service_addr: tcp://127.0.0.1:5557
+gripper_state_pub_addr: tcp://127.0.0.1:5558
+
+
+########################
+# arm
+########################
+# initial joint/matrix state
+arm_default_state_q: [0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785]
+arm_default_state_O_T_EE: [1.0, 0.0, 0.0, 0.3, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0]
+# rate/timeouts
+arm_state_pub_rate_hz: 100
+arm_socket_timeout_ms: 100
+arm_max_message_size: 4096
+# collision behavior thresholds
+arm_collision_lower_torque_thresholds_acc: [30, 30, 30, 30, 30, 30, 30]
+arm_collision_upper_torque_thresholds_acc: [45, 45, 45, 45, 45, 45, 45]
+arm_collision_lower_torque_thresholds_nom: [25, 25, 25, 25, 25, 25, 25]
+arm_collision_upper_torque_thresholds_nom: [35, 35, 35, 35, 35, 35, 35]
+arm_collision_lower_force_thresholds_acc:  [10, 10, 10, 10, 10, 10]
+arm_collision_upper_force_thresholds_acc:  [15, 15, 15, 15, 15, 15]
+arm_collision_lower_force_thresholds_nom:  [8, 8, 8, 8, 8, 8]
+arm_collision_upper_force_thresholds_nom:  [12, 12, 12, 12, 12, 12]
+
+
+########################
+# gripper
+########################
+gripper_pub_rate_hz: 100
+gripper_command_rcvtimeo_ms: 500
+gripper_default_close_open_threshold: 0.01
+gripper_default_speed_slow: 0.01
+gripper_default_speed_fast: 20.0
+gripper_default_force: 20.0
