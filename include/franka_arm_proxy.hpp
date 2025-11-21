@@ -13,13 +13,14 @@
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/service_registry.hpp" 
+#include "utils/franka_config.hpp"
 #include "protocol/codec.hpp"
 
 class FrankaArmProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaArmProxy(const std::string& config_path);// Constructor that initializes the proxy with a configuration file
+    explicit FrankaArmProxy(const FrankaConfigData& config);// Constructor that initializes the proxy with a configuration file
     ~FrankaArmProxy();// Destructor to clean up resources
 
     // Core server operations
@@ -75,6 +76,9 @@ private:
 
     // Current robot state
     AtomicDoubleBuffer<franka::RobotState> current_state_;
+
+    FrankaConfigData config_;
+    franka::RobotState default_state_;
 
     // initialize
     void initializeControlMode();
