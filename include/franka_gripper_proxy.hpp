@@ -16,6 +16,10 @@
 #include "protocol/codec.hpp"
 #include "protocol/grasp_command.hpp"
 #include <iostream>
+
+#include <zerolancom/zerolancom.hpp>
+#include <zerolancom/sockets/publisher.hpp>
+
 enum class FrankaGripperFlag {
     STOP = 0,
     STOPPING = 1,
@@ -146,8 +150,7 @@ private:
     };
 
     void statePubThread() {
-        zmq::socket_t pub_socket_(ZmqContext::instance(), zmq::socket_type::pub);
-        pub_socket_.bind(state_pub_addr_);
+        zmq::socket_t state_pub = zerolancom::Publisher(ZmqContext::instance());;
         while (is_running) {
 #if !LOCAL_TESTING
             franka::GripperState gs = gripper_->readOnce();

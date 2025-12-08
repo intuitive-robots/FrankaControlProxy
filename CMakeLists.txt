@@ -31,6 +31,8 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZMQ REQUIRED libzmq)
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(zerolancom REQUIRED)
+
 # -----------------------------
 # Source collection
 # -----------------------------

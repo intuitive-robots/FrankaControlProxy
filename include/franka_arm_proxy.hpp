@@ -15,12 +15,13 @@
 #include "utils/service_registry.hpp" 
 #include "utils/franka_config.hpp"
 #include "protocol/codec.hpp"
+#include <zerolancom/zerolancom.hpp>
 
 class FrankaArmProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaArmProxy(const FrankaConfigData& config);// Constructor that initializes the proxy with a configuration file
+    explicit FrankaArmProxy(const FrankaConfigData& config, zerolancom::ZeroLanComNode& node);// Constructor that initializes the proxy with a configuration file
     ~FrankaArmProxy();// Destructor to clean up resources
 
     // Core server operations
@@ -41,7 +42,7 @@ private:
     // Service handler
     void handleServiceRequest(const std::string& service_name, const protocol::ByteView& request, std::vector<uint8_t>& response);
 
-
+    zerolancom::ZeroLanComNode& node_;
 
     //Start
     bool startArm();// Starts the arm control loop and initializes the necessary threads
@@ -63,7 +64,7 @@ private:
     std::shared_ptr<franka::Model> model_;
     
     // ZMQ communication
-    zmq::socket_t state_pub_socket_;//arm state publish socket
+    // zmq::socket_t state_pub_socket_;//arm state publish socket
     
     // Threading
     std::thread state_pub_thread_;

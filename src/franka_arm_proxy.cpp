@@ -13,9 +13,8 @@
 #include "protocol/mode_id.hpp"
 #include "protocol/request_result.hpp"
 #include "control_mode/control_mode.hpp"
-#include "utils/service_registry.hpp"
 
-
+#include <zerolancom/zerolancom.hpp>
 
 static std::atomic<bool> running_flag{true};  // let ctrl-c stop the server
 static void signalHandler(int signum) {
@@ -46,13 +45,14 @@ franka::RobotState makeDefaultState(const FrankaConfigData& cfg) {
 }
 }
 
-FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config)
+FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config, zerolancom::ZeroLanComNode& node)
     : state_pub_socket_(ZmqContext::instance(), ZMQ_PUB),//arm state publish socket
       is_running(false),
       current_state_(AtomicDoubleBuffer<franka::RobotState>(makeDefaultState(config))),
       config_(config),
       default_state_(makeDefaultState(config)),
-      service_registry_()
+      service_registry_(),
+      node_(node)
     {
     robot_ip_ = config_.robot_ip;
     //bind state pub socket
@@ -107,14 +107,12 @@ void FrankaArmProxy::initializeControlMode() {
 
 
 void FrankaArmProxy::initializeService() {
-    // Register service handlers
-    service_registry_.registerHandler("SET_FRANKA_ARM_CONTROL_MODE", this, &FrankaArmProxy::setControlMode);
-    service_registry_.registerHandler("GET_FRANKA_ARM_STATE", this, &FrankaArmProxy::getFrankaArmState);
-    service_registry_.registerHandler("GET_FRANKA_ARM_CONTROL_MODE", this, &FrankaArmProxy::getFrankaArmControlMode);
-    service_registry_.registerHandler("GET_FRANKA_ARM_STATE_PUB_PORT", this, &FrankaArmProxy::getFrankaArmStatePubPort);
-    // service_registry_.registerHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", this, &FrankaArmProxy::moveFrankaArmToJointPosition);
-    // service_registry_.registerHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", this, &FrankaArmProxy::moveFrankaArmToCartesianPosition);
-    service_registry_.start();
+    node_.registerServiceHandler("SET_FRANKA_ARM_CONTROL_MODE", &FrankaArmProxy::setControlMode, this);
+    node_.registerServiceHandler("GET_FRANKA_ARM_STATE", &FrankaArmProxy::getFrankaArmState, this);
+    node_.registerServiceHandler("GET_FRANKA_ARM_CONTROL_MODE", &FrankaArmProxy::getFrankaArmControlMode, this);
+    node_.registerServiceHandler("GET_FRANKA_ARM_STATE_PUB_PORT", &FrankaArmProxy::getFrankaArmStatePubPort, this);
+    // node_.registerServiceHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", &FrankaArmProxy::moveFrankaArmToJointPosition, this);
+    // node_.registerServiceHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", &FrankaArmProxy::moveFrankaArmToCartesianPosition, this);
 }
 
 
@@ -174,6 +172,7 @@ void FrankaArmProxy::spin() {
 
 // publish threads
 void FrankaArmProxy::statePublishThread() {
+    zerolancom::Publisher<> state_pub(ZmqContext::instance());
     while (is_running) {
         const franka::RobotState rs = current_state_.read();
 

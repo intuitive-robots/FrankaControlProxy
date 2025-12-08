@@ -11,7 +11,6 @@
 #include "utils/logger.hpp"
 
 #include "utils/atomic_double_buffer.hpp"
-#include "utils/zmq_context.hpp"
 #include "protocol/mode_id.hpp"
 #include "protocol/codec.hpp"
 
