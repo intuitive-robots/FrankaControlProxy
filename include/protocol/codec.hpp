@@ -185,4 +185,10 @@ protocol::FrankaArmControlMode decode<protocol::FrankaArmControlMode>(ByteView p
 template <>
 protocol::GraspCommand decode<protocol::GraspCommand>(ByteView payload);
 
+
+// ...existing code...
+template <>
+franka::RobotState decode<franka::RobotState>(ByteView payload);
+// ...existing code...
+
 }  // namespace protocol

@@ -20,13 +20,21 @@ void CartesianPoseMode::controlLoop() {
     is_running_ = true;
 
     // Initialize desired Cartesian pose to identity (no movement)`
-    desired_pose_.write(franka::CartesianPose{
+    try
+    {
+        desired_pose_.write(franka::CartesianPose{
         {1.0, 0.0, 0.0, 0.0,   // col 1 (rotationx 0)
          0.0, 1.0, 0.0, 0.0,   // col 2 (rotationy 0)
          0.0, 0.0, 1.0, 0.0,   // col 3 (rotationz 0)
-         0.306, 0.0, 0.485}   // col 4 (translation 1)
+         0.306, 0.0, 0.485,1.0}   // col 4 (translation 1)
     });
-
+    }
+    catch(const std::exception& ex)
+    {
+        LOG_ERROR("[CartesianPoseMode] desired_pose set wrong: {}", ex.what());
+    }
+    
+    LOG_INFO("[CartesianPoseMode] desired_pose set");
     if (!robot_ || !model_) {
         LOG_ERROR("[CartesianPoseMode] Robot or model not set.");
         return;
@@ -59,7 +67,7 @@ void CartesianPoseMode::controlLoop() {
         LOG_WARN("[CartesianPoseMode] Waiting {} seconds before recovery attempt...", 3);
 
         // Wait
-        usleep(1000 * 3);
+        usleep(100 * 3);
         // Attempt recovery
         try {
             robot_->automaticErrorRecovery();

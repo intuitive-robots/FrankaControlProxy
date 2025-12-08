@@ -67,21 +67,21 @@ FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config)
         robot_ = std::make_shared<franka::Robot>(robot_ip_);
         model_ = std::make_shared<franka::Model>(robot_->loadModel());
         // set collision behavior thresholds from config
-        try {
-            robot_->setCollisionBehavior(
-                config_.arm_col_lower_torque_acc,
-                config_.arm_col_upper_torque_acc,
-                config_.arm_col_lower_torque_nom,
-                config_.arm_col_upper_torque_nom,
-                config_.arm_col_lower_force_acc,
-                config_.arm_col_upper_force_acc,
-                config_.arm_col_lower_force_nom,
-                config_.arm_col_upper_force_nom
-            );
-        } catch (const franka::CommandException& e) {
-            LOG_ERROR("Failed to set collision behavior: {}", e.what());
-            throw;
-        }
+        // try {
+        //     robot_->setCollisionBehavior(
+        //         config_.arm_col_lower_torque_acc,
+        //         config_.arm_col_upper_torque_acc,
+        //         config_.arm_col_lower_torque_nom,
+        //         config_.arm_col_upper_torque_nom,
+        //         config_.arm_col_lower_force_acc,
+        //         config_.arm_col_upper_force_acc,
+        //         config_.arm_col_lower_force_nom,
+        //         config_.arm_col_upper_force_nom
+        //     );
+        // } catch (const franka::CommandException& e) {
+        //     LOG_ERROR("Failed to set collision behavior: {}", e.what());
+        //     throw;
+        // }
     }
     catch(const franka::NetworkException& e)
     {
@@ -133,6 +133,7 @@ bool FrankaArmProxy::start(){
     // current_state_.write(robot_->readOnce());
 #endif
     state_pub_thread_ = std::thread(&FrankaArmProxy::statePublishThread, this);
+    LOG_INFO("FrankaArmProxy started successfully.");
     return true;
 }
 

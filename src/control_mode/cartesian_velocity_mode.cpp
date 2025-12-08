@@ -69,7 +69,7 @@ void CartesianVelocityMode::controlLoop() {
             LOG_WARN("[CartesianVelocityMode] Waiting {} seconds before recovery attempt...", 3);
 
             // Wait
-            usleep(1000 * 3);
+            usleep(100 * 3);
 
             // Attempt recovery
             try {

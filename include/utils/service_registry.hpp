@@ -145,10 +145,28 @@ public:
             //std::string response;
             protocol::FrankaResponse response;
             handleRequest(service_name, payload, response);
+            // Debug: if the service returns a Franka RobotState, try to decode it and log a few fields
+            if (service_name == "GET_FRANKA_ARM_STATE") {
+                try {
+                    if (!response.payload.empty()) {
+                        protocol::ByteView bv{ response.payload.data(), response.payload.size() };
+                        franka::RobotState rs = protocol::decode<franka::RobotState>(bv);
+                        LOG_INFO("[ServiceRegistry] Decoded FrankaArmState: time_ms={}, q=[{:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}]",
+                                 static_cast<uint32_t>(rs.time.toSec()),
+                                 rs.q[0], rs.q[1], rs.q[2], rs.q[3], rs.q[4], rs.q[5], rs.q[6]);
+                        LOG_INFO("[ServiceRegistry] Decoded FrankaArmState: O_T_EE=[{:.3f}, {:.3f}, {:.3f}, {:.3f}]",
+                                 rs.O_T_EE[0], rs.O_T_EE[1], rs.O_T_EE[2], rs.O_T_EE[3]);
+                    } else {
+                        LOG_WARN("[ServiceRegistry] Empty payload for GET_FRANKA_ARM_STATE");
+                    }
+                } catch (const std::exception& e) {
+                    LOG_ERROR("[ServiceRegistry] Failed to decode FrankaArmState response: {}", e.what());
+                }
+            }
             //send response
             res_socket_.send(zmq::buffer(service_name), zmq::send_flags::sndmore);
             res_socket_.send(zmq::buffer(response.payload), zmq::send_flags::none);
-            LOG_INFO("[FrankaArmProxy] Sent response payload of {} bytes.", response.payload.size());
+            LOG_INFO("[FrankaArmProxy] Sent response payload of {} bytes.", response.payload.size());   
         }
     }
 
