@@ -4,6 +4,7 @@
 #include <csignal>
 #include <atomic>
 #include <algorithm>
+#include <msgpack.hpp>
 #include "utils/logger.hpp"
 #include "franka_arm_proxy.hpp"
 #include "protocol/codec.hpp"
@@ -13,6 +14,7 @@
 #include "protocol/mode_id.hpp"
 #include "protocol/request_result.hpp"
 #include "control_mode/control_mode.hpp"
+#include "protocol/msg.hpp"
 
 #include <zerolancom/zerolancom.hpp>
 
@@ -45,13 +47,12 @@ franka::RobotState makeDefaultState(const FrankaConfigData& cfg) {
 }
 }
 
-FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config, zerolancom::ZeroLanComNode& node)
+FrankaArmProxy::FrankaArmProxy(const FrankaArmConfigData& config, zerolancom::ZeroLanComNode& node)
     : state_pub_socket_(ZmqContext::instance(), ZMQ_PUB),//arm state publish socket
       is_running(false),
       current_state_(AtomicDoubleBuffer<franka::RobotState>(makeDefaultState(config))),
       config_(config),
       default_state_(makeDefaultState(config)),
-      service_registry_(),
       node_(node)
     {
     robot_ip_ = config_.robot_ip;
@@ -59,7 +60,7 @@ FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config, zerolancom::ZeroL
     state_pub_addr_ = config_.state_pub_addr;
     LOG_INFO("State publisher bound to {}", state_pub_addr_);
     state_pub_socket_.bind(state_pub_addr_);
-    service_registry_.bindSocket(config_.service_addr);
+    // Removed service_registry_.bindSocket as ZeroLanCom handles this
     //initialize franka robot
 #if !LOCAL_TESTING
     try
@@ -148,8 +149,7 @@ void FrankaArmProxy::stop() {
     } catch (const zmq::error_t& e) {
         LOG_ERROR("[ZMQ ERROR] {}", e.what());
     }
-    // wait for closing
-    service_registry_.stop();
+    // Removed service_registry_.stop() as ZeroLanCom handles this
 #if !LOCAL_TESTING
     robot_.reset();
     model_.reset();
@@ -176,13 +176,27 @@ void FrankaArmProxy::statePublishThread() {
     while (is_running) {
         const franka::RobotState rs = current_state_.read();
 
-        // Encode payload & wrap with header
-        const std::vector<uint8_t> payload = protocol::encode(rs);
+        // Convert to FrankaRobotState
+        FrankaRobotState state_msg;
+        state_msg.time_ms = static_cast<uint32_t>(rs.time.toMSec());
+        state_msg.O_T_EE.assign(rs.O_T_EE.begin(), rs.O_T_EE.end());
+        state_msg.O_T_EE_d.assign(rs.O_T_EE_d.begin(), rs.O_T_EE_d.end());
+        state_msg.q.assign(rs.q.begin(), rs.q.end());
+        state_msg.q_d.assign(rs.q_d.begin(), rs.q_d.end());
+        state_msg.dq.assign(rs.dq.begin(), rs.dq.end());
+        state_msg.dq_d.assign(rs.dq_d.begin(), rs.dq_d.end());
+        state_msg.tau_ext_hat_filtered.assign(rs.tau_ext_hat_filtered.begin(), rs.tau_ext_hat_filtered.end());
+        state_msg.O_F_ext_hat_K.assign(rs.O_F_ext_hat_K.begin(), rs.O_F_ext_hat_K.end());
+        state_msg.K_F_ext_hat_K.assign(rs.K_F_ext_hat_K.begin(), rs.K_F_ext_hat_K.end());
+
+        // Serialize with msgpack
+        msgpack::sbuffer buffer;
+        msgpack::pack(buffer, state_msg);
+
         // Publish over ZMQ PUB socket
-        state_pub_socket_.send(zmq::buffer(payload), zmq::send_flags::none);
+        state_pub_socket_.send(zmq::buffer(buffer.data(), buffer.size()), zmq::send_flags::none);
         const int rate = config_.arm_state_pub_rate_hz > 0 ? config_.arm_state_pub_rate_hz : STATE_PUB_RATE_HZ;
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / rate));
-        // std::cout << "[FrankaArmProxy] Published state message, size = " << frame.size() << " bytes." << std::endl;//debug
     }
 }
 
@@ -202,8 +216,20 @@ void FrankaArmProxy::setControlMode(const protocol::FrankaArmControlMode& mode) 
     current_mode_->start();
 }
 
-franka::RobotState FrankaArmProxy::getFrankaArmState() {
-    return current_state_.read();
+FrankaRobotState FrankaArmProxy::getFrankaArmState() {
+    const franka::RobotState rs = current_state_.read();
+    FrankaRobotState state_msg;
+    state_msg.time_ms = static_cast<uint32_t>(rs.time.toMSec());
+    state_msg.O_T_EE.assign(rs.O_T_EE.begin(), rs.O_T_EE.end());
+    state_msg.O_T_EE_d.assign(rs.O_T_EE_d.begin(), rs.O_T_EE_d.end());
+    state_msg.q.assign(rs.q.begin(), rs.q.end());
+    state_msg.q_d.assign(rs.q_d.begin(), rs.q_d.end());
+    state_msg.dq.assign(rs.dq.begin(), rs.dq.end());
+    state_msg.dq_d.assign(rs.dq_d.begin(), rs.dq_d.end());
+    state_msg.tau_ext_hat_filtered.assign(rs.tau_ext_hat_filtered.begin(), rs.tau_ext_hat_filtered.end());
+    state_msg.O_F_ext_hat_K.assign(rs.O_F_ext_hat_K.begin(), rs.O_F_ext_hat_K.end());
+    state_msg.K_F_ext_hat_K.assign(rs.K_F_ext_hat_K.begin(), rs.K_F_ext_hat_K.end());
+    return state_msg;
 }
 
 uint8_t FrankaArmProxy::getFrankaArmControlMode() {

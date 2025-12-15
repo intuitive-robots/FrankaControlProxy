@@ -12,7 +12,6 @@
 #include <yaml-cpp/yaml.h>
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
-#include "utils/service_registry.hpp" 
 #include "utils/franka_config.hpp"
 #include "protocol/codec.hpp"
 #include <zerolancom/zerolancom.hpp>
@@ -21,7 +20,7 @@ class FrankaArmProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaArmProxy(const FrankaConfigData& config, zerolancom::ZeroLanComNode& node);// Constructor that initializes the proxy with a configuration file
+    explicit FrankaArmProxy(const FrankaArmConfigData& config, zerolancom::ZeroLanComNode& node);// Constructor that initializes the proxy with a configuration file
     ~FrankaArmProxy();// Destructor to clean up resources
 
     // Core server operations
@@ -78,16 +77,15 @@ private:
     // Current robot state
     AtomicDoubleBuffer<franka::RobotState> current_state_;
 
-    FrankaConfigData config_;
+    FrankaArmConfigData config_;
     franka::RobotState default_state_;
 
     // initialize
     void initializeControlMode();
     void initializeService();
 
-    // service registry
-    ServiceRegistry service_registry_;
-    franka::RobotState getFrankaArmState();
+    // ServiceRegistry service_registry_; 
+    FrankaRobotState getFrankaArmState();
     uint8_t getFrankaArmControlMode();
     const std::string& getFrankaArmStatePubPort();
     
