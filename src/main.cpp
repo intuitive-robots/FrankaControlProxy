@@ -17,18 +17,24 @@ int main(int argc, char **argv)
     utils::Logger::init(false);//true to enable file logging
     utils::Logger::setLevel(utils::LogLevel::INFO);
     zerolancom::ZeroLanComNode& node = zerolancom::ZeroLanComNode::init("Franka", "127.0.0.1");
-    // check configpath argument
-    if (argc != 2) {
-        LOG_ERROR("Please provide the config path as the sole argument.");
+    
+    // check configpath arguments
+    if (argc != 3) {
+        LOG_ERROR("Please provide two config paths: <arm_config.yaml> <gripper_config.yaml>");
         return 1;
     }
-    //initialize and start proxies
-    std::string config_path = argv[1];
-    FrankaConfig config(config_path);
-    const auto& cfg = config.data();
     
-    FrankaArmProxy robot_proxy(cfg);
-    FrankaGripperProxy gripper_proxy(cfg);
+    //initialize and start proxies
+    std::string arm_config_path = argv[1];
+    std::string gripper_config_path = argv[2];
+    FrankaConfig config;
+    config.loadFromFiles(arm_config_path, gripper_config_path);
+    
+    const auto& arm_cfg = config.armData();
+    const auto& gripper_cfg = config.gripperData();
+    
+    FrankaArmProxy robot_proxy(arm_cfg, node);
+    FrankaGripperProxy gripper_proxy(gripper_cfg, node);
     robot_proxy.start();
     gripper_proxy.start();
     robot_proxy.spin();
