@@ -4,9 +4,10 @@
 #include <csignal>
 #include <atomic>
 #include <algorithm>
+#include <thread>
 #include "utils/logger.hpp"
 #include "franka_arm_proxy.hpp"
-#include "protocol/codec.hpp"
+#include "protocol/msg.hpp"
 #include "utils/franka_config.hpp"
 #include "debugger/state_debug.hpp"
 #include "protocol/codec.hpp"
@@ -45,50 +46,24 @@ franka::RobotState makeDefaultState(const FrankaConfigData& cfg) {
 }
 }
 
-FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config, zerolancom::ZeroLanComNode& node)
-    : state_pub_socket_(ZmqContext::instance(), ZMQ_PUB),//arm state publish socket
-      is_running(false),
-      current_state_(AtomicDoubleBuffer<franka::RobotState>(makeDefaultState(config))),
+FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config)
+    : is_running(false),
+      current_state(AtomicDoubleBuffer<franka::RobotState>(makeDefaultState(config))),
       config_(config),
-      default_state_(makeDefaultState(config)),
-      service_registry_(),
-      node_(node)
+      default_state_(makeDefaultState(config))
     {
     robot_ip_ = config_.robot_ip;
-    //bind state pub socket
-    state_pub_addr_ = config_.state_pub_addr;
-    LOG_INFO("State publisher bound to {}", state_pub_addr_);
-    state_pub_socket_.bind(state_pub_addr_);
-    service_registry_.bindSocket(config_.service_addr);
     //initialize franka robot
-#if !LOCAL_TESTING
     try
     {
         robot_ = std::make_shared<franka::Robot>(robot_ip_);
         model_ = std::make_shared<franka::Model>(robot_->loadModel());
-        // set collision behavior thresholds from config
-        // try {
-        //     robot_->setCollisionBehavior(
-        //         config_.arm_col_lower_torque_acc,
-        //         config_.arm_col_upper_torque_acc,
-        //         config_.arm_col_lower_torque_nom,
-        //         config_.arm_col_upper_torque_nom,
-        //         config_.arm_col_lower_force_acc,
-        //         config_.arm_col_upper_force_acc,
-        //         config_.arm_col_lower_force_nom,
-        //         config_.arm_col_upper_force_nom
-        //     );
-        // } catch (const franka::CommandException& e) {
-        //     LOG_ERROR("Failed to set collision behavior: {}", e.what());
-        //     throw;
-        // }
     }
     catch(const franka::NetworkException& e)
     {
         LOG_ERROR("{}", e.what());
         this->stop();
     }
-#endif
     //initialize control modes
     initializeControlMode();
     // Register service handlers
@@ -107,12 +82,11 @@ void FrankaArmProxy::initializeControlMode() {
 
 
 void FrankaArmProxy::initializeService() {
-    node_.registerServiceHandler("SET_FRANKA_ARM_CONTROL_MODE", &FrankaArmProxy::setControlMode, this);
-    node_.registerServiceHandler("GET_FRANKA_ARM_STATE", &FrankaArmProxy::getFrankaArmState, this);
-    node_.registerServiceHandler("GET_FRANKA_ARM_CONTROL_MODE", &FrankaArmProxy::getFrankaArmControlMode, this);
-    node_.registerServiceHandler("GET_FRANKA_ARM_STATE_PUB_PORT", &FrankaArmProxy::getFrankaArmStatePubPort, this);
-    // node_.registerServiceHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", &FrankaArmProxy::moveFrankaArmToJointPosition, this);
-    // node_.registerServiceHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", &FrankaArmProxy::moveFrankaArmToCartesianPosition, this);
+    zlc::registerServiceHandler("SET_FRANKA_ARM_CONTROL_MODE", &FrankaArmProxy::setControlMode, this);
+    zlc::registerServiceHandler("GET_FRANKA_ARM_STATE", &FrankaArmProxy::getFrankaArmState, this);
+    zlc::registerServiceHandler("GET_FRANKA_ARM_CONTROL_MODE", &FrankaArmProxy::getFrankaArmControlMode, this);
+    // zlc::registerServiceHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", &FrankaArmProxy::moveFrankaArmToJointPosition, this);
+    // zlc::registerServiceHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", &FrankaArmProxy::moveFrankaArmToCartesianPosition, this);
 }
 
 
@@ -125,12 +99,8 @@ bool FrankaArmProxy::start(){
     is_running = true;
     LOG_INFO("Arm proxy running flag set to {}", is_running.load());
     LOG_INFO("Robot interface initialized: {}", robot_ != nullptr);
-#if LOCAL_TESTING
-    current_state_.write(default_state_);
-#else
-    // current_state_.write(robot_->readOnce());
-#endif
-    state_pub_thread_ = std::thread(&FrankaArmProxy::statePublishThread, this);
+    current_state.write(robot_->readOnce());
+    state_pub_thread = std::thread(&FrankaArmProxy::statePublishThread, this);
     LOG_INFO("FrankaArmProxy started successfully.");
     return true;
 }
@@ -138,22 +108,13 @@ bool FrankaArmProxy::start(){
 void FrankaArmProxy::stop() {
     LOG_INFO("Stopping FrankaArmProxy...");
     is_running = false;
+    // TODO: remove all the services and subscribers
     if (current_mode_)
         current_mode_->stop();
-    if (state_pub_thread_.joinable()) state_pub_thread_.join();
-    // if (service_thread_.joinable()) service_thread_.join();
-    // try close ZeroMQ sockets
-    try {
-        state_pub_socket_.close();
-    } catch (const zmq::error_t& e) {
-        LOG_ERROR("[ZMQ ERROR] {}", e.what());
-    }
+    if (state_pub_thread.joinable()) state_pub_thread.join();
     // wait for closing
-    service_registry_.stop();
-#if !LOCAL_TESTING
     robot_.reset();
     model_.reset();
-#endif
     current_mode_ = nullptr;// reset current control mode
     LOG_INFO("FrankaArmProxy stopped successfully.");
 }
@@ -172,17 +133,14 @@ void FrankaArmProxy::spin() {
 
 // publish threads
 void FrankaArmProxy::statePublishThread() {
-    zerolancom::Publisher<> state_pub(ZmqContext::instance());
+    zlc::Publisher<FrankaRobotState> state_pub("FRANKA_ARM_STATE_PUB");
     while (is_running) {
-        const franka::RobotState rs = current_state_.read();
-
-        // Encode payload & wrap with header
-        const std::vector<uint8_t> payload = protocol::encode(rs);
-        // Publish over ZMQ PUB socket
-        state_pub_socket_.send(zmq::buffer(payload), zmq::send_flags::none);
+        const franka::RobotState rs = current_state.read();
+        FrankaRobotState frs(rs);
+        state_pub.publish(frs);
+        // TODO: use config time and make sure the rate is correct
         const int rate = config_.arm_state_pub_rate_hz > 0 ? config_.arm_state_pub_rate_hz : STATE_PUB_RATE_HZ;
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 / rate));
-        // std::cout << "[FrankaArmProxy] Published state message, size = " << frame.size() << " bytes." << std::endl;//debug
     }
 }
 
@@ -193,17 +151,14 @@ void FrankaArmProxy::setControlMode(const protocol::FrankaArmControlMode& mode) 
     }
     LOG_INFO("Switching to control mode: {} (command URL: {})", protocol::toString(mode.id), mode.url);
     current_mode_ = ControlModeFactory::create(mode.id);
-#if !LOCAL_TESTING
-    current_mode_->setRobot(robot_);
-    current_mode_->setModel(model_);
-#endif
-    current_mode_->setCurrentStateBuffer(&current_state_);
-    current_mode_->setupCommandSubscription(mode.url);
+    current_mode_->init(robot_, model_);
+    current_mode_->setCurrentStateBuffer(current_state);
+    current_mode_->setCommandSubscription();
     current_mode_->start();
 }
 
 franka::RobotState FrankaArmProxy::getFrankaArmState() {
-    return current_state_.read();
+    return current_state.read();
 }
 
 uint8_t FrankaArmProxy::getFrankaArmControlMode() {
@@ -212,7 +167,4 @@ uint8_t FrankaArmProxy::getFrankaArmControlMode() {
     }
     return static_cast<uint8_t>(current_mode_->getModeID());
 }
-const std::string& FrankaArmProxy::getFrankaArmStatePubPort() {
-    // return state_pub_addr_
-    return state_pub_addr_;
-}
+
