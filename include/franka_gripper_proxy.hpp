@@ -11,7 +11,6 @@
 #include <franka/robot_state.h>
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
-#include "utils/service_registry.hpp" 
 #include "utils/franka_config.hpp"
 #include "protocol/codec.hpp"
 #include "protocol/grasp_command.hpp"
@@ -19,6 +18,7 @@
 
 #include <zerolancom/zerolancom.hpp>
 #include <zerolancom/sockets/publisher.hpp>
+#include <msgpack.hpp>
 
 enum class FrankaGripperFlag {
     STOP = 0,
@@ -32,17 +32,22 @@ class FrankaGripperProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaGripperProxy(const FrankaConfigData& config):
+    explicit FrankaGripperProxy(const FrankaGripperConfigData& config, zerolancom::ZeroLanComNode& node):
+        state_pub_socket_(ZmqContext::instance(), ZMQ_PUB),//gripper state publish socket
         is_running(false),
         is_on_control_mode(false),
         gripper_flag(FrankaGripperFlag::STOP),
         current_state_(AtomicDoubleBuffer<franka::GripperState>(franka::GripperState{})),
         command_(AtomicDoubleBuffer<protocol::GraspCommand>(protocol::GraspCommand{})),
-        config_(config)
+        config_(config),
+        node_(node)
     {
         gripper_ip_ = config_.gripper_ip;
         state_pub_addr_ = config_.gripper_state_pub_addr;
-        service_registry_.bindSocket(config_.gripper_service_addr);
+        // Bind state pub socket
+        LOG_INFO("Gripper state publisher bound to {}", state_pub_addr_);
+        state_pub_socket_.bind(state_pub_addr_);
+        // Removed service_registry_.bindSocket as ZeroLanCom handles this
         //initialize franka gripper
 # if !LOCAL_TESTING
         gripper_ = std::make_shared<franka::Gripper>(gripper_ip_);
@@ -71,8 +76,7 @@ public:
     void start() {
         is_running = true;
         LOG_INFO("Gripper proxy running flag set to {}", is_running.load());
-        // state_pub_thread_ = std::thread(&FrankaGripperProxy::statePublishThread, this);
-        service_registry_.start();
+        state_pub_thread_ = std::thread(&FrankaGripperProxy::statePubThread, this);
         command_.write(protocol::GraspCommand{
             (float)current_state_.read().width,
             static_cast<float>(config_.gripper_default_speed_fast),
@@ -92,8 +96,7 @@ public:
         if (check_thread_.joinable()) check_thread_.join();
         if (command_sub_thread_.joinable()) command_sub_thread_.join();
 
-        // wait for closing
-        service_registry_.stop();
+        // Removed service_registry_.stop() as ZeroLanCom handles this
         gripper_.reset();
         LOG_INFO("FrankaGripperProxy stopped successfully.");
     };
@@ -102,8 +105,8 @@ private:
     // Initialization
     void initializeService() {
         // Register service handlers
-        service_registry_.registerHandler("START_FRANKA_GRIPPER_CONTROL", this, &FrankaGripperProxy::startFrankaGripperControl);
-        service_registry_.registerHandler("GET_FRANKA_GRIPPER_STATE_PUB_PORT", this, &FrankaGripperProxy::getFrankaGripperStatePubPort);
+        node_.registerServiceHandler("START_FRANKA_GRIPPER_CONTROL", &FrankaGripperProxy::startFrankaGripperControl, this);
+        node_.registerServiceHandler("GET_FRANKA_GRIPPER_STATE_PUB_PORT", &FrankaGripperProxy::getFrankaGripperStatePubPort, this);
     };
 
     std::string gripper_ip_;
@@ -150,14 +153,23 @@ private:
     };
 
     void statePubThread() {
-        zmq::socket_t state_pub = zerolancom::Publisher(ZmqContext::instance());;
+        zerolancom::Publisher<> state_pub(ZmqContext::instance());;
         while (is_running) {
 #if !LOCAL_TESTING
             franka::GripperState gs = gripper_->readOnce();
             current_state_.write(gs);
-            pub_socket_.send(zmq::const_buffer(protocol::encode(gs).data(),
-                                                protocol::encode(gs).size()),
-                                zmq::send_flags::none);
+
+            // Convert to FrankaGripperState and serialize with msgpack
+            FrankaGripperState gripper_state_msg;
+            gripper_state_msg.width = gs.width;
+            gripper_state_msg.max_width = gs.max_width;
+            gripper_state_msg.is_grasped = gs.is_grasped;
+            gripper_state_msg.temperature = gs.temperature;
+
+            msgpack::sbuffer buffer;
+            msgpack::pack(buffer, gripper_state_msg);
+
+            state_pub_socket_.send(zmq::buffer(buffer.data(), buffer.size()), zmq::send_flags::none);
 #endif
             const int rate = config_.gripper_pub_rate_hz > 0 ? config_.gripper_pub_rate_hz : GRIPPER_PUB_RATE_HZ;
             std::this_thread::sleep_for(std::chrono::milliseconds(1000 / rate));
@@ -230,10 +242,8 @@ private:
     
     AtomicDoubleBuffer<franka::GripperState> current_state_;
     AtomicDoubleBuffer<protocol::GraspCommand> command_;
-    FrankaConfigData config_;
-
-    // service registry
-    ServiceRegistry service_registry_;
+    FrankaGripperConfigData config_;
+    zerolancom::ZeroLanComNode& node_;
     void startFrankaGripperControl(const std::string& command_sub_addr) {
         if (is_on_control_mode) {
             LOG_WARN("[FrankaGripperProxy] Already in control mode, stopping previous command subscriber.");
