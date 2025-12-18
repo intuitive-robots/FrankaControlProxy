@@ -55,11 +55,6 @@ FrankaArmProxy::FrankaArmProxy(const FrankaConfigData& config)
       default_state_(makeDefaultState(config))
     {
     robot_ip_ = config_.robot_ip;
-    //bind state pub socket
-    state_pub_addr_ = config_.state_pub_addr;
-    LOG_INFO("State publisher bound to {}", state_pub_addr_);
-    state_pub_socket_.bind(state_pub_addr_);
-    service_registry_.bindSocket(config_.service_addr);
     //initialize franka robot
     try
     {
