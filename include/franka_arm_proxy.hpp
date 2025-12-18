@@ -20,53 +20,35 @@ class FrankaArmProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaArmProxy(const FrankaArmConfigData& config, zerolancom::ZeroLanComNode& node);// Constructor that initializes the proxy with a configuration file
+    explicit FrankaArmProxy(const FrankaConfigData& config);// Constructor that initializes the proxy with a configuration file
     ~FrankaArmProxy();// Destructor to clean up resources
 
     // Core server operations
-    bool start();// Starts the Franka server, initializing the robot and communication sockets
-    void stop();// Stops the server, cleaning up resources and shutting down communication
-    void spin();// Main loop for processing requests
-    std::string getType() const { return type_; } // Returns the type of the proxy (e.g., "Arm" or "Gripper")
+    bool start(); // Starts the Franka server, initializing the robot and communication sockets
+    void stop(); // Stops the server, cleaning up resources and shutting down communication
+    void spin(); // Main loop for processing requests
     // State management
     void setControlMode(const protocol::FrankaArmControlMode& mode);// Sets the current control mode of the Franka arm
     franka::RobotState getCurrentState(const std::string& request);// Return the current state of the robot
     
 private:
     // Initialization
-    void initialize(const std::string &filename);// Initializes the FrankaProxy with the given configuration file and set up communication sockets
-    // Thread functions
-    void statePublishThread();// ZMQ PUB, Publishes the current state of the robot at a fixed rate
-    void responseSocketThread();// ZMQ REP,responds to incoming requests from clients
-    // Service handler
-    void handleServiceRequest(const std::string& service_name, const protocol::ByteView& request, std::vector<uint8_t>& response);
-
-    zerolancom::ZeroLanComNode& node_;
-
+    void initialize(const std::string &filename);// Initializes the FrankaArmProxy with the given configuration file and set up communication sockets
     //Start
     bool startArm();// Starts the arm control loop and initializes the necessary threads
     //Stop
     void stopArm();// Stops the arm control loop and cleans up resources
 
-    void controlLoopThread();// Main control loop for processing commands and updating the robot state
-    void stateSubscribeThread();// ZMQ SUB, Subscribes to the state updates from a leader robot (for follower mode)
-    void gripperSubscribeThread();// ZMQ SUB, Subscribes to the gripper updates
 
-    
 private:
     std::string type_;
     std::string robot_ip_;
-    std::string service_addr_;
-    std::string state_pub_addr_;
     // Franka robot
     std::shared_ptr<franka::Robot> robot_;
     std::shared_ptr<franka::Model> model_;
     
-    // ZMQ communication
-    // zmq::socket_t state_pub_socket_;//arm state publish socket
-    
     // Threading
-    std::thread state_pub_thread_;
+    std::thread state_pub_thread;
         
     // Synchronization
     std::atomic<bool> is_running; // for threads
@@ -75,7 +57,7 @@ private:
     std::shared_ptr<AbstractControlMode> current_mode_;
 
     // Current robot state
-    AtomicDoubleBuffer<franka::RobotState> current_state_;
+    AtomicDoubleBuffer<franka::RobotState> current_state;
 
     FrankaArmConfigData config_;
     franka::RobotState default_state_;
@@ -84,11 +66,12 @@ private:
     void initializeControlMode();
     void initializeService();
 
-    // ServiceRegistry service_registry_; 
-    FrankaRobotState getFrankaArmState();
+    // Service callbacks
+    franka::RobotState getFrankaArmState();
     uint8_t getFrankaArmControlMode();
-    const std::string& getFrankaArmStatePubPort();
-    
+
+    void statePublishThread();
+
     // TODO: put all the Constants to a config file
     static constexpr int STATE_PUB_RATE_HZ = 100;
     static constexpr int GRIPPER_PUB_RATE_HZ = 100;
