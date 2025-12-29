@@ -20,7 +20,7 @@ class FrankaArmProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaArmProxy(const FrankaConfigData& config);// Constructor that initializes the proxy with a configuration file
+    explicit FrankaArmProxy(const std::string& config_path);// Constructor that initializes the proxy with a configuration file
     ~FrankaArmProxy();// Destructor to clean up resources
 
     // Core server operations
@@ -28,16 +28,16 @@ public:
     void stop(); // Stops the server, cleaning up resources and shutting down communication
     void spin(); // Main loop for processing requests
     // State management
-    void setControlMode(const protocol::FrankaArmControlMode& mode);// Sets the current control mode of the Franka arm
+    void setControlMode(const std::string& mode);// Sets the current control mode of the Franka arm
     franka::RobotState getCurrentState(const std::string& request);// Return the current state of the robot
     
 private:
     // Initialization
     void initialize(const std::string &filename);// Initializes the FrankaArmProxy with the given configuration file and set up communication sockets
     //Start
-    bool startArm();// Starts the arm control loop and initializes the necessary threads
+    bool start();// Starts the arm control loop and initializes the necessary threads
     //Stop
-    void stopArm();// Stops the arm control loop and cleans up resources
+    void stop();// Stops the arm control loop and cleans up resources
 
 
 private:
@@ -49,7 +49,8 @@ private:
     
     // Threading
     std::thread state_pub_thread;
-        
+    std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>> control_modes_;
+
     // Synchronization
     std::atomic<bool> is_running; // for threads
     
@@ -59,7 +60,7 @@ private:
     // Current robot state
     AtomicDoubleBuffer<franka::RobotState> current_state;
 
-    FrankaArmConfigData config_;
+    FrankaArmConfig config_;
     franka::RobotState default_state_;
 
     // initialize

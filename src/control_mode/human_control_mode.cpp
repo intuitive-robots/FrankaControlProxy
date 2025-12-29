@@ -1,16 +1,16 @@
 
 #include "human_control_mode.hpp"
 #include <franka/exception.h>
-#include "utils/logger.hpp"
+
 
 HumanControlMode::HumanControlMode() = default;
 HumanControlMode::~HumanControlMode() = default;
 
 void HumanControlMode::start() {
     is_running_ = true;
-    LOG_INFO("[HumanControlMode] Started.");
+    zlc::info("[HumanControlMode] Started.");
     if (!robot_ || !model_) {
-        LOG_ERROR("[HumanControlMode] Robot or model not set.");
+        zlc::error("[HumanControlMode] Robot or model not set.");
         return;
     }
     robot_->setCollisionBehavior(
@@ -36,32 +36,32 @@ void HumanControlMode::start() {
     try {
         robot_->control(callback);
     } catch (const franka::ControlException& e) {
-            LOG_ERROR("[HumanControlMode] Exception: {}", e.what());
+            zlc::error("[HumanControlMode] Exception: {}", e.what());
         if (std::string(e.what()).find("reflex") != std::string::npos) {
-            LOG_WARN("Reflex detected, attempting automatic recovery...");
+            zlc::warn("Reflex detected, attempting automatic recovery...");
             try {
                 robot_->automaticErrorRecovery();
             } catch (const franka::Exception& recovery_error) {
-                LOG_ERROR("Recovery failed: {}", recovery_error.what());
+                zlc::error("Recovery failed: {}", recovery_error.what());
             }
         }
-        LOG_INFO("[HumanControlMode] Exited.");
+        zlc::info("[HumanControlMode] Exited.");
     }
 }
 
-protocol::ModeID HumanControlMode::getModeID() const {
-    return protocol::ModeID::HUMAN_CONTROL;
+protocol::ControlModeID HumanControlMode::getControlModeID() const {
+    return protocol::ControlModeID::HUMAN_CONTROL;
 }
 
 
 void HumanControlMode::writeCommand(const protocol::ByteView& data) {
     // HumanControlMode does not process external commands; ignore incoming data.
-    LOG_WARN("[HumanControlMode] Received command data, but this mode does not accept commands.");
+    zlc::warn("[HumanControlMode] Received command data, but this mode does not accept commands.");
 }
 
 void HumanControlMode::controlLoop() {
     // HumanControlMode control logic is handled in start(); this function is unused.
-    LOG_WARN("[HumanControlMode] controlLoop() called, but control is managed in start().");
+    zlc::warn("[HumanControlMode] controlLoop() called, but control is managed in start().");
 }
 
 void HumanControlMode::writeZeroCommand() {

@@ -1,7 +1,6 @@
 # Franka Arm Configuration for P10
 name: FrankaPanda
 robot_ip: 10.10.10.10
-follower: false
 
 # Arm default state
 arm_default_state_q: [0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785]

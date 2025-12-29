@@ -1,7 +1,7 @@
 #include "joint_velocity_mode.hpp"
 #include <franka/exception.h>
 #include <franka/robot_state.h>
-#include "utils/logger.hpp"
+
 #include "protocol/codec.hpp"
 
 JointVelocityMode::JointVelocityMode():
@@ -11,13 +11,13 @@ JointVelocityMode::~JointVelocityMode() = default;
 
 
 void JointVelocityMode::controlLoop() {
-    LOG_INFO("[JointVelocityMode] Started.");
+    zlc::info("[JointVelocityMode] Started.");
     is_running_ = true;
     // Initialize desired velocities to zero
     desired_velocities_.write(franka::JointVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
     if (!robot_ || !model_) {
-        LOG_ERROR("[JointVelocityMode] Robot or model not set.");
+        zlc::error("[JointVelocityMode] Robot or model not set.");
         return;
     }
     robot_->automaticErrorRecovery();
@@ -38,22 +38,22 @@ void JointVelocityMode::controlLoop() {
     try {
         robot_->control(joint_velocity_callback);
     } catch (const franka::ControlException& e) {
-        LOG_ERROR("[JointVelocityMode] Exception: {}", e.what());
+        zlc::error("[JointVelocityMode] Exception: {}", e.what());
         if (std::string(e.what()).find("reflex") != std::string::npos) {
-            LOG_WARN("[JointVelocityMode] Reflex detected, attempting automatic recovery...");
+            zlc::warn("[JointVelocityMode] Reflex detected, attempting automatic recovery...");
             try {
                 robot_->automaticErrorRecovery();
             } catch (const franka::Exception& recovery_error) {
-                LOG_ERROR("Recovery failed: {}", recovery_error.what());
+                zlc::error("Recovery failed: {}", recovery_error.what());
             }
         }
-        LOG_INFO("[JointVelocityMode] Exited.");
+        zlc::info("[JointVelocityMode] Exited.");
     }
 }
 
 
-protocol::ModeID JointVelocityMode::getModeID() const {
-    return protocol::ModeID::JOINT_VELOCITY;
+protocol::ControlModeID JointVelocityMode::getControlModeID() const {
+    return protocol::ControlModeID::JOINT_VELOCITY;
 }
 
 void JointVelocityMode::writeCommand(const protocol::ByteView& data) {

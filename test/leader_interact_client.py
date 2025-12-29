@@ -5,7 +5,7 @@ import threading
 import signal
 import sys
 #P1 leader interact
-# === MSGID & MODEID ===
+# === MSGID & ControlModeID ===
 class MsgID:
     GET_STATE_REQ = 0x01
     GET_CONTROL_MODE_REQ = 0x02
@@ -19,7 +19,7 @@ class MsgID:
     GET_SUB_PORT_RESP = 0x54
     ERROR = 0xFF
 
-class ModeID:
+class ControlModeID:
     HUMAN_MODE = 4
     IDLE = 5
     PD_TEST = 6
@@ -73,10 +73,10 @@ def handle_command(cmd: str):
         send_gripper_request(MsgID.GRIPPER_COMMAND_REQ, b"\x01")
 
     elif cmd == "set_mode human_mode":
-        send_arm_request(MsgID.SET_CONTROL_MODE_REQ, bytes([ModeID.HUMAN_MODE]))
+        send_arm_request(MsgID.SET_CONTROL_MODE_REQ, bytes([ControlModeID.HUMAN_MODE]))
 
     elif cmd == "set_mode idle":
-        send_arm_request(MsgID.SET_CONTROL_MODE_REQ, bytes([ModeID.IDLE]))
+        send_arm_request(MsgID.SET_CONTROL_MODE_REQ, bytes([ControlModeID.IDLE]))
 
     elif cmd == "get_arm_state":
         send_arm_request(MsgID.GET_STATE_REQ)

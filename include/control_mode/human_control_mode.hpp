@@ -18,7 +18,7 @@ public:
     //void initialize(const franka::RobotState& initial_state) override;
     void controlLoop() override;
     void start();
-    protocol::ModeID getModeID() const override;
+    protocol::ControlModeID getControlModeID() const override;
 private:
     void writeCommand(const protocol::ByteView& data) override;
     void writeZeroCommand() override;

@@ -3,7 +3,7 @@
 #include "protocol/codec.hpp"
 #include <franka/exception.h>
 #include <franka/control_types.h>
-#include "utils/logger.hpp"
+
 #include <unistd.h>
 
 JointPositionMode::JointPositionMode():
@@ -12,7 +12,7 @@ JointPositionMode::JointPositionMode():
 JointPositionMode::~JointPositionMode() = default;
 
 void JointPositionMode::controlLoop() {
-    LOG_INFO("[JointPositionMode] Started.");
+    zlc::info("[JointPositionMode] Started.");
     is_running_ = true;
     // Example stiffness values for J1..J7
     std::array<double, 7> joint_stiffness = {
@@ -25,7 +25,7 @@ void JointPositionMode::controlLoop() {
     // desired_positions_.write(franka::JointPositions{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
     if (!robot_ || !model_ || !current_state_){
-        LOG_ERROR("[JointPositionMode] Robot or model not set.");
+        zlc::error("[JointPositionMode] Robot or model not set.");
         is_running_ = false;
         return;
     }
@@ -43,7 +43,7 @@ void JointPositionMode::controlLoop() {
                 return franka::MotionFinished(desired);
             }
             // for (size_t i = 0; i < 7; i++) {
-            //     LOG_INFO("[JointPositionMode] Desired position[{}]: {:.4f}, Current position[{}]: {:.4f}",
+            //     zlc::info("[JointPositionMode] Desired position[{}]: {:.4f}, Current position[{}]: {:.4f}",
             //              i, desired.q[i], i, state.q[i]);
 
             // for (size_t i = 0; i < 7; i++) {
@@ -67,20 +67,20 @@ void JointPositionMode::controlLoop() {
             // auto ret = callback(fake_state, fake_duration);
             // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } catch (const std::exception &ex) {
-            LOG_ERROR("[JointPositionMode] Robot is unable to be controlled: {}", ex.what());
+            zlc::error("[JointPositionMode] Robot is unable to be controlled: {}", ex.what());
             is_robot_operational = false;
         }
         if (!is_robot_operational) {
             for (int i = 0; i < 3; i++) {
-                LOG_WARN("[JointPositionMode] Waiting {} seconds before recovery attempt...", 3);
+                zlc::warn("[JointPositionMode] Waiting {} seconds before recovery attempt...", 3);
                 usleep(1000 * 3);
                 try {
                     robot_->automaticErrorRecovery();
-                    LOG_INFO("[JointPositionMode] Robot operation recovered.");
+                    zlc::info("[JointPositionMode] Robot operation recovered.");
                     is_robot_operational = true;
                     break;
                 } catch (const franka::Exception& recovery_error) {
-                    LOG_ERROR("[JointPositionMode] Recovery failed: {}", recovery_error.what());
+                    zlc::error("[JointPositionMode] Recovery failed: {}", recovery_error.what());
                 }
             }
         }
@@ -89,22 +89,22 @@ void JointPositionMode::controlLoop() {
 //     try {
 //         robot_->control(callback);
 //     } catch (const franka::ControlException& e) {
-//         LOG_ERROR("[JointPositionMode] Exception: {}", e.what());
+//         zlc::error("[JointPositionMode] Exception: {}", e.what());
 //         if (std::string(e.what()).find("reflex") != std::string::npos) {
-//             LOG_WARN("Reflex detected, attempting automatic recovery...");
+//             zlc::warn("Reflex detected, attempting automatic recovery...");
 //             try {
 //                 robot_->automaticErrorRecovery();
 //             } catch (const franka::Exception& recovery_error) {
-//                 LOG_ERROR("Recovery failed: {}", recovery_error.what());
+//                 zlc::error("Recovery failed: {}", recovery_error.what());
 //             }
 //         }
-//         LOG_INFO("[JointPositionMode] Exited.");
+//         zlc::info("[JointPositionMode] Exited.");
 //     }
 // }
 
 
-protocol::ModeID JointPositionMode::getModeID() const {
-    return protocol::ModeID::JOINT_POSITION;
+protocol::ControlModeID JointPositionMode::getControlModeID() const {
+    return protocol::ControlModeID::JOINT_POSITION;
 }
 
 void JointPositionMode::writeCommand(const protocol::ByteView& data) {

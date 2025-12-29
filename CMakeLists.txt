@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 project(FrankaControlProxy)
 
 # -----------------------------
@@ -25,14 +25,13 @@ include_directories(
 # -----------------------------
 # Dependencies
 # -----------------------------
-find_package(Franka REQUIRED)
 find_package(Threads REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(ZMQ REQUIRED libzmq)
+# find_package(PkgConfig REQUIRED)
+find_package(Franka REQUIRED)
+# pkg_check_modules(ZMQ REQUIRED libzmq)
 find_package(yaml-cpp REQUIRED)
-find_package(spdlog REQUIRED)
 find_package(zerolancom REQUIRED)
-pkg_check_modules(MSGPACK REQUIRED msgpack-c)
+# pkg_check_modules(zerolancom REQUIRED zerolancom)
 
 # -----------------------------
 # Source collection
@@ -68,6 +67,7 @@ target_include_directories(proxy PRIVATE
     ${ZMQ_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIR}
     ${MSGPACK_INCLUDE_DIRS}
+    ZeroLanCom::zerolancom
 )
 
 target_link_libraries(proxy
@@ -75,6 +75,6 @@ target_link_libraries(proxy
     ${ZMQ_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
     ${MSGPACK_LIBRARIES}
+    ZeroLanCom::zerolancom
     Threads::Threads
-    spdlog::spdlog
 )

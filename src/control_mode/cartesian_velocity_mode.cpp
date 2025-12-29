@@ -3,7 +3,7 @@
 #include "protocol/codec.hpp"
 #include <franka/exception.h>
 #include <franka/control_types.h>
-#include "utils/logger.hpp"
+
 #include <unistd.h>
 
 CartesianVelocityMode::CartesianVelocityMode():
@@ -12,13 +12,13 @@ CartesianVelocityMode::CartesianVelocityMode():
 CartesianVelocityMode::~CartesianVelocityMode() = default;
 
 void CartesianVelocityMode::controlLoop() {
-    LOG_INFO("[CartesianVelocityMode] Started.");
+    zlc::info("[CartesianVelocityMode] Started.");
     is_running_ = true;
 
     desired_velocities_.write(franka::CartesianVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
 
     if (!robot_ || !model_) {
-        LOG_ERROR("[CartesianVelocityMode] Robot or model not set.");
+        zlc::error("[CartesianVelocityMode] Robot or model not set.");
         return;
     }
 
@@ -62,11 +62,11 @@ void CartesianVelocityMode::controlLoop() {
             // robot_->control(impedance_control_callback, motion_generator_callback, true, 1);
             robot_->control(motion_generator_callback, franka::ControllerMode::kCartesianImpedance, true, 1);
         } catch (const std::exception &ex) {
-            LOG_ERROR("[CartesianVelocityMode] Robot is unable to be controlled: {}", ex.what());
+            zlc::error("[CartesianVelocityMode] Robot is unable to be controlled: {}", ex.what());
             is_robot_operational = false;
         }
         for (int i = 0; i < 3; i++) {
-            LOG_WARN("[CartesianVelocityMode] Waiting {} seconds before recovery attempt...", 3);
+            zlc::warn("[CartesianVelocityMode] Waiting {} seconds before recovery attempt...", 3);
 
             // Wait
             usleep(100 * 3);
@@ -74,19 +74,19 @@ void CartesianVelocityMode::controlLoop() {
             // Attempt recovery
             try {
                 robot_->automaticErrorRecovery();
-                LOG_INFO("[CartesianVelocityMode] Robot operation recovered.");
+                zlc::info("[CartesianVelocityMode] Robot operation recovered.");
                 is_robot_operational = true;
                 break;
             } catch (const std::exception &ex) {
-                LOG_ERROR("[CartesianVelocityMode] Recovery failed: {}", ex.what());
+                zlc::error("[CartesianVelocityMode] Recovery failed: {}", ex.what());
             }
         }
     }
 }
 
 
-protocol::ModeID CartesianVelocityMode::getModeID() const {
-    return protocol::ModeID::CARTESIAN_VELOCITY;
+protocol::ControlModeID CartesianVelocityMode::getControlModeID() const {
+    return protocol::ControlModeID::CARTESIAN_VELOCITY;
 }
 
 void CartesianVelocityMode::writeCommand(const protocol::ByteView& data) {

@@ -10,7 +10,6 @@
 #include <franka/model.h>
 #include <franka/robot_state.h>
 #include <franka/gripper.h>
-#include "utils/logger.hpp"
 namespace protocol {
 
 // header + payload (12-byte header)
@@ -39,7 +38,7 @@ std::vector<uint8_t> encode(const std::string& v) {
     }
     return out;
 }
-//uint8_t:ModeID payload
+//uint8_t:ControlModeID payload
 std::vector<uint8_t> encode(uint8_t v) {
     return std::vector<uint8_t>{v};
 }
@@ -239,7 +238,7 @@ protocol::FrankaArmControlMode decode<protocol::FrankaArmControlMode>(ByteView p
         throw std::runtime_error("decode<FrankaArmControlMode>: payload empty");
 
     protocol::FrankaArmControlMode output;
-    output.id = static_cast<protocol::ModeID>(payload.data[0]);
+    output.id = static_cast<protocol::ControlModeID>(payload.data[0]);
 
     if (payload.size > 1) {
         output.url = std::string(

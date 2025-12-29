@@ -1,0 +1,7 @@
+# Franka Arm Configuration for P10
+node_name: FrankaPanda
+robot_ip: 10.10.10.10
+proxy_ip: 192.168.0.1
+
+arm_config_path: config/RobotArmConfig.yaml
+gripper_config_path: config/GripperConfig.yaml

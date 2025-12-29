@@ -1,6 +1,3 @@
-# Franka Gripper Configuration for P10
-gripper_ip: 10.10.10.10
-
 # Gripper settings
 gripper_pub_rate_hz: 100
 gripper_command_rcvtimeo_ms: 500

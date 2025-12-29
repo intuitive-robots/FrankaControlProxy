@@ -5,7 +5,7 @@ import threading
 import signal
 import sys
 #ARM &GRIPPER P1 follower
-# === MSGID&MODEID ===
+# === MSGID&ControlModeID ===
 class MsgID:
     GET_STATE_REQ      = 0x01  #Request a single FrankaArmState
     GET_CONTROL_MODE_REQ   = 0x02  #Ask for active control mode
@@ -23,7 +23,7 @@ class MsgID:
     ERROR              = 0xFF   # 1 byte error code
     #error details
 
-class ModeID:
+class ControlModeID:
     HUMAN_MODE = 4
     IDLE = 5
     PD_TEST = 6
@@ -80,7 +80,7 @@ print("\n--- Gripper Move ---")
 send_gripper_request(MsgID.GRIPPER_COMMAND_REQ, b"\x01")
 #2.set Arm ControlMode to pd_test
 print("\n--- Set Arm ControlMode to pd_follower ---")
-send_arm_request(MsgID.SET_CONTROL_MODE_REQ, bytes([ModeID.PD_TEST]))
+send_arm_request(MsgID.SET_CONTROL_MODE_REQ, bytes([ControlModeID.PD_TEST]))
 
 
 #3.get arm state

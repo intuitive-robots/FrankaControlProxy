@@ -9,7 +9,6 @@
 #include <thread>
 #include <zmq.hpp>
 #include <zerolancom/zerolancom.hpp>
-#include "utils/logger.hpp"
 
 #include "utils/atomic_double_buffer.hpp"
 #include "protocol/mode_id.hpp"
@@ -25,32 +24,32 @@ public:
     virtual void start() {
         startRobot();
         control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
-        LOG_INFO("[{}] Control thread launched.", getModeName());
+        zlc::info("[{}] Control thread launched.", getModeName());
         setCommandSubscription();
-        LOG_INFO("[{}] Command subscription thread launched.", getModeName());
+        zlc::info("[{}] Command subscription thread launched.", getModeName());
     };
 
     void startRobot() {
         if (!robot_ || !model_) {
-            LOG_ERROR("[{}] Robot or model not set.", getModeName());
+            zlc::error("[{}] Robot or model not set.", getModeName());
             return;
         }
         robot_->automaticErrorRecovery();
-        LOG_INFO("[{}] Robot control started.", getModeName());
+        zlc::info("[{}] Robot control started.", getModeName());
         is_running_ = true;
     };
 
     virtual void stop() {
         is_running_ = false;
         if (control_thread_.joinable()) {
-            LOG_INFO("[{}] Stopping control thread...", getModeName());
+            zlc::info("[{}] Stopping control thread...", getModeName());
             control_thread_.join();
         }
-        LOG_INFO("[{}] Stopped.", getModeName());
+        zlc::info("[{}] Stopped.", getModeName());
     };
 
     // Get the mode ID for this control mode
-    virtual protocol::ModeID getModeID() const = 0; // Return the mode ID as an integer
+    virtual protocol::ControlModeID getControlModeID() const = 0; // Return the mode ID as an integer
     
     void init(std::shared_ptr<franka::Robot> robot, std::shared_ptr<franka::Model> model) {
         robot_ = std::move(robot);
@@ -68,7 +67,7 @@ public:
     }
 
     const std::string getModeName() const {
-        return protocol::toString(getModeID());
+        return protocol::toString(getControlModeID());
     }
 
 protected:

@@ -1,5 +1,5 @@
 #include "idle_control_mode.hpp"
-#include "utils/logger.hpp"
+
 
 
 IdleControlMode::IdleControlMode() = default;
@@ -7,14 +7,14 @@ IdleControlMode::~IdleControlMode() = default;
 
 
 
-protocol::ModeID IdleControlMode::getModeID() const {
-    return protocol::ModeID::IDLE;
+protocol::ControlModeID IdleControlMode::getControlModeID() const {
+    return protocol::ControlModeID::IDLE;
 }
 
     void IdleControlMode::start() {
         startRobot();
         control_thread_ = std::thread(&IdleControlMode::controlLoop, this);
-        LOG_INFO("[{}] Control thread launched.", getModeName());
+        zlc::info("[{}] Control thread launched.", getModeName());
     }
 
 
@@ -28,7 +28,7 @@ void IdleControlMode::controlLoop() {
     }
 #else
     if (!robot_ || !model_) {
-        LOG_ERROR("[IdleControlMode] Robot or model not set.");
+        zlc::error("[IdleControlMode] Robot or model not set.");
         return;
     }
     while (is_running_) {
@@ -38,10 +38,10 @@ void IdleControlMode::controlLoop() {
                     current_state_->write(state);
                 }
             } catch (const franka::Exception& e) {
-                LOG_ERROR("[IdleMode] readOnce() failed: {}", e.what());
+                zlc::error("[IdleMode] readOnce() failed: {}", e.what());
             }
 }
-    LOG_INFO("[IdleControlMode] Exited.");
+    zlc::info("[IdleControlMode] Exited.");
 #endif
 }
 

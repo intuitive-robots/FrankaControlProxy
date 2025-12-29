@@ -4,18 +4,18 @@
 #include <unordered_map>
 #include <string>
 #include <functional>
-#include "utils/logger.hpp"
+
 
 
 class ControlModeFactory {
 public:
 
     static void registerMode(const std::string& name, std::function<std::shared_ptr<AbstractControlMode>()> creator) {
-        LOG_INFO("[ControlModeFactory] Registering mode: {}", name);
+        zlc::info("[ControlModeFactory] Registering mode: {}", name);
         getRegistry()[name] = std::move(creator);
     }
 
-    static std::shared_ptr<AbstractControlMode> create(const protocol::ModeID id) {
+    static std::shared_ptr<AbstractControlMode> create(const ControlModeID id) {
         auto& reg = getRegistry();
         std::string name = protocol::toString(id);
         if (auto it = reg.find(name); it != reg.end())
