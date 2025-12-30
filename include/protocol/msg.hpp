@@ -3,7 +3,7 @@
 #include <msgpack.hpp>
 #include <franka/robot_state.h>
 
-struct FrankaRobotState
+struct FrankaArmState
 {
     uint32_t time_ms;
     std::vector<double> O_T_EE;
@@ -16,9 +16,8 @@ struct FrankaRobotState
     std::vector<double> O_F_ext_hat_K;
     std::vector<double> K_F_ext_hat_K;
     MSGPACK_DEFINE_MAP(time_ms, O_T_EE, O_T_EE_d, q, q_d, dq, dq_d, tau_ext_hat_filtered, O_F_ext_hat_K, K_F_ext_hat_K);
-    MSGPACK_DEFINE_MAP(q, q_d, dq, dq_d, tau_ext_hat_filtered);
 
-    FrankaRobotState(const franka::RobotState& state) 
+    FrankaArmState(const franka::RobotState& state) 
         : q(state.q.begin(), state.q.end()),
           q_d(state.q_d.begin(), state.q_d.end()),
           dq(state.dq.begin(), state.dq.end()),

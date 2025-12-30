@@ -32,15 +32,14 @@ class FrankaGripperProxy {
 
 public:
     // Constructor & Destructor
-    explicit FrankaGripperProxy(const FrankaGripperConfigData& config, zerolancom::ZeroLanComNode& node):
+    explicit FrankaGripperProxy(const FrankaGripperConfigData& config):
         state_pub_socket_(ZmqContext::instance(), ZMQ_PUB),//gripper state publish socket
         is_running(false),
         is_on_control_mode(false),
         gripper_flag(FrankaGripperFlag::STOP),
         current_state_(AtomicDoubleBuffer<franka::GripperState>(franka::GripperState{})),
         command_(AtomicDoubleBuffer<protocol::GraspCommand>(protocol::GraspCommand{})),
-        config_(config),
-        node_(node)
+        config_(config)
     {
         gripper_ip_ = config_.gripper_ip;
         state_pub_addr_ = config_.gripper_state_pub_addr;

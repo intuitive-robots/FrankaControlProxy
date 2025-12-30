@@ -1,0 +1,8 @@
+name: CartesianVelocityController
+command_topic: FRANKA_CARTESIAN_VELOCITY_CMD
+
+k_gains: [600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0]
+d_gains: [50.0, 50.0, 50.0, 50.0, 30.0, 25.0, 15.0]
+
+limit_rate: true
+cutoff_frequency: 1

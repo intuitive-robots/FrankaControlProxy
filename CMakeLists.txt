@@ -26,9 +26,9 @@ include_directories(
 # Dependencies
 # -----------------------------
 find_package(Threads REQUIRED)
-# find_package(PkgConfig REQUIRED)
+find_package(PkgConfig REQUIRED)
 find_package(Franka REQUIRED)
-# pkg_check_modules(ZMQ REQUIRED libzmq)
+pkg_check_modules(ZMQ REQUIRED libzmq)
 find_package(yaml-cpp REQUIRED)
 find_package(zerolancom REQUIRED)
 # pkg_check_modules(zerolancom REQUIRED zerolancom)

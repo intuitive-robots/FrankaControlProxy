@@ -13,22 +13,80 @@
 #include "utils/atomic_double_buffer.hpp"
 #include "protocol/mode_id.hpp"
 #include "protocol/codec.hpp"
+#include "utils/config_file_reader.hpp"
 
-//todo:reform and check the leadter state get and the is_running
+struct ControllerConfig {
+    // communication
+    std::string controller_name;
+    std::string command_topic;
+    ControllerConfig() = delete;
+    ControllerConfig(const std::string& controller_config_path) {
+        fromFile(controller_config_path);
+    }
+    virtual void fromFile(const std::string& controller_config_path) = 0;
+    void readBaseConfig(const ConfigFileReader& reader) {
+        controller_name = reader.getValue<std::string>("name", "UnnamedController");
+        command_topic = reader.getValue<std::string>("command_topic", "UNNAMED_CMD");
+    }
+};
+
+struct CartesianVelocityCommand {
+    std::array<double, 6> velocities;
+    MSGPACK_DEFINE_MAP(velocities);
+};
+
 class AbstractControlMode {
 public:
     // Virtual destructor for proper cleanup in derived classes
     virtual ~AbstractControlMode() = default;
     // Pure virtual public functions
     //virtual void initialize(const RobotState& initial_state);
-    virtual void start() {
-        startRobot();
-        control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
-        zlc::info("[{}] Control thread launched.", getModeName());
-        setCommandSubscription();
-        zlc::info("[{}] Command subscription thread launched.", getModeName());
-    };
+    // virtual void start() {
+    //     startRobot();
+    //     control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
+    //     zlc::info("[{}] Control thread launched.", getModeName());
+    //     zlc::info("[{}] Command subscription thread launched.", getModeName());
+    // };
 
+    void init(std::shared_ptr<franka::Robot> robot, std::shared_ptr<franka::Model> model) {
+        robot_ = std::move(robot);
+        model_ = std::move(model);
+        initController();
+    }
+
+    virtual void initController() = 0;
+    virtual void startControl(AtomicDoubleBuffer<franka::RobotState>& state_buffer) = 0;
+    virtual void stopControl() = 0;
+    virtual const std::string getModeName() const = 0;
+
+protected:
+    // Protected constructor to prevent direct instantiation
+    AbstractControlMode() = default;
+    // Protected setup function for derived classes
+    std::shared_ptr<franka::Robot> robot_;
+    std::shared_ptr<franka::Model> model_;
+    
+    std::thread control_thread_;
+
+    bool is_running_ = false;
+
+    bool tryRecovery(int max_attempts = 3) {
+        for (size_t i = 0; i < max_attempts; i++)
+        {
+            try {
+                robot_->automaticErrorRecovery();
+                zlc::info("[{}] Recovery successful.", getModeName());
+                return true;
+            } catch (const franka::Exception& e) {
+                zlc::error("[{}] Recovery failed: {}", getModeName(), e.what());
+                return false;
+            }
+        }
+        return false;
+    };
+    
+private:
+    
     void startRobot() {
         if (!robot_ || !model_) {
             zlc::error("[{}] Robot or model not set.", getModeName());
@@ -38,8 +96,8 @@ public:
         zlc::info("[{}] Robot control started.", getModeName());
         is_running_ = true;
     };
-
-    virtual void stop() {
+    
+    void stopControlThread() {
         is_running_ = false;
         if (control_thread_.joinable()) {
             zlc::info("[{}] Stopping control thread...", getModeName());
@@ -47,44 +105,5 @@ public:
         }
         zlc::info("[{}] Stopped.", getModeName());
     };
-
-    // Get the mode ID for this control mode
-    virtual protocol::ControlModeID getControlModeID() const = 0; // Return the mode ID as an integer
     
-    void init(std::shared_ptr<franka::Robot> robot, std::shared_ptr<franka::Model> model) {
-        robot_ = std::move(robot);
-        model_ = std::move(model);
-    }
-
-    void setCurrentStateBuffer(AtomicDoubleBuffer<franka::RobotState>& state_buffer) {
-        current_state_buffer_ = &state_buffer;
-    }
-
-    virtual void setCommandSubscription() = 0;
-
-    void updateRobotState(const franka::RobotState& new_state) {
-        current_state_buffer_->write(new_state);
-    }
-
-    const std::string getModeName() const {
-        return protocol::toString(getControlModeID());
-    }
-
-protected:
-    // Protected constructor to prevent direct instantiation
-    AbstractControlMode() = default;
-    // Protected setup function for derived classes
-    std::shared_ptr<franka::Robot> robot_;
-    std::shared_ptr<franka::Model> model_;
-    AtomicDoubleBuffer<franka::RobotState>* current_state_buffer_ = nullptr;
-    
-    std::thread control_thread_;
-    std::thread command_thread_;
-
-    bool is_running_ = false;
-    std::string command_sub_addr_;
-    virtual void controlLoop() = 0;
-
-    virtual void writeCommand(const protocol::ByteView& data) = 0;
-    virtual void writeZeroCommand() = 0;
 };

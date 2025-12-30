@@ -15,11 +15,11 @@ public:
     CartesianPoseMode();
     ~CartesianPoseMode() override;
 
-    protocol::ControlModeID getControlModeID() const override;
+    // protocol::ControlModeID getControlModeID() const override;
 
 private:
     AtomicDoubleBuffer<franka::CartesianPose> desired_pose_;
-    void controlLoop() override;
-    void writeCommand(const protocol::ByteView& data) override;
-    void writeZeroCommand() override;
+    // void controlLoop() override;
+    // void writeCommand(const protocol::ByteView& data) override;
+    // void writeZeroCommand() override;
 };

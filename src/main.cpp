@@ -3,8 +3,8 @@
 #include <vector>
 #include <zerolancom/zerolancom.hpp>
 #include "franka_arm_proxy.hpp"
-#include "franka_gripper_proxy.hpp"
-#include "utils/franka_config.hpp"
+// #include "franka_gripper_proxy.hpp"
+// #include "utils/franka_config.hpp"
 
 
 int main(int argc, char **argv)
@@ -23,11 +23,14 @@ int main(int argc, char **argv)
     std::string proxy_ip = proxy_reader.getValue<std::string>("proxy_ip", "");
     zlc::init(node_name, proxy_ip);
 
-    
-    FrankaArmProxy robot_proxy(arm_cfg);
-    FrankaGripperProxy gripper_proxy(gripper_cfg);
-    robot_proxy.start();
-    gripper_proxy.start();
+    std::string arm_config_path = proxy_reader.getValue<std::string>("arm_config_path", "");
+    if (arm_config_path.empty()) {
+        zlc::error("Arm config path is empty in proxy config file.");
+        return 1;
+    }
+    FrankaArmProxy robot_proxy(arm_config_path);
+    // FrankaGripperProxy gripper_proxy(gripper_cfg);
+    // gripper_proxy.start();
     zlc::spin();
     return 0;
 }
