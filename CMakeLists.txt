@@ -25,10 +25,10 @@ include_directories(
 # -----------------------------
 # Dependencies
 # -----------------------------
-find_package(Threads REQUIRED)
-find_package(PkgConfig REQUIRED)
+# find_package(Threads REQUIRED)
+# find_package(PkgConfig REQUIRED)
 find_package(Franka REQUIRED)
-pkg_check_modules(ZMQ REQUIRED libzmq)
+# pkg_check_modules(ZMQ REQUIRED libzmq)
 find_package(yaml-cpp REQUIRED)
 find_package(zerolancom REQUIRED)
 # pkg_check_modules(zerolancom REQUIRED zerolancom)
@@ -64,17 +64,11 @@ add_executable(proxy src/main.cpp ${SOURCES})
 target_include_directories(proxy PRIVATE
     include
     ${Franka_INCLUDE_DIRS}
-    ${ZMQ_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIR}
-    ${MSGPACK_INCLUDE_DIRS}
-    ZeroLanCom::zerolancom
 )
 
 target_link_libraries(proxy
     ${Franka_LIBRARIES}
-    ${ZMQ_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
-    ${MSGPACK_LIBRARIES}
-    ZeroLanCom::zerolancom
-    Threads::Threads
+    zerolancom::zerolancom
 )

@@ -23,17 +23,14 @@ struct ControllerConfig {
     ControllerConfig(const std::string& controller_config_path) {
         fromFile(controller_config_path);
     }
-    virtual void fromFile(const std::string& controller_config_path) = 0;
+    virtual void fromFile(const std::string& controller_config_path) {};
     void readBaseConfig(const ConfigFileReader& reader) {
         controller_name = reader.getValue<std::string>("name", "UnnamedController");
         command_topic = reader.getValue<std::string>("command_topic", "UNNAMED_CMD");
     }
 };
 
-struct CartesianVelocityCommand {
-    std::array<double, 6> velocities;
-    MSGPACK_DEFINE_MAP(velocities);
-};
+
 
 class AbstractControlMode {
 public:
@@ -51,13 +48,15 @@ public:
     void init(std::shared_ptr<franka::Robot> robot, std::shared_ptr<franka::Model> model) {
         robot_ = std::move(robot);
         model_ = std::move(model);
-        initController();
+        initController();;
     }
 
-    virtual void initController() = 0;
+    virtual void initController() {};
     virtual void startControl(AtomicDoubleBuffer<franka::RobotState>& state_buffer) = 0;
     virtual void stopControl() = 0;
-    virtual const std::string getModeName() const = 0;
+    const std::string getModeName() {
+        return controller_name;
+    };
 
 protected:
     // Protected constructor to prevent direct instantiation
@@ -67,6 +66,7 @@ protected:
     std::shared_ptr<franka::Model> model_;
     
     std::thread control_thread_;
+    const std::string controller_name;
 
     bool is_running_ = false;
 

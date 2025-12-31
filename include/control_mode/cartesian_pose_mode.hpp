@@ -4,6 +4,8 @@
 #include <functional>
 #include "utils/atomic_double_buffer.hpp"
 
+
+
 /**
  * @brief Cartesian position control mode.
  *
@@ -20,6 +22,6 @@ public:
 private:
     AtomicDoubleBuffer<franka::CartesianPose> desired_pose_;
     // void controlLoop() override;
-    // void writeCommand(const protocol::ByteView& data) override;
+    // void writeCommand(const CartesianVelocityCommand& cmd);
     // void writeZeroCommand() override;
 };

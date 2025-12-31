@@ -100,7 +100,7 @@ public:
     void stop(); // Stops the server, cleaning up resources and shutting down communication
     void spin(); // Main loop for processing requests
     // State management
-    void setControlMode(const std::string& mode);// Sets the current control mode of the Franka arm
+    zlc::Empty setControlMode(const std::string& mode);// Sets the current control mode of the Franka arm
     franka::RobotState getCurrentState(const std::string& request);// Return the current state of the robot
     
 private:
@@ -134,8 +134,8 @@ private:
     void initializeService();
 
     // Service callbacks
-    FrankaArmState getFrankaArmState();
-    const std::string& getFrankaArmControlMode();
+    FrankaArmState getFrankaArmState(const zlc::Empty&);// Gets the current state of the Franka arm
+    std::string getFrankaArmControlMode(const zlc::Empty&);
 
     void statePublishThread();
 

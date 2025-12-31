@@ -3,8 +3,6 @@
 #include <vector>
 #include <zerolancom/zerolancom.hpp>
 #include "franka_arm_proxy.hpp"
-// #include "franka_gripper_proxy.hpp"
-// #include "utils/franka_config.hpp"
 
 
 int main(int argc, char **argv)

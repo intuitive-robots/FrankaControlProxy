@@ -17,9 +17,14 @@ CartesianVelocityMode::~CartesianVelocityMode() = default;
 
 
 void CartesianVelocityMode::initController() {
-    zlc::registerSubscriberHandler<CartesianVelocityCommand>(
+    zlc::registerSubscriberHandler(
         config.command_topic,
-        [this](const CartesianVelocityCommand& cmd) {
+        &CartesianVelocityMode::writeCommand,
+        this
+    );
+}
+
+void CartesianVelocityMode::writeCommand(const CartesianVelocityCommand& cmd) {
             if (cmd.velocities.size() != 6) {
                 zlc::error("[CartesianVelocityMode] Received invalid command size: {}, expected 6.",
                            cmd.velocities.size());
@@ -27,9 +32,7 @@ void CartesianVelocityMode::initController() {
             }
             franka::CartesianVelocities velocities = franka::CartesianVelocities(cmd.velocities);
             desired_velocities_.write(velocities);
-        });
 }
-
 
 void CartesianVelocityMode::startControl(AtomicDoubleBuffer<franka::RobotState>& state_buffer) {
     zlc::info("[CartesianVelocityMode] Started.");

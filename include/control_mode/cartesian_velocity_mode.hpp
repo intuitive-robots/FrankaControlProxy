@@ -4,6 +4,10 @@
 #include <functional>
 #include "utils/atomic_double_buffer.hpp"
 
+struct CartesianVelocityCommand {
+    std::array<double, 6> velocities;
+    MSGPACK_DEFINE_MAP(velocities);
+};
 
 struct CartesianVelocityConfig : public ControllerConfig
 {
@@ -42,5 +46,5 @@ private:
     AtomicDoubleBuffer<franka::CartesianVelocities> desired_velocities_;
     CartesianVelocityConfig config;
     void initController() override;
-    const std::string getModeName() const override;
+    void writeCommand(const CartesianVelocityCommand& cmd);
 };

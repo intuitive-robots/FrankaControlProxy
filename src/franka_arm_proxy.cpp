@@ -120,7 +120,7 @@ void FrankaArmProxy::statePublishThread() {
     }
 }
 
-void FrankaArmProxy::setControlMode(const std::string& mode) {
+zlc::Empty FrankaArmProxy::setControlMode(const std::string& mode) {
     if (current_control_mode_.get() != nullptr) {
         zlc::info("Stopping previous control mode...");
         current_control_mode_->stopControl();
@@ -129,13 +129,14 @@ void FrankaArmProxy::setControlMode(const std::string& mode) {
     current_control_mode_ = control_modes_.at(mode);
     current_control_mode_->init(robot_, model_);
     current_control_mode_->startControl(current_state);
+    return zlc::empty;
 }
 
-FrankaArmState FrankaArmProxy::getFrankaArmState() {
+FrankaArmState FrankaArmProxy::getFrankaArmState(const zlc::Empty&) {
     return FrankaArmState(current_state.read());
 }
 
-const std::string& FrankaArmProxy::getFrankaArmControlMode() {
+std::string FrankaArmProxy::getFrankaArmControlMode(const zlc::Empty&) {
     if (!current_control_mode_) {
         throw std::runtime_error("No active control mode");
     }
