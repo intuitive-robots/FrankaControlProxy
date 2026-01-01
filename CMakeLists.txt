@@ -43,14 +43,14 @@ file(GLOB_RECURSE SOURCES
 # -----------------------------
 # Build options
 # -----------------------------
-option(LOCAL_TESTING "Enable local test mode (skip robot connection etc.)" OFF)
+option(NO_ROBOT_TESTING "Enable local test mode (skip robot connection etc.)" ON)
 
-if(LOCAL_TESTING)
-    message(STATUS "LOCAL_TESTING mode is ON")
-    add_compile_definitions(LOCAL_TESTING=1)
+if(NO_ROBOT_TESTING)
+    message(STATUS "NO_ROBOT_TESTING mode is ON")
+    add_compile_definitions(NO_ROBOT_TESTING=1)
 else()
-    message(STATUS "LOCAL_TESTING mode is OFF")
-    add_compile_definitions(LOCAL_TESTING=0)
+    message(STATUS "NO_ROBOT_TESTING mode is OFF")
+    add_compile_definitions(NO_ROBOT_TESTING=0)
 endif()
 
 # -----------------------------

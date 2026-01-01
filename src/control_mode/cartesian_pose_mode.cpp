@@ -1,6 +1,6 @@
 // #include "control_mode/cartesian_pose_mode.hpp"
-// #include "protocol/mode_id.hpp"
-// #include "protocol/codec.hpp"
+// 
+// 
 // #include <franka/exception.h>
 
 // #include <unistd.h>

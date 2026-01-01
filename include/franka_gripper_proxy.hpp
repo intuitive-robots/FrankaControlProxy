@@ -12,7 +12,7 @@
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/franka_config.hpp"
-#include "protocol/codec.hpp"
+
 #include "protocol/grasp_command.hpp"
 #include <iostream>
 

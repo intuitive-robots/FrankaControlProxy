@@ -2,7 +2,7 @@
 // #include <franka/exception.h>
 // #include <franka/robot_state.h>
 
-// #include "protocol/codec.hpp"
+// 
 
 // JointVelocityMode::JointVelocityMode():
 //     desired_velocities_(franka::JointVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}})

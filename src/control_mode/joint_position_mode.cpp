@@ -1,6 +1,6 @@
 // #include "control_mode/joint_position_mode.hpp"
-// #include "protocol/mode_id.hpp"
-// #include "protocol/codec.hpp"
+// 
+// 
 // #include <franka/exception.h>
 // #include <franka/control_types.h>
 

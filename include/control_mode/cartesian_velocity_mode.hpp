@@ -1,8 +1,5 @@
 #pragma once
-#include "abstract_control_mode.hpp"
-#include <franka/robot_state.h>
-#include <functional>
-#include "utils/atomic_double_buffer.hpp"
+#include "control_mode/abstract_control_mode.hpp"
 
 struct CartesianVelocityCommand {
     std::array<double, 6> velocities;
@@ -39,12 +36,11 @@ class CartesianVelocityMode : public AbstractControlMode {
 public:
     CartesianVelocityMode();
     ~CartesianVelocityMode() override;
-    void startControl(AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
-    void stopControl() override;
 
 private:
     AtomicDoubleBuffer<franka::CartesianVelocities> desired_velocities_;
     CartesianVelocityConfig config;
     void initController() override;
+    void controlLoop() override;
     void writeCommand(const CartesianVelocityCommand& cmd);
 };

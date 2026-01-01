@@ -1,6 +1,5 @@
 // #pragma once
-// #include "protocol/byte_order.hpp"
-// #include "protocol/mode_id.hpp"
+// 
 // #include <cstdint>
 // #include <cstring>
 // #include <array>

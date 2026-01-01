@@ -1,6 +1,6 @@
 #include "control_mode/cartesian_velocity_mode.hpp"
-#include "protocol/mode_id.hpp"
-#include "protocol/codec.hpp"
+
+
 #include <franka/exception.h>
 #include <franka/control_types.h>
 
@@ -25,23 +25,21 @@ void CartesianVelocityMode::initController() {
 }
 
 void CartesianVelocityMode::writeCommand(const CartesianVelocityCommand& cmd) {
-            if (cmd.velocities.size() != 6) {
-                zlc::error("[CartesianVelocityMode] Received invalid command size: {}, expected 6.",
-                           cmd.velocities.size());
-                return;
-            }
-            franka::CartesianVelocities velocities = franka::CartesianVelocities(cmd.velocities);
-            desired_velocities_.write(velocities);
+    if (cmd.velocities.size() != 6) {
+        zlc::error("[CartesianVelocityMode] Received invalid command size: {}, expected 6.",
+                    cmd.velocities.size());
+        return;
+    }
+    franka::CartesianVelocities velocities = franka::CartesianVelocities(cmd.velocities);
+    desired_velocities_.write(velocities);
 }
 
-void CartesianVelocityMode::startControl(AtomicDoubleBuffer<franka::RobotState>& state_buffer) {
+void CartesianVelocityMode::controlLoop() {
     zlc::info("[CartesianVelocityMode] Started.");
-    is_running_ = true;
     desired_velocities_.write(franka::CartesianVelocities{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
-    robot_->automaticErrorRecovery();
     std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)> motion_generator_callback =
-    [this, &state_buffer](const franka::RobotState& state, franka::Duration) -> franka::CartesianVelocities {
-        state_buffer.write(state);
+    [this](const franka::RobotState& state, franka::Duration) -> franka::CartesianVelocities {
+        this->state_buffer_->write(state);
         auto desired = desired_velocities_.read();
         if (!is_running_) {
             return franka::MotionFinished(desired);
@@ -58,7 +56,8 @@ void CartesianVelocityMode::startControl(AtomicDoubleBuffer<franka::RobotState>&
             [this, k_gains, d_gains](
                 const franka::RobotState& state, franka::Duration /*period*/) -> franka::Torques {
       // Read current coriolis terms from model.
-      std::array<double, 7> coriolis = model_->coriolis(state);
+      std::array<double, 7> coriolis =  model_->coriolis(state);
+      
 
       // Compute torque command from joint impedance control law.
       // Note: The answer to our Cartesian pose inverse kinematics is always in state.q_d with one
@@ -86,13 +85,4 @@ void CartesianVelocityMode::startControl(AtomicDoubleBuffer<franka::RobotState>&
             break;
         }
     }
-}
-
-
-void CartesianVelocityMode::stopControl() {
-    is_running_ = false;
-    zlc::info("[CartesianVelocityMode] Stopping control...");
-    // Give some time for the control loop to exit
-    usleep(100000); // 100 ms
-    zlc::info("[CartesianVelocityMode] Control stopped.");
 }

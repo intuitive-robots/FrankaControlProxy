@@ -1,14 +1,5 @@
-#include <array>
-#include <chrono>
-#include <thread>
-#include <csignal>
-#include <atomic>
-#include <algorithm>
-#include <thread>
-#include <msgpack.hpp>
-#include "franka_arm_proxy.hpp"
 
-#include "control_mode/control_mode.hpp"
+#include "franka_arm_proxy.hpp"
 
 
 static std::atomic<bool> running_flag{true};  // let ctrl-c stop the server
@@ -69,8 +60,8 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
         //initialize franka robot
         try
         {
-            robot_ = std::make_shared<franka::Robot>(config_.robot_ip);
-            model_ = std::make_shared<franka::Model>(robot_->loadModel());
+            robot_ = std::make_unique<FrankaPanda>(config_.robot_ip);
+            model_ = std::make_unique<FrankaModel>(robot_->loadModel());
         }
         catch(const franka::NetworkException& e)
         {
@@ -121,13 +112,13 @@ void FrankaArmProxy::statePublishThread() {
 }
 
 zlc::Empty FrankaArmProxy::setControlMode(const std::string& mode) {
-    if (current_control_mode_.get() != nullptr) {
+    if (current_control_mode_ != nullptr) {
         zlc::info("Stopping previous control mode...");
         current_control_mode_->stopControl();
     }
     zlc::info("Switching to control mode: {}", mode);
-    current_control_mode_ = control_modes_.at(mode);
-    current_control_mode_->init(robot_, model_);
+    current_control_mode_ = control_modes_.at(mode).get();
+    current_control_mode_->init(*robot_, *model_, current_state);
     current_control_mode_->startControl(current_state);
     return zlc::empty;
 }

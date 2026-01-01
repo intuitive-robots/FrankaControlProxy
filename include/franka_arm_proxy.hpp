@@ -1,20 +1,19 @@
 #pragma once
-#include <zmq.hpp>
-#include <thread>
+#include <array>
+#include <chrono>
+#include <csignal>
 #include <atomic>
+#include <algorithm>
 #include <mutex>
 #include <string>
 #include <memory>
 
-#include <franka/robot.h>
-#include <franka/model.h>
-#include <franka/robot_state.h>
-#include "control_mode/abstract_control_mode.hpp"
+#include "control_mode/control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/config_file_reader.hpp"
 #include "protocol/msg.hpp"
 #include <zerolancom/zerolancom.hpp>
-
+// #include "utils/robot_utils.hpp"
 
 struct FrankaArmConfig {
     // communication
@@ -109,20 +108,20 @@ private:
 
 private:
     // Franka robot
-    std::shared_ptr<franka::Robot> robot_;
-    std::shared_ptr<franka::Model> model_;
+    std::unique_ptr<FrankaPanda> robot_;
+    std::unique_ptr<FrankaModel> model_;
     
     // Threading
     std::thread state_pub_thread;
 
     // Control modes registry
-    std::unordered_map<std::string, std::shared_ptr<AbstractControlMode>> control_modes_;
+    std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>> control_modes_;
 
     // Synchronization
     std::atomic<bool> is_running; // for threads
     
     //Control mode
-    std::shared_ptr<AbstractControlMode> current_control_mode_;
+    AbstractControlMode* current_control_mode_ = nullptr;
 
     // Current robot state
     AtomicDoubleBuffer<franka::RobotState> current_state;
