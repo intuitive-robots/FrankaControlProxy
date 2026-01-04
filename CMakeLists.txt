@@ -13,6 +13,21 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # -----------------------------
+# Build options
+# -----------------------------
+option(NO_ROBOT_TESTING "Enable local test mode (skip robot connection etc.)" ON)
+
+if(NO_ROBOT_TESTING)
+    message(STATUS "NO_ROBOT_TESTING mode is ON")
+    add_compile_definitions(NO_ROBOT_TESTING=1)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
+else()
+    message(STATUS "NO_ROBOT_TESTING mode is OFF")
+    add_compile_definitions(NO_ROBOT_TESTING=0)
+endif()
+
+
+# -----------------------------
 # Include paths
 # -----------------------------
 include_directories(
@@ -39,19 +54,6 @@ find_package(zerolancom REQUIRED)
 file(GLOB_RECURSE SOURCES
     src/*.cpp
 )
-
-# -----------------------------
-# Build options
-# -----------------------------
-option(NO_ROBOT_TESTING "Enable local test mode (skip robot connection etc.)" ON)
-
-if(NO_ROBOT_TESTING)
-    message(STATUS "NO_ROBOT_TESTING mode is ON")
-    add_compile_definitions(NO_ROBOT_TESTING=1)
-else()
-    message(STATUS "NO_ROBOT_TESTING mode is OFF")
-    add_compile_definitions(NO_ROBOT_TESTING=0)
-endif()
 
 # -----------------------------
 # Executable

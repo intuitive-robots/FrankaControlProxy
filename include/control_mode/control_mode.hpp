@@ -27,7 +27,7 @@ public:
     static void registerControlModes(std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>>& registry) {
         // registry["IDLE"] = std::make_unique<IdleControlMode>();
         // registry["CARTESIAN_POSE"] = std::make_unique<CartesianPoseMode>();
-        registry["CARTESIAN_VELOCITY"] = std::make_unique<CartesianVelocityMode>();
+        registry["CartesianVelocity"] = std::make_unique<CartesianVelocityMode>();
         // registry["JOINT_POSITION"] = std::make_unique<JointPositionMode>();
         // registry["JOINT_VELOCITY"] = std::make_unique<JointVelocityMode>();
         // registry["HUMAN_CONTROL"] = std::make_unique<HumanControlMode>();

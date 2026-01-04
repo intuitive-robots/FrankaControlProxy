@@ -1,4 +1,4 @@
-name: CartesianVelocityController
+name: CartesianVelocity
 command_topic: FRANKA_CARTESIAN_VELOCITY_CMD
 
 k_gains: [600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0]

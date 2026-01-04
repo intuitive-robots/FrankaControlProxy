@@ -2,8 +2,8 @@
 #include "control_mode/abstract_control_mode.hpp"
 
 struct CartesianVelocityCommand {
-    std::array<double, 6> velocities;
-    MSGPACK_DEFINE_MAP(velocities);
+    std::array<double, 6> vel;
+    MSGPACK_DEFINE_MAP(vel);
 };
 
 struct CartesianVelocityConfig : public ControllerConfig
