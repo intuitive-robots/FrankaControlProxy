@@ -40,13 +40,13 @@ include_directories(
 # -----------------------------
 # Dependencies
 # -----------------------------
-# find_package(Threads REQUIRED)
-# find_package(PkgConfig REQUIRED)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+find_package(MuJoCo REQUIRED)
+find_package(glfw3 REQUIRED)
 find_package(Franka REQUIRED)
-# pkg_check_modules(ZMQ REQUIRED libzmq)
 find_package(yaml-cpp REQUIRED)
 find_package(zerolancom REQUIRED)
-# pkg_check_modules(zerolancom REQUIRED zerolancom)
+# find_package(pinocchio REQUIRED)
 
 # -----------------------------
 # Source collection
@@ -67,10 +67,16 @@ target_include_directories(proxy PRIVATE
     include
     ${Franka_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIR}
+    # ${pinocchio_INCLUDE_DIRS}
 )
 
 target_link_libraries(proxy
     ${Franka_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
     zerolancom::zerolancom
+    # pinocchio::pinocchio
+    MuJoCo::MuJoCo
+    glfw
+    GL
+    X11
 )
