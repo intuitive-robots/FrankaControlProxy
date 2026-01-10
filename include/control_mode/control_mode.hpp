@@ -30,7 +30,7 @@ class ControlModeFactory
         FrankaPanda& robot, PandaPinocchioModel& model,
         AtomicDoubleBuffer<franka::RobotState>& state_buffer)
     {
-        // registry["IDLE"] = std::make_unique<IdleControlMode>();
+        registry["Idle"] = std::make_unique<IdleControlMode>();
         // registry["CARTESIAN_POSE"] = std::make_unique<CartesianPoseMode>();
         // registry["CartesianVelocity"] = std::make_unique<CartesianVelocityMode>();
         // registry["JOINT_POSITION"] = std::make_unique<JointPositionMode>();

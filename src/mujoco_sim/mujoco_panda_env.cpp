@@ -12,17 +12,14 @@ MujocoPandaEnv::~MujocoPandaEnv()
     stop();
 }
 
-bool MujocoPandaEnv::start()
+void MujocoPandaEnv::start()
 {
-    if (!initialized_)
+    if (initialized_)
     {
-        if (!loadModel())
-        {
-            return false;
-        }
-        initialized_ = true;
+        throw std::runtime_error("MujocoPandaEnv is already started");
     }
-    return true;
+    loadModel();
+    initialized_ = true;
 }
 
 void MujocoPandaEnv::stop()
@@ -30,29 +27,36 @@ void MujocoPandaEnv::stop()
     // No specific stop actions needed for MuJoCo simulation.
 }
 
-bool MujocoPandaEnv::getStateSnapshot(mjData& out_copy) const
+void MujocoPandaEnv::updateStateSnapshot(mjData& snapShot) const
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    mj_copyData(&out_copy, model_.get(), data_.get());
-    return true;
+    std::lock_guard<std::mutex> lock(data_mutex_);
+    mj_copyData(&snapShot, model_.get(), data_.get());
 }
 
-bool MujocoPandaEnv::loadModel()
+void MujocoPandaEnv::loadModel()
 {
     char error[1024] = {0};
     model_.reset(mj_loadXML(model_path_.c_str(), nullptr, error, sizeof(error)));
     if (!model_)
     {
         std::cerr << "Could not load model: " << error << std::endl;
-        return false;
+        throw std::runtime_error("Failed to load MuJoCo model");
     }
     data_.reset(mj_makeData(model_.get()));
     if (!data_)
     {
         std::cerr << "Could not allocate mjData" << std::endl;
-        return false;
+        throw std::runtime_error("Failed to create MuJoCo data");
     }
-    return true;
+
+    int key_id = mj_name2id(model_.get(), mjOBJ_KEY, "home");
+    if (key_id != -1) {
+        mj_resetDataKeyframe(model_.get(), data_.get(), key_id);
+        mj_forward(model_.get(), data_.get());
+        printf("Successfully loaded keyframe 'home'\n");
+    } else {
+        printf("Keyframe 'home' not found in the model\n");
+    }
 }
 
 void MujocoPandaEnv::nextStep(const franka::Torques& torques, franka::RobotState& robot_state)
@@ -63,17 +67,17 @@ void MujocoPandaEnv::nextStep(const franka::Torques& torques, franka::RobotState
     }
     const int torque_count = std::min<int>(torques.tau_J.size(), model_->nu);
     // std::fill_n(data_->ctrl, model_->nu, 0.0);
+    std::lock_guard<std::mutex> lock(data_mutex_);
     for (int i = 0; i < torque_count; ++i)
     {
-        data_->ctrl[i] = torques.tau_J[i];
+        data_->ctrl[i] = torques.tau_J[i] + data_->qfrc_bias[i];
     }
     mj_step(model_.get(), data_.get());
-    refreshRobotState(robot_state);
+    _refreshRobotState(robot_state);
 }
 
-void MujocoPandaEnv::refreshRobotState(franka::RobotState& robot_state)
+void MujocoPandaEnv::_refreshRobotState(franka::RobotState& robot_state)
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
     const int joint_count = std::min<int>(7, model_->nv);
     const int torque_count = std::min<int>(7, model_->nu);
 
@@ -92,4 +96,10 @@ void MujocoPandaEnv::refreshRobotState(franka::RobotState& robot_state)
     const auto sim_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::duration<double>(data_->time));
     robot_state.time = franka::Duration(static_cast<uint64_t>(sim_ns.count()));
+}
+
+void MujocoPandaEnv::refreshRobotState(franka::RobotState& robot_state)
+{
+    std::lock_guard<std::mutex> lock(data_mutex_);
+    _refreshRobotState(robot_state);
 }

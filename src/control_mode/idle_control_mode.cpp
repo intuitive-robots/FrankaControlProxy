@@ -1,29 +1,20 @@
-// #include "control_mode/idle_control_mode.hpp"
+#include "control_mode/idle_control_mode.hpp"
 
-// IdleControlMode::IdleControlMode() = default;
-// IdleControlMode::~IdleControlMode() = default;
+#include <franka/exception.h>
 
-// void IdleControlMode::initController()
-// {
-//     zlc::info("[{}] Initializing Idle Control Mode.", getModeName());
-// }
+void IdleControlMode::initController(FrankaPanda& robot, PandaPinocchioModel& model,
+                                     AtomicDoubleBuffer<franka::RobotState>& state_buffer)
+{
+    AbstractControlMode::initController(robot, model, state_buffer);
+    zlc::info("[IdleControlMode] Initialized.");
+}
 
-// void IdleControlMode::controlLoop()
-// {
-//     while (is_running_)
-//     {
-//         try
-//         {
-//             if (robot_)
-//             {
-//                 franka::RobotState state = robot_->readOnce();
-//                 state_buffer_->write(state);
-//             }
-//         }
-//         catch (const franka::Exception& e)
-//         {
-//             zlc::error("[IdleMode] readOnce() failed: {}", e.what());
-//         }
-//     }
-//     zlc::info("[IdleControlMode] Exited.");
-// }
+franka::Torques IdleControlMode::controlLoop(const franka::RobotState& robot_state,
+                                             franka::Duration /*duration*/)
+{
+    if (state_buffer_)
+    {
+        state_buffer_->write(robot_state);
+    }
+    return franka::Torques{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+}

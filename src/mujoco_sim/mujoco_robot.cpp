@@ -23,10 +23,7 @@ MujocoRobot::MujocoRobot(const std::string&)
     : env_(std::make_unique<MujocoPandaEnv>("./models/franka_emika_panda/scene.xml")),
       viewer_(std::make_unique<MujocoViewer>(env_.get()))
 {
-    if (!env_->start())
-    {
-        throw std::runtime_error("Failed to start MuJoCo Panda environment");
-    }
+    env_->start();
     env_->refreshRobotState(current_state_);
     viewer_->start();
 }

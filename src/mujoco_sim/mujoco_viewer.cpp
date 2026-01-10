@@ -24,7 +24,7 @@ void MujocoViewer::start(int width, int height, const char* title)
     }
 
     model_ = env_->getModel();
-    snapshot_ = std::make_unique<mjData>(*(env_->getData()));
+    snapshot_ = std::make_unique<mjData>(*mj_makeData(model_));
 
     running_ = true;
     mjv_defaultCamera(&cam_);
@@ -75,7 +75,8 @@ void MujocoViewer::renderLoop(int width, int height, const char* title)
         }
         mjrRect rect{0, 0, 0, 0};
         glfwGetFramebufferSize(window_, &rect.width, &rect.height);
-        env_->getStateSnapshot(*snapshot_);
+        env_->updateStateSnapshot(*snapshot_);
+        // std::cout << snapshot_.get()->qpos[0] << std::endl;
         mjv_updateScene(model_, snapshot_.get(), &opt_, nullptr, &cam_, mjCAT_ALL, &scn_);
         mjr_render(rect, &scn_, &con_);
         glfwSwapBuffers(window_);

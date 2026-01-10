@@ -17,12 +17,6 @@ PandaPinocchioModel::PandaPinocchioModel(std::string urdf_filename, std::string 
     std::ifstream stream(urdf_filename);
     xml_buffer_ =
         std::string((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
-
-    initialize();
-}
-
-void PandaPinocchioModel::initialize()
-{
     pinocchio::urdf::buildModelFromXML(xml_buffer_, model_);
     model_data_ = pinocchio::Data(model_);
     ee_idx_ = model_.getFrameId(ee_joint_name_);

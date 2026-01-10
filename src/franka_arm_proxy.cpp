@@ -36,6 +36,7 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     // Register service handlers
     initRobot();
     ControlModeFactory::registerControlModes(control_modes_, *robot_, *model_, current_state);
+    setControlMode("Idle");
     initializeService();
 }
 

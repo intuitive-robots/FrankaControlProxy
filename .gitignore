@@ -35,3 +35,5 @@
 build/
 
 .vscode/
+
+MUJOCO_LOG.TXT
