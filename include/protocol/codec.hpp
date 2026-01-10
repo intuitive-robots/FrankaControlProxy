@@ -1,5 +1,5 @@
 // #pragma once
-// 
+//
 // #include <cstdint>
 // #include <cstring>
 // #include <array>
@@ -21,7 +21,7 @@
 //     const uint8_t* end() const { return data + size; }
 // };
 
-// // encode std::array<double, N> (fixed size) 
+// // encode std::array<double, N> (fixed size)
 // template <size_t N>
 // inline void encode_array_f64(uint8_t* ptr, const std::array<double, N>& in) {
 //     for (size_t i = 0; i < N; ++i) {
@@ -31,7 +31,7 @@
 //     }
 // }
 
-// // encoede std::vector<double> (dynamic size) 
+// // encoede std::vector<double> (dynamic size)
 // inline void encode_array_f64(uint8_t* ptr, const std::vector<double>& in) {
 //     for (const auto& val : in) {
 //         double be_val = to_big_endian_f64(val);
@@ -76,7 +76,6 @@
 //     ptr += sizeof(be_val);
 // }
 
-
 // // decode uint32_t
 // inline uint32_t decode_u32(const uint8_t* ptr) {
 //     uint32_t raw;
@@ -112,7 +111,7 @@
 //     uint8_t byte_val = val ? 1 : 0; // Convert bool to uint8_t
 //     std::memcpy(ptr, &byte_val, sizeof(byte_val));
 //     ptr += sizeof(byte_val);
-// }  
+// }
 
 // // decode bool
 // inline bool decode_bool(const uint8_t* ptr) {
@@ -121,7 +120,6 @@
 //     ptr += sizeof(byte_val);
 //     return byte_val != 0; // Convert uint8_t back to bool
 // }
-
 
 // // encode overloads by argument type (valid C++ overloading)
 // std::vector<uint8_t> encode(const std::string& v);
@@ -137,20 +135,17 @@
 // template <typename T>
 // T decode(ByteView payload);
 
-
 // // ============================================================================
 // // std::string decode
 // // ============================================================================
 // template <>
 // std::string decode<std::string>(ByteView payload);
 
-
 // // ============================================================================
 // // uint16_t decode
 // // ============================================================================
 // template <>
 // uint16_t decode<uint16_t>(ByteView payload);
-
 
 // // ============================================================================
 // // franka control objects
@@ -162,17 +157,14 @@
 // template <>
 // franka::JointVelocities decode<franka::JointVelocities>(ByteView payload);
 
-
 // template <>
 // franka::CartesianPose decode<franka::CartesianPose>(ByteView payload);
-
 
 // template <>
 // franka::CartesianVelocities decode<franka::CartesianVelocities>(ByteView payload);
 
 // template <>
 // franka::Torques decode<franka::Torques>(ByteView payload);
-
 
 // // ============================================================================
 // // protocol::FrankaArmControlMode
@@ -183,7 +175,6 @@
 
 // template <>
 // protocol::GraspCommand decode<protocol::GraspCommand>(ByteView payload);
-
 
 // // ...existing code...
 // template <>

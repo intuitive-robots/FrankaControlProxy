@@ -46,7 +46,8 @@ find_package(glfw3 REQUIRED)
 find_package(Franka REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(zerolancom REQUIRED)
-# find_package(pinocchio REQUIRED)
+find_package(pinocchio REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 # -----------------------------
 # Source collection
@@ -74,7 +75,8 @@ target_link_libraries(proxy
     ${Franka_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
     zerolancom::zerolancom
-    # pinocchio::pinocchio
+    pinocchio::pinocchio
+    Eigen3::Eigen
     MuJoCo::MuJoCo
     glfw
     GL

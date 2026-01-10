@@ -1,15 +1,16 @@
 #pragma once
 #include <control_mode/abstract_control_mode.hpp>
-#include <control_mode/idle_control_mode.hpp>
+#include <control_mode/cartesian_impedance_control.hpp>
 #include <control_mode/cartesian_pose_mode.hpp>
 #include <control_mode/cartesian_velocity_mode.hpp>
-#include <control_mode/joint_position_mode.hpp>
-#include <control_mode/joint_velocity_mode.hpp>
 #include <control_mode/human_control_mode.hpp>
+#include <control_mode/hybrid_joint_impedance_control.hpp>
+#include <control_mode/idle_control_mode.hpp>
+#include <control_mode/joint_impedance_control.hpp>
 
-class ControlModeFactory {
-public:
-
+class ControlModeFactory
+{
+  public:
     // static void registerMode(const std::string& name, std::function<std::shared_ptr<AbstractControlMode>()> creator) {
     //     zlc::info("[ControlModeFactory] Registering mode: {}", name);
     //     getRegistry()[name] = std::move(creator);
@@ -24,16 +25,22 @@ public:
     // }
 
     // Register control modes
-    static void registerControlModes(std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>>& registry) {
+    static void registerControlModes(
+        std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>>& registry,
+        FrankaPanda& robot, PandaPinocchioModel& model,
+        AtomicDoubleBuffer<franka::RobotState>& state_buffer)
+    {
         // registry["IDLE"] = std::make_unique<IdleControlMode>();
         // registry["CARTESIAN_POSE"] = std::make_unique<CartesianPoseMode>();
-        registry["CartesianVelocity"] = std::make_unique<CartesianVelocityMode>();
+        // registry["CartesianVelocity"] = std::make_unique<CartesianVelocityMode>();
         // registry["JOINT_POSITION"] = std::make_unique<JointPositionMode>();
         // registry["JOINT_VELOCITY"] = std::make_unique<JointVelocityMode>();
         // registry["HUMAN_CONTROL"] = std::make_unique<HumanControlMode>();
-        for (const auto& pair : registry) {
+        registry["HybridJointImpedance"] = std::make_unique<HybridJointImpedanceControl>();
+        for (const auto& pair : registry)
+        {
             zlc::info("[ControlModeFactory] Registered mode: {}", pair.first);
+            pair.second->initController(robot, model, state_buffer);
         }
     }
-
 };

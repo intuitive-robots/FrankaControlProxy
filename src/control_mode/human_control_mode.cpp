@@ -2,7 +2,6 @@
 // #include "human_control_mode.hpp"
 // #include <franka/exception.h>
 
-
 // HumanControlMode::HumanControlMode() = default;
 // HumanControlMode::~HumanControlMode() = default;
 
@@ -52,7 +51,6 @@
 // protocol::ControlModeID HumanControlMode::getControlModeID() const {
 //     return protocol::ControlModeID::HUMAN_CONTROL;
 // }
-
 
 // void HumanControlMode::writeCommand(const protocol::ByteView& data) {
 //     // HumanControlMode does not process external commands; ignore incoming data.

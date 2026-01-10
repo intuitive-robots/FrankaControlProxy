@@ -1,14 +1,16 @@
 #pragma once
-#include "abstract_control_mode.hpp"
-#include <thread>
 
+#include "control_mode/abstract_control_mode.hpp"
 
+class IdleControlMode : public AbstractControlMode
+{
+  public:
+    IdleControlMode() = default;
+    ~IdleControlMode() override = default;
 
-class IdleControlMode : public AbstractControlMode {
-public:
-    IdleControlMode();
-    ~IdleControlMode() override ;
-private:
-    void initController() override;
-    void controlLoop() override;
+  private:
+    void initController(FrankaPanda& robot, PandaPinocchioModel& model,
+                        AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
+    franka::Torques controlLoop(const franka::RobotState& robot_state,
+                                franka::Duration duration) override;
 };

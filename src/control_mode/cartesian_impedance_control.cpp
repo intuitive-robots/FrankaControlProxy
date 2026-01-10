@@ -1,29 +1,30 @@
-// #include "control_mode/cartesian_pose_mode.hpp"
-
-// #include <franka/exception.h>
+// #include "control_mode/cartesian_impedance_control.hpp"
 
 // #include <Eigen/Geometry>
+// #include <franka/exception.h>
 
-// CartesianPoseMode::CartesianPoseMode()
-//     : desired_pose_({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}), config_(CartesianPoseConfig())
+// CartesianImpedanceControl::CartesianImpedanceControl()
+//     : desired_pose_({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}),
+//       config_(CartesianImpedanceConfig())
 // {
 // }
 
-// CartesianPoseMode::~CartesianPoseMode() = default;
+// CartesianImpedanceControl::~CartesianImpedanceControl() = default;
 
-// void CartesianPoseMode::initController()
+// void CartesianImpedanceControl::initController()
 // {
-//     zlc::registerSubscriberHandler(config_.command_topic, &CartesianPoseMode::writeCommand, this);
+//     zlc::registerSubscriberHandler(config_.command_topic,
+//                                    &CartesianImpedanceControl::writeCommand, this);
 // }
 
-// void CartesianPoseMode::writeCommand(const CartesianPoseCommand& cmd)
+// void CartesianImpedanceControl::writeCommand(const CartesianImpedanceCommand& cmd)
 // {
 //     desired_pose_.write(cmd.pose);
 //     has_target_.store(true, std::memory_order_release);
 // }
 
-// franka::Torques CartesianPoseMode::controlLoop(const franka::RobotState& robot_state,
-//                                                franka::Duration /*duration*/)
+// franka::Torques CartesianImpedanceControl::controlLoop(const franka::RobotState& robot_state,
+//                                                        franka::Duration /*duration*/)
 // {
 //     if (!robot_ || !model_ || !state_buffer_)
 //     {
@@ -34,7 +35,7 @@
 
 //     if (!has_target_.load(std::memory_order_acquire))
 //     {
-//         desired_pose_.write(model_->forwardKinematics(robot_state.q));
+//         desired_pose_.write(robot_state);
 //         has_target_.store(true, std::memory_order_release);
 //     }
 
@@ -75,17 +76,21 @@
 
 //     Eigen::Matrix<double, 7, 1> tau = J.transpose() * wrench;
 
-//     std::array<double, 7> tau_ff =
-//         model_->inverseDynamics(robot_state.q, robot_state.dq, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-//     for (int i = 0; i < 7; i++)
+//     std::array<double, 7> tau_ff{};
+//     if (config_.ignore_gravity)
 //     {
-//         tau[i] += tau_ff[i];
+//         tau_ff = model_->coriolis(robot_state.q, robot_state.dq);
+//     }
+//     else
+//     {
+//         tau_ff = model_->inverseDynamics(robot_state.q, robot_state.dq,
+//                                          {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 //     }
 
 //     std::array<double, 7> tau_cmd{};
 //     for (int i = 0; i < 7; i++)
 //     {
-//         tau_cmd[i] = tau[i];
+//         tau_cmd[i] = tau[i] + tau_ff[i];
 //     }
 //     return franka::Torques{tau_cmd};
 // }

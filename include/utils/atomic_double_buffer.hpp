@@ -17,41 +17,49 @@
  * @tparam T The data type to store (must be copyable or movable).
  */
 template <typename T>
-class AtomicDoubleBuffer {
-public:
+class AtomicDoubleBuffer
+{
+  public:
     explicit AtomicDoubleBuffer(const T& init_value)
         : buffer1_(init_value),
           buffer2_(init_value),
           front_buffer_(&buffer1_),
           back_buffer_(&buffer2_),
-          active_(&buffer1_) {}
+          active_(&buffer1_)
+    {
+    }
 
     // Non-copyable
     AtomicDoubleBuffer(const AtomicDoubleBuffer&) = delete;
     AtomicDoubleBuffer& operator=(const AtomicDoubleBuffer&) = delete;
 
-    void write(const T& value) noexcept {
+    void write(const T& value) noexcept
+    {
         *back_buffer_ = value;
         active_.store(back_buffer_, std::memory_order_release);
         swapBuffers();
     }
 
-    void write(T&& value) noexcept {
+    void write(T&& value) noexcept
+    {
         *back_buffer_ = std::move(value);
         active_.store(back_buffer_, std::memory_order_release);
         swapBuffers();
     }
 
-    T read() const noexcept {
+    T read() const noexcept
+    {
         return *active_.load(std::memory_order_acquire);
     }
 
-    const T* readPtr() const noexcept {
+    const T* readPtr() const noexcept
+    {
         return active_.load(std::memory_order_acquire);
     }
 
-private:
-    void swapBuffers() noexcept {
+  private:
+    void swapBuffers() noexcept
+    {
         back_buffer_ = (back_buffer_ == &buffer1_) ? &buffer2_ : &buffer1_;
     }
 
@@ -61,4 +69,3 @@ private:
     T* back_buffer_;
     std::atomic<T*> active_;
 };
-

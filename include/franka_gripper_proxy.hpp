@@ -6,7 +6,6 @@
 // #include <string>
 // #include <memory>
 
-
 // #include <franka/gripper.h>
 // #include <franka/robot_state.h>
 // #include "control_mode/abstract_control_mode.hpp"
@@ -26,7 +25,6 @@
 //     CLOSING = 2,
 //     OPENING = 3,
 // };
-
 
 // class FrankaGripperProxy {
 
@@ -121,7 +119,7 @@
 //     std::thread control_thread_;
 //     std::thread check_thread_;
 //     std::thread command_sub_thread_;
-    
+
 //     // Threading Tasks
 //     void controlLoopThread() {
 //         while (is_running) {
@@ -230,13 +228,12 @@
 //         }
 //     };
 
-
 //     // Synchronization
 //     std::atomic<bool> is_running; // for threads
 //     std::atomic<bool> is_moving;
 //     std::atomic<bool> is_on_control_mode;
 //     std::atomic<FrankaGripperFlag> gripper_flag;
-    
+
 //     AtomicDoubleBuffer<franka::GripperState> current_state_;
 //     AtomicDoubleBuffer<protocol::GraspCommand> command_;
 //     FrankaGripperConfigData config_;

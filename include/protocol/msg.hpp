@@ -1,7 +1,8 @@
 // #include <zerolancom/zerolancom.hpp>
-#include <vector>
-#include <msgpack.hpp>
 #include <franka/robot_state.h>
+
+#include <msgpack.hpp>
+#include <vector>
 
 struct FrankaArmState
 {
@@ -15,16 +16,16 @@ struct FrankaArmState
     std::vector<double> tau_ext_hat_filtered;
     std::vector<double> O_F_ext_hat_K;
     std::vector<double> K_F_ext_hat_K;
-    MSGPACK_DEFINE_MAP(time_ms, O_T_EE, O_T_EE_d, q, q_d, dq, dq_d, tau_ext_hat_filtered, O_F_ext_hat_K, K_F_ext_hat_K);
+    MSGPACK_DEFINE_MAP(time_ms, O_T_EE, O_T_EE_d, q, q_d, dq, dq_d, tau_ext_hat_filtered,
+                       O_F_ext_hat_K, K_F_ext_hat_K);
 
-    FrankaArmState(const franka::RobotState& state) 
+    FrankaArmState(const franka::RobotState& state)
         : q(state.q.begin(), state.q.end()),
           q_d(state.q_d.begin(), state.q_d.end()),
           dq(state.dq.begin(), state.dq.end()),
           dq_d(state.dq_d.begin(), state.dq_d.end()),
-          tau_ext_hat_filtered(state.tau_ext_hat_filtered.begin(), state.tau_ext_hat_filtered.end())
-    {};
-
+          tau_ext_hat_filtered(state.tau_ext_hat_filtered.begin(),
+                               state.tau_ext_hat_filtered.end()){};
 };
 
 struct FrankaGripperState
@@ -57,4 +58,3 @@ struct FrankaResponseMsg
     std::vector<uint8_t> payload;
     MSGPACK_DEFINE_MAP(code, payload);
 };
-

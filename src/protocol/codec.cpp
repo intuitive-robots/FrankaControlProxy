@@ -1,5 +1,5 @@
-// 
-// 
+//
+//
 // #include "protocol/request_result.hpp"
 // #include <cstring>
 // #include <iostream>
@@ -131,7 +131,6 @@
 //     return std::string(reinterpret_cast<const char*>(payload.data), real_len);
 // }
 
-
 // // ============================================================================
 // // uint16_t decode
 // // ============================================================================
@@ -144,7 +143,6 @@
 //     const uint8_t* rptr = payload.data;
 //     return decode_u16(rptr);
 // }
-
 
 // // ============================================================================
 // // franka control objects
@@ -169,7 +167,6 @@
 //     return franka::JointPositions(q);
 // }
 
-
 // template <>
 // franka::JointVelocities decode<franka::JointVelocities>(ByteView payload) {
 //     constexpr size_t kDoF = 7;
@@ -184,7 +181,6 @@
 //     return franka::JointVelocities(dq);
 // }
 
-
 // template <>
 // franka::CartesianPose decode<franka::CartesianPose>(ByteView payload) {
 //     constexpr size_t kNeed = 16 * sizeof(double);
@@ -197,7 +193,6 @@
 //     decode_array_f64(rptr, pose);
 //     return franka::CartesianPose{pose};
 // }
-
 
 // template <>
 // franka::CartesianVelocities decode<franka::CartesianVelocities>(ByteView payload) {
@@ -212,7 +207,6 @@
 //     return franka::CartesianVelocities{vel};
 // }
 
-
 // template <>
 // franka::Torques decode<franka::Torques>(ByteView payload) {
 //     constexpr size_t kDoF = 7;
@@ -226,7 +220,6 @@
 //     decode_array_f64(rptr, tau);
 //     return franka::Torques{tau};
 // }
-
 
 // // ============================================================================
 // // protocol::FrankaArmControlMode

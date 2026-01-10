@@ -6,78 +6,115 @@
 #include <zerolancom/zerolancom.hpp>
 
 #include "utils/atomic_double_buffer.hpp"
-#include "utils/robot_utils.hpp"
 #include "utils/config_file_reader.hpp"
+#include "utils/robot_model.hpp"
+#include "utils/robot_utils.hpp"
 
-struct ControllerConfig {
+struct ControllerConfig
+{
     // communication
     std::string controller_name;
     std::string command_topic;
-    ControllerConfig() = delete;
-    ControllerConfig(const std::string& controller_config_path) {
-        fromFile(controller_config_path);
-    }
-    virtual void fromFile(const std::string& controller_config_path) {};
-    void readBaseConfig(const ConfigFileReader& reader) {
-        controller_name = reader.getValue<std::string>("name", "UnnamedController");
-        command_topic = reader.getValue<std::string>("command_topic", "UNNAMED_CMD");
+    ControllerConfig() = default;
+
+    virtual void fromFile(const std::string& controller_config_path)
+    {
+        throw std::runtime_error("fromFile() not implemented");
+    };
+    void readBaseConfig(const ConfigFileReader& reader)
+    {
+        controller_name = reader.getValue<std::string>("name");
+        command_topic = reader.getValue<std::string>("command_topic");
     }
 };
 
-
-
-class AbstractControlMode {
-public:
-
+class AbstractControlMode
+{
+  public:
     virtual ~AbstractControlMode() = default;
 
-    void init(FrankaPanda& robot, FrankaModel& model, AtomicDoubleBuffer<franka::RobotState>& state_buffer) {
+    virtual void initController(FrankaPanda& robot, PandaPinocchioModel& model,
+                                AtomicDoubleBuffer<franka::RobotState>& state_buffer)
+    {
         robot_ = &robot;
         model_ = &model;
         state_buffer_ = &state_buffer;
-        initController();;
-    }
-
-    virtual void initController() {};
-    void startControl(AtomicDoubleBuffer<franka::RobotState>& state_buffer) {
+    };
+    void startControl()
+    {
         robot_->automaticErrorRecovery();
         zlc::info("[{}] Robot control started.", getModeName());
         is_running_ = true;
-        control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
+        control_thread_ = std::thread(&AbstractControlMode::controlTask, this);
         zlc::info("[{}] Control thread launched.", getModeName());
     };
-    void stopControl() {
+
+    void stopControl()
+    {
         is_running_ = false;
-        if (control_thread_.joinable()) {
+        if (control_thread_.joinable())
+        {
             zlc::info("[{}] Stopping control thread...", getModeName());
             control_thread_.join();
         }
         zlc::info("[{}] Stopped.", getModeName());
     };
-    const std::string getModeName() {
+    const std::string getModeName()
+    {
         return controller_name;
     };
 
-protected:
-    // Protected constructor to prevent direct instantiation
+    void controlTask()
+    {
+        zlc::info("[{}] Control thread started.", getModeName());
+        auto control_callback = [this](const franka::RobotState& state,
+                                       franka::Duration duration) -> franka::Torques
+        { return this->controlLoop(state, duration); };
+        while (is_running_)
+        {
+            try
+            {
+                robot_->control(control_callback);
+            }
+            catch (const std::exception& ex)
+            {
+                zlc::error("[CartesianVelocityMode] Robot is unable to be controlled: {}",
+                           ex.what());
+                break;
+            }
+            bool recovered = tryRecovery();
+            if (!recovered)
+            {
+                zlc::error(
+                    "[CartesianVelocityMode] Unable to recover robot. Exiting control loop.");
+                break;
+            }
+        }
+        zlc::info("[{}] Control thread ended.", getModeName());
+    }
+
+  protected:
     AbstractControlMode() = default;
-    // Protected setup function for derived classes
     FrankaPanda* robot_;
-    FrankaModel* model_;
+    PandaPinocchioModel* model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 
     const std::string controller_name;
 
     bool is_running_ = false;
 
-    bool tryRecovery(int max_attempts = 3) {
+    bool tryRecovery(int max_attempts = 3)
+    {
         for (size_t i = 0; i < max_attempts; i++)
         {
-            try {
+            try
+            {
                 robot_->automaticErrorRecovery();
                 zlc::info("[{}] Recovery successful.", getModeName());
                 return true;
-            } catch (const franka::Exception& e) {
+            }
+            catch (const franka::Exception& e)
+            {
                 zlc::error("[{}] Recovery failed: {}", getModeName(), e.what());
                 return false;
             }
@@ -85,7 +122,7 @@ protected:
         return false;
     };
 
-    virtual void controlLoop() {};
+    virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
+                                        franka::Duration duration) = 0;
     std::thread control_thread_;
-    
 };
