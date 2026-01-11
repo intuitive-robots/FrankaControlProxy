@@ -12,6 +12,11 @@ Contributions are welcome! Please follow the steps below for submitting pull req
 
 *Note:* Please include **only one commit per Pull Request** to ensure an easy review process. Thank you for your contribution!
 
+conda activate franka_control_porxy
+
+ 6361  conda install pinocchio==2.5.2
+ 6365  sudo apt install libglfw3-dev
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.

@@ -7,6 +7,7 @@ void IdleControlMode::initController(FrankaPanda& robot, PandaPinocchioModel& mo
 {
     AbstractControlMode::initController(robot, model, state_buffer);
     zlc::info("[IdleControlMode] Initialized.");
+    controller_name = "Idle";
 }
 
 franka::Torques IdleControlMode::controlLoop(const franka::RobotState& robot_state,
@@ -16,5 +17,10 @@ franka::Torques IdleControlMode::controlLoop(const franka::RobotState& robot_sta
     {
         state_buffer_->write(robot_state);
     }
-    return franka::Torques{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    auto torques = franka::Torques{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    if (!is_running_)
+    {
+        torques.motion_finished = true;
+    }
+    return torques;
 }

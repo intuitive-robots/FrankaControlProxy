@@ -1,8 +1,5 @@
-#include "control_mode/hybrid_joint_impedance_control.hpp"
-
-#include <franka/exception.h>
-
 #include <Eigen/Geometry>
+#include "control_mode/hybrid_joint_impedance_control.hpp"
 
 HybridJointImpedanceControl::~HybridJointImpedanceControl() = default;
 
@@ -12,6 +9,7 @@ void HybridJointImpedanceControl::initController(
 {
     AbstractControlMode::initController(robot, model, state_buffer);
     config_.fromFile("config/controller/hybrid_joint_impedance_controller.cfg");
+    controller_name = config_.controller_name;
     std::array<double, 7> current_pos = state_buffer.read().q;
     desired_positions_.write(JointPosition::Map(current_pos.data()));
     zlc::registerSubscriberHandler(config_.command_topic,
@@ -20,14 +18,13 @@ void HybridJointImpedanceControl::initController(
 
 void HybridJointImpedanceControl::writeCommand(const HybridJointImpedanceCommand& cmd)
 {
-    desired_positions_.write(JointPosition::Map(cmd.joint_pos.data()));
+    desired_positions_.write(JointPosition::Map(cmd.pos.data()));
 }
 
 franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotState& robot_state,
                                                          franka::Duration /*duration*/)
 {
     state_buffer_->write(robot_state);
-
     const JointPosition desired_pos = desired_positions_.read();
     const JointPosition current_pos = Eigen::Map<const JointPosition>(robot_state.q.data());
     const JointVelocity desired_vel = JointVelocity::Zero();
@@ -49,5 +46,10 @@ franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotStat
     {
         tau_cmd[i] = torque_feedback[i] + torque_forward[i];
     }
-    return franka::Torques{tau_cmd};
+    franka::Torques tau_command = franka::Torques{tau_cmd};
+    if (!is_running_)
+    {
+        tau_command.motion_finished = true;
+    }
+    return tau_command;
 }

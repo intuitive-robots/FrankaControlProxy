@@ -18,6 +18,7 @@
 struct FrankaArmConfig
 {
     // communication
+    std::string name;
     std::string robot_ip;
 
     // arm
@@ -49,8 +50,8 @@ struct FrankaArmConfig
             {1.0, 0.0, 0.0, 0.3, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0}};
 
         // communication
+        name = reader.getValue<std::string>("name");
         robot_ip = reader.getValue<std::string>("robot_ip");
-
         // arm
         arm_default_state_q = reader.getArray<double, 7>("arm_default_state_q");
 

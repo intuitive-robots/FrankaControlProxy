@@ -1,18 +1,18 @@
 #pragma once
-#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <array>
 #include <pinocchio/multibody/data.hpp>
 #include <pinocchio/multibody/model.hpp>
 #include <string>
 #include <vector>
 
-using JointPosition = Eigen::Vector<double, 7>;
-using JointVelocity = Eigen::Vector<double, 7>;
-using JointAcceleration = Eigen::Vector<double, 7>;
-using JointTorque = Eigen::Vector<double, 7>;
+using JointPosition = Eigen::Matrix<double, 7, 1>;
+using JointVelocity = Eigen::Matrix<double, 7, 1>;
+using JointAcceleration = Eigen::Matrix<double, 7, 1>;
+using JointTorque = Eigen::Matrix<double, 7, 1>;
 using JocobianMatrix = Eigen::Matrix<double, 6, 7>;
-using PoseRPY = Eigen::Vector<double, 6>;
-using PoseQuat = Eigen::Vector<double, 7>;
+using PoseRPY = Eigen::Matrix<double, 6, 1>;
+using PoseQuat = Eigen::Matrix<double, 7, 1>;
 
 class PandaPinocchioModel
 {
@@ -21,14 +21,22 @@ class PandaPinocchioModel
     JointPosition getJointAngleLowerLimits();
     JointPosition getJointAngleUpperLimits();
     JointVelocity getJointVelocityLimits();
-    JointPosition forwardKinematics(JointPosition joint_positions);
-    JocobianMatrix computeJacobian(JointPosition joint_positions);
-    JointPosition inverseDynamics(JointPosition joint_positions, JointVelocity joint_velocities,
-                                  JointVelocity joint_accelerations);
-    // Returns Coriolis + centrifugal torques for the given joint state.
-    JointPosition coriolis(JointPosition joint_positions, JointVelocity joint_velocities);
-    // Returns gravity compensation torques for the given joint positions.
-    JointPosition gravity(JointPosition joint_positions);
+    PoseQuat forwardKinematics(JointPosition joint_position, int64_t link_idx);
+    PoseQuat forwardKinematics(JointPosition joint_position, const std::string& link_name);
+    PoseQuat forwardKinematics(JointPosition joint_position);
+    JocobianMatrix computeJacobian(JointPosition joint_position, int64_t link_idx);
+    JocobianMatrix computeJacobian(JointPosition joint_position, const std::string& link_name);
+    JocobianMatrix computeJacobian(JointPosition joint_position);
+    JointTorque inverseDynamics(
+      JointPosition joint_position,
+       JointVelocity joint_velocity,
+        JointAcceleration joint_acceleration);
+    // JointPosition inverseKinematics(PoseQuat desired_pose, JointPosition initial_guess);
+
+    // // Returns Coriolis + centrifugal torques for the given joint state.
+    // JointTorque coriolis(JointPosition joint_position, JointVelocity joint_velocity);
+    // // Returns gravity compensation torques for the given joint positions.
+    // JointTorque gravity(JointPosition joint_position);
 
   private:
     void initialize();
@@ -39,4 +47,7 @@ class PandaPinocchioModel
 
     std::string xml_buffer_;
     std::string ee_joint_name_;
+    std::string ee_link_name;
+    int64_t ee_link_idx_;
+
 };

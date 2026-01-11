@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iostream>
 #include <utility>
+#include <zerolancom/zerolancom.hpp>
 
 MujocoPandaEnv::MujocoPandaEnv(const std::string& model_path) : model_path_(model_path) {}
 
@@ -53,9 +54,8 @@ void MujocoPandaEnv::loadModel()
     if (key_id != -1) {
         mj_resetDataKeyframe(model_.get(), data_.get(), key_id);
         mj_forward(model_.get(), data_.get());
-        printf("Successfully loaded keyframe 'home'\n");
     } else {
-        printf("Keyframe 'home' not found in the model\n");
+        zlc::warn("Keyframe 'home' not found in the model");
     }
 }
 

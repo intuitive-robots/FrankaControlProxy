@@ -31,11 +31,6 @@ class ControlModeFactory
         AtomicDoubleBuffer<franka::RobotState>& state_buffer)
     {
         registry["Idle"] = std::make_unique<IdleControlMode>();
-        // registry["CARTESIAN_POSE"] = std::make_unique<CartesianPoseMode>();
-        // registry["CartesianVelocity"] = std::make_unique<CartesianVelocityMode>();
-        // registry["JOINT_POSITION"] = std::make_unique<JointPositionMode>();
-        // registry["JOINT_VELOCITY"] = std::make_unique<JointVelocityMode>();
-        // registry["HUMAN_CONTROL"] = std::make_unique<HumanControlMode>();
         registry["HybridJointImpedance"] = std::make_unique<HybridJointImpedanceControl>();
         for (const auto& pair : registry)
         {

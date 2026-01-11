@@ -1,14 +1,13 @@
-#include "utils/robot_model.hpp"
 
-#include <Eigen/Core>
-#include <Eigen/Geometry>
-#include <fstream>
-#include <iterator>
-#include <pinocchio/algorithm/frames.hpp>
-#include <pinocchio/algorithm/jacobian.hpp>
-#include <pinocchio/algorithm/kinematics.hpp>
-#include <pinocchio/algorithm/rnea.hpp>
-#include <pinocchio/parsers/urdf.hpp>
+#include "pinocchio/algorithm/frames.hpp"
+#include "pinocchio/algorithm/jacobian.hpp"
+#include "pinocchio/algorithm/joint-configuration.hpp"
+#include "pinocchio/algorithm/kinematics.hpp"
+#include "pinocchio/algorithm/rnea.hpp"
+#include "pinocchio/parsers/sample-models.hpp"
+#include "pinocchio/parsers/urdf.hpp"
+
+#include "utils/robot_model.hpp"
 
 PandaPinocchioModel::PandaPinocchioModel(std::string urdf_filename, std::string ee_joint_name)
 {
@@ -19,7 +18,7 @@ PandaPinocchioModel::PandaPinocchioModel(std::string urdf_filename, std::string 
         std::string((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
     pinocchio::urdf::buildModelFromXML(xml_buffer_, model_);
     model_data_ = pinocchio::Data(model_);
-    ee_idx_ = model_.getFrameId(ee_joint_name_);
+    ee_link_idx_ = model_.getFrameId(ee_joint_name_);
 }
 
 JointPosition PandaPinocchioModel::getJointAngleLowerLimits()
@@ -52,67 +51,80 @@ JointVelocity PandaPinocchioModel::getJointVelocityLimits()
     return result;
 }
 
-JointPosition PandaPinocchioModel::forwardKinematics(JointPosition joint_positions)
+PoseQuat PandaPinocchioModel::forwardKinematics(JointPosition joint_positions, int64_t link_idx)
 {
-    JointPosition q = joint_positions;
-
-    pinocchio::forwardKinematics(model_, model_data_, q);
-    pinocchio::updateFramePlacement(model_, model_data_, ee_idx_);
-
-    const auto& pos = model_data_.oMf[ee_idx_].translation();
-    Eigen::Quaterniond quat(model_data_.oMf[ee_idx_].rotation());
-
-    JointPosition result{};
-    result << pos.x(), pos.y(), pos.z(), quat.x(), quat.y(), quat.z(), quat.w();
+    pinocchio::FrameIndex frame_idx = static_cast<pinocchio::FrameIndex>(link_idx);
+    
+    pinocchio::forwardKinematics(model_, model_data_, joint_positions);
+    pinocchio::updateFramePlacement(model_, model_data_, frame_idx);
+    
+    auto pos_data = model_data_.oMf[frame_idx].translation().transpose();
+    auto quat_data = Eigen::Quaterniond(model_data_.oMf[frame_idx].rotation());
+    
+    PoseQuat result;
+    for (int i = 0; i < 3; i++) {
+        result[i] = pos_data[i];
+    }
+    result[3] = quat_data.x();
+    result[4] = quat_data.y();
+    result[5] = quat_data.z();
+    result[6] = quat_data.w();
     return result;
+}
+
+PoseQuat PandaPinocchioModel::forwardKinematics(JointPosition joint_positions, const std::string& link_name)
+{
+    pinocchio::FrameIndex frame_idx = model_.getFrameId(link_name);
+    return forwardKinematics(joint_positions, frame_idx);
+}
+
+PoseQuat PandaPinocchioModel::forwardKinematics(JointPosition joint_positions)
+{
+    return forwardKinematics(joint_positions, ee_link_idx_);
+}
+
+JocobianMatrix PandaPinocchioModel::computeJacobian(JointPosition joint_positions, int64_t link_idx)
+{
+    JocobianMatrix J = JocobianMatrix::Zero();
+    pinocchio::FrameIndex frame_idx = static_cast<pinocchio::FrameIndex>(link_idx);
+    pinocchio::computeFrameJacobian(model_, model_data_, joint_positions, frame_idx, pinocchio::LOCAL_WORLD_ALIGNED, J);
+    return J;
+}
+
+JocobianMatrix PandaPinocchioModel::computeJacobian(JointPosition joint_positions, const std::string& link_name)
+{
+    pinocchio::FrameIndex frame_idx = model_.getFrameId(link_name);
+    return computeJacobian(joint_positions, frame_idx);
 }
 
 JocobianMatrix PandaPinocchioModel::computeJacobian(JointPosition joint_positions)
 {
-    JointPosition q = joint_positions;
-
-    JocobianMatrix J = JocobianMatrix::Zero();
-    pinocchio::computeFrameJacobian(model_, model_data_, q, ee_idx_, pinocchio::LOCAL_WORLD_ALIGNED,
-                                    J);
-    return J;
+    return computeJacobian(joint_positions, ee_link_idx_);
 }
 
-JointPosition PandaPinocchioModel::inverseDynamics(JointPosition joint_positions,
-                                                   JointVelocity joint_velocities,
-                                                   JointVelocity joint_accelerations)
+JointPosition PandaPinocchioModel::inverseDynamics(JointPosition joint_position,
+                                                   JointVelocity joint_velocity,
+                                                   JointAcceleration joint_acceleration)
 {
-    JointPosition q = joint_positions;
-    JointVelocity v = joint_velocities;
-    JointVelocity a = joint_accelerations;
-
-    Eigen::Matrix<double, Eigen::Dynamic, 1> tau = pinocchio::rnea(model_, model_data_, q, v, a);
-
-    JointPosition result{};
-    result = tau;
-    return result;
+    return pinocchio::rnea(model_, model_data_, joint_position, joint_velocity, joint_acceleration);
 }
 
-JointPosition PandaPinocchioModel::coriolis(JointPosition joint_positions,
-                                            JointVelocity joint_velocities)
-{
-    JointPosition q = joint_positions;
-    JointVelocity v = joint_velocities;
 
-    const auto nle = pinocchio::nonLinearEffects(model_, model_data_, q, v);
-    const auto g = pinocchio::computeGeneralizedGravity(model_, model_data_, q);
 
-    JointPosition result{};
-    result = nle - g;
-    return result;
-}
 
-JointPosition PandaPinocchioModel::gravity(JointPosition joint_positions)
-{
-    JointPosition q = joint_positions;
+// JointPosition PandaPinocchioModel::coriolis(JointPosition joint_position,
+//                                             JointVelocity joint_velocity)
+// {
+//     return pinocchio::rnea(model_, model_data_, joint_positions, joint_velocitie, a);
+// }
 
-    const auto g = pinocchio::computeGeneralizedGravity(model_, model_data_, q);
+// JointPosition PandaPinocchioModel::gravity(JointPosition joint_positions)
+// {
+//     JointPosition q = joint_positions;
 
-    JointPosition result{};
-    result = g;
-    return result;
-}
+//     const auto g = pinocchio::computeGeneralizedGravity(model_, model_data_, q);
+
+//     JointPosition result{};
+//     result = g;
+//     return result;
+// }

@@ -26,6 +26,10 @@ else()
     add_compile_definitions(NO_ROBOT_TESTING=0)
 endif()
 
+if(DEFINED ENV{CONDA_PREFIX})
+    set(CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX})
+    set(Boost_NO_SYSTEM_PATHS ON) 
+endif()
 
 # -----------------------------
 # Include paths
@@ -41,13 +45,14 @@ include_directories(
 # Dependencies
 # -----------------------------
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+find_package(Eigen3 3.3.9 REQUIRED)
+find_package(pinocchio REQUIRED)
+find_package(Boost REQUIRED COMPONENTS filesystem serialization system)
 find_package(MuJoCo REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(Franka REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(zerolancom REQUIRED)
-find_package(pinocchio REQUIRED)
-find_package(Eigen3 REQUIRED)
 
 # -----------------------------
 # Source collection

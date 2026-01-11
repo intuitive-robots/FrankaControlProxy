@@ -8,8 +8,8 @@
 
 struct HybridJointImpedanceCommand
 {
-    std::array<double, 7> joint_pos;
-    MSGPACK_DEFINE_MAP(joint_pos)
+    std::array<double, 7> pos;
+    MSGPACK_DEFINE_MAP(pos);
 };
 
 struct HybridJointImpedanceConfig : public ControllerConfig

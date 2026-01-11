@@ -99,7 +99,7 @@ class AbstractControlMode
     PandaPinocchioModel* model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 
-    const std::string controller_name;
+    std::string controller_name;
 
     bool is_running_ = false;
 
@@ -125,4 +125,15 @@ class AbstractControlMode
     virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
                                         franka::Duration duration) = 0;
     std::thread control_thread_;
+private:
+  void checkStateLimits()
+  {
+    // TODO: implement state limits checking
+  }
+
+  void postprocessTorques(franka::Torques& torques)
+  {
+    // TODO: implement torque post-processing
+  }
+
 };

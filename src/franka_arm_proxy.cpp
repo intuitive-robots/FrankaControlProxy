@@ -42,11 +42,12 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
 
 void FrankaArmProxy::initializeService()
 {
-    zlc::registerServiceHandler("SET_FRANKA_ARM_CONTROL_MODE", &FrankaArmProxy::setControlMode,
-                                this);
-    zlc::registerServiceHandler("GET_FRANKA_ARM_STATE", &FrankaArmProxy::getFrankaArmState, this);
-    zlc::registerServiceHandler("GET_FRANKA_ARM_CONTROL_MODE",
-                                &FrankaArmProxy::getFrankaArmControlMode, this);
+    std::string service_namespace = fmt::format("{}/set_franka_arm_control_mode", config_.name);
+    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::setControlMode, this);
+    service_namespace = fmt::format("{}/get_franka_arm_state", config_.name);
+    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::getFrankaArmState, this);
+    service_namespace = fmt::format("{}/get_franka_arm_control_mode", config_.name);
+    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::getFrankaArmControlMode, this);
     // zlc::registerServiceHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", &FrankaArmProxy::moveFrankaArmToJointPosition, this);
     // zlc::registerServiceHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", &FrankaArmProxy::moveFrankaArmToCartesianPosition, this);
 }
@@ -62,7 +63,7 @@ void FrankaArmProxy::initRobot()
     try
     {
         robot_ = std::make_unique<FrankaPanda>(config_.robot_ip);
-        model_ = nullptr;
+        model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf", "panda_link8");
     }
     catch (const franka::NetworkException& e)
     {
@@ -107,7 +108,8 @@ void FrankaArmProxy::spin()
 // publish threads
 void FrankaArmProxy::statePublishThread()
 {
-    zlc::Publisher<FrankaArmState> state_pub("FRANKA_ARM_STATE_PUB");
+    const std::string topic_name = fmt::format("{}/franka_arm_state", config_.name);
+    zlc::Publisher<FrankaArmState> state_pub(topic_name);
     int dt = int(1000.0 / config_.arm_state_pub_rate_hz);
     while (is_running)
     {
@@ -120,6 +122,11 @@ void FrankaArmProxy::statePublishThread()
 
 zlc::Empty FrankaArmProxy::setControlMode(const std::string& mode)
 {
+    if (control_modes_.find(mode) == control_modes_.end())
+    {
+        zlc::warn("Control mode '{}' not found!", mode);
+        return zlc::empty;
+    }
     if (current_control_mode_ != nullptr)
     {
         zlc::info("Stopping previous control mode...");
@@ -140,7 +147,8 @@ std::string FrankaArmProxy::getFrankaArmControlMode(const zlc::Empty&)
 {
     if (!current_control_mode_)
     {
-        throw std::runtime_error("No active control mode");
+        zlc::warn("No active control mode");
+        return "None";
     }
     return current_control_mode_->getModeName();
 }
