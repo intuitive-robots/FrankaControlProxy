@@ -38,5 +38,5 @@ build/
 
 MUJOCO_LOG.TXT
 
-!assets/models/
-!assets/models/*.obj
+!models/franka_emika_panda/assets/
+!models/franka_emika_panda/assets/*.obj
