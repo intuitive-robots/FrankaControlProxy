@@ -37,3 +37,6 @@ build/
 .vscode/
 
 MUJOCO_LOG.TXT
+
+!assets/models/
+!assets/models/*.obj
