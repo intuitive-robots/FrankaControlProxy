@@ -5,7 +5,10 @@
 class IdleControlMode : public AbstractControlMode
 {
   public:
-    IdleControlMode() = default;
+    IdleControlMode(const SafetyLimitConfig& safety_config) : AbstractControlMode(safety_config)
+    {
+        controller_name = "IdleControlMode";
+    };
     ~IdleControlMode() override = default;
 
   private:

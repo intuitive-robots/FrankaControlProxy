@@ -8,8 +8,6 @@
 
 #if NO_ROBOT_TESTING
 using FrankaPanda = MujocoRobot;
-// using FrankaModel = MujocoModel;
 #else
 using FrankaPanda = franka::Robot;
-using FrankaModel = franka::Model;
 #endif

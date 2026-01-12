@@ -42,12 +42,15 @@ struct HybridJointImpedanceConfig : public ControllerConfig
 class HybridJointImpedanceControl : public AbstractControlMode
 {
   public:
-    // HybridJointImpedanceControl() : AbstractControlMode(robot, model, state_buffer) {
-    // };
+    HybridJointImpedanceControl(const SafetyLimitConfig& safety_config)
+        : AbstractControlMode(safety_config)
+    {
+        controller_name = "HybridJointImpedanceControl";
+    };
     ~HybridJointImpedanceControl() override;
 
   private:
-    void initController(FrankaPanda& robot, PandaPinocchioModel& model,
+    void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
                         AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
     franka::Torques controlLoop(const franka::RobotState& robot_state,
                                 franka::Duration duration) override;

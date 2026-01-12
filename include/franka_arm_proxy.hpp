@@ -100,7 +100,7 @@ class FrankaArmProxy
   private:
     // Initialization
     void initRobot();
-
+    SafetyLimitConfig safety_config_;
     // Franka robot
     std::unique_ptr<FrankaPanda> robot_;
     std::unique_ptr<PandaPinocchioModel> model_;

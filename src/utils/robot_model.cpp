@@ -1,4 +1,6 @@
 
+#include "utils/robot_model.hpp"
+
 #include "pinocchio/algorithm/frames.hpp"
 #include "pinocchio/algorithm/jacobian.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
@@ -6,8 +8,6 @@
 #include "pinocchio/algorithm/rnea.hpp"
 #include "pinocchio/parsers/sample-models.hpp"
 #include "pinocchio/parsers/urdf.hpp"
-
-#include "utils/robot_model.hpp"
 
 PandaPinocchioModel::PandaPinocchioModel(std::string urdf_filename, std::string ee_joint_name)
 {
@@ -54,15 +54,16 @@ JointVelocity PandaPinocchioModel::getJointVelocityLimits()
 PoseQuat PandaPinocchioModel::forwardKinematics(JointPosition joint_positions, int64_t link_idx)
 {
     pinocchio::FrameIndex frame_idx = static_cast<pinocchio::FrameIndex>(link_idx);
-    
+
     pinocchio::forwardKinematics(model_, model_data_, joint_positions);
     pinocchio::updateFramePlacement(model_, model_data_, frame_idx);
-    
+
     auto pos_data = model_data_.oMf[frame_idx].translation().transpose();
     auto quat_data = Eigen::Quaterniond(model_data_.oMf[frame_idx].rotation());
-    
+
     PoseQuat result;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++)
+    {
         result[i] = pos_data[i];
     }
     result[3] = quat_data.x();
@@ -72,7 +73,8 @@ PoseQuat PandaPinocchioModel::forwardKinematics(JointPosition joint_positions, i
     return result;
 }
 
-PoseQuat PandaPinocchioModel::forwardKinematics(JointPosition joint_positions, const std::string& link_name)
+PoseQuat PandaPinocchioModel::forwardKinematics(JointPosition joint_positions,
+                                                const std::string& link_name)
 {
     pinocchio::FrameIndex frame_idx = model_.getFrameId(link_name);
     return forwardKinematics(joint_positions, frame_idx);
@@ -87,11 +89,13 @@ JocobianMatrix PandaPinocchioModel::computeJacobian(JointPosition joint_position
 {
     JocobianMatrix J = JocobianMatrix::Zero();
     pinocchio::FrameIndex frame_idx = static_cast<pinocchio::FrameIndex>(link_idx);
-    pinocchio::computeFrameJacobian(model_, model_data_, joint_positions, frame_idx, pinocchio::LOCAL_WORLD_ALIGNED, J);
+    pinocchio::computeFrameJacobian(model_, model_data_, joint_positions, frame_idx,
+                                    pinocchio::LOCAL_WORLD_ALIGNED, J);
     return J;
 }
 
-JocobianMatrix PandaPinocchioModel::computeJacobian(JointPosition joint_positions, const std::string& link_name)
+JocobianMatrix PandaPinocchioModel::computeJacobian(JointPosition joint_positions,
+                                                    const std::string& link_name)
 {
     pinocchio::FrameIndex frame_idx = model_.getFrameId(link_name);
     return computeJacobian(joint_positions, frame_idx);
@@ -108,9 +112,6 @@ JointPosition PandaPinocchioModel::inverseDynamics(JointPosition joint_position,
 {
     return pinocchio::rnea(model_, model_data_, joint_position, joint_velocity, joint_acceleration);
 }
-
-
-
 
 // JointPosition PandaPinocchioModel::coriolis(JointPosition joint_position,
 //                                             JointVelocity joint_velocity)

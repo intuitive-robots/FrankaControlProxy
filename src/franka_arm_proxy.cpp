@@ -35,7 +35,9 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
 {
     // Register service handlers
     initRobot();
-    ControlModeFactory::registerControlModes(control_modes_, *robot_, *model_, current_state);
+    safety_config_.fromFile("./config/SafetyLimitConfig.cfg");
+    ControlModeFactory::registerControlModes(control_modes_, *robot_, *model_, current_state,
+                                             safety_config_);
     setControlMode("Idle");
     initializeService();
 }
@@ -63,7 +65,8 @@ void FrankaArmProxy::initRobot()
     try
     {
         robot_ = std::make_unique<FrankaPanda>(config_.robot_ip);
-        model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf", "panda_link8");
+        model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf",
+                                                       "panda_link8");
     }
     catch (const franka::NetworkException& e)
     {

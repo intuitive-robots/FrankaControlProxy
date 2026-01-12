@@ -51,10 +51,13 @@ void MujocoPandaEnv::loadModel()
     }
 
     int key_id = mj_name2id(model_.get(), mjOBJ_KEY, "home");
-    if (key_id != -1) {
+    if (key_id != -1)
+    {
         mj_resetDataKeyframe(model_.get(), data_.get(), key_id);
         mj_forward(model_.get(), data_.get());
-    } else {
+    }
+    else
+    {
         zlc::warn("Keyframe 'home' not found in the model");
     }
 }

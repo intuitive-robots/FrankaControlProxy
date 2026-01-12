@@ -27,15 +27,17 @@ class ControlModeFactory
     // Register control modes
     static void registerControlModes(
         std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>>& registry,
-        FrankaPanda& robot, PandaPinocchioModel& model,
-        AtomicDoubleBuffer<franka::RobotState>& state_buffer)
+        FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
+        AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+        const SafetyLimitConfig& safety_config)
     {
-        registry["Idle"] = std::make_unique<IdleControlMode>();
-        registry["HybridJointImpedance"] = std::make_unique<HybridJointImpedanceControl>();
+        registry["Idle"] = std::make_unique<IdleControlMode>(safety_config);
+        registry["HybridJointImpedance"] =
+            std::make_unique<HybridJointImpedanceControl>(safety_config);
         for (const auto& pair : registry)
         {
             zlc::info("[ControlModeFactory] Registered mode: {}", pair.first);
-            pair.second->initController(robot, model, state_buffer);
+            pair.second->initController(robot, pinocchio_model, state_buffer);
         }
     }
 };

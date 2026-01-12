@@ -1,13 +1,14 @@
-#include <Eigen/Geometry>
 #include "control_mode/hybrid_joint_impedance_control.hpp"
+
+#include <Eigen/Geometry>
 
 HybridJointImpedanceControl::~HybridJointImpedanceControl() = default;
 
 void HybridJointImpedanceControl::initController(
-    FrankaPanda& robot, PandaPinocchioModel& model,
+    FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
     AtomicDoubleBuffer<franka::RobotState>& state_buffer)
 {
-    AbstractControlMode::initController(robot, model, state_buffer);
+    AbstractControlMode::initController(robot, pinocchio_model, state_buffer);
     config_.fromFile("config/controller/hybrid_joint_impedance_controller.cfg");
     controller_name = config_.controller_name;
     std::array<double, 7> current_pos = state_buffer.read().q;
@@ -30,7 +31,7 @@ franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotStat
     const JointVelocity desired_vel = JointVelocity::Zero();
     const JointVelocity current_vel = Eigen::Map<const JointVelocity>(robot_state.dq.data());
 
-    JocobianMatrix J = model_->computeJacobian(current_pos);
+    JocobianMatrix J = pinocchio_model_->computeJacobian(current_pos);
     Eigen::Matrix<double, 7, 7> Kp = (J.transpose() * config_.kx * J).eval() + config_.kq;
     Eigen::Matrix<double, 7, 7> Kd = (J.transpose() * config_.kxd * J).eval() + config_.kqd;
 
@@ -40,7 +41,7 @@ franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotStat
     Eigen::Matrix<double, 7, 1> torque_feedback = Kp * joint_pos_error + Kd * joint_vel_error;
 
     JointTorque torque_forward =
-        model_->inverseDynamics(current_pos, current_vel, JointAcceleration::Zero());
+        pinocchio_model_->inverseDynamics(current_pos, current_vel, JointAcceleration::Zero());
     std::array<double, 7> tau_cmd{};
     for (size_t i = 0; i < 7; i++)
     {

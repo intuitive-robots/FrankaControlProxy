@@ -14,6 +14,8 @@ using JocobianMatrix = Eigen::Matrix<double, 6, 7>;
 using PoseRPY = Eigen::Matrix<double, 6, 1>;
 using PoseQuat = Eigen::Matrix<double, 7, 1>;
 
+constexpr int NUM_DOFS = 7;
+
 class PandaPinocchioModel
 {
   public:
@@ -27,10 +29,8 @@ class PandaPinocchioModel
     JocobianMatrix computeJacobian(JointPosition joint_position, int64_t link_idx);
     JocobianMatrix computeJacobian(JointPosition joint_position, const std::string& link_name);
     JocobianMatrix computeJacobian(JointPosition joint_position);
-    JointTorque inverseDynamics(
-      JointPosition joint_position,
-       JointVelocity joint_velocity,
-        JointAcceleration joint_acceleration);
+    JointTorque inverseDynamics(JointPosition joint_position, JointVelocity joint_velocity,
+                                JointAcceleration joint_acceleration);
     // JointPosition inverseKinematics(PoseQuat desired_pose, JointPosition initial_guess);
 
     // // Returns Coriolis + centrifugal torques for the given joint state.
@@ -49,5 +49,4 @@ class PandaPinocchioModel
     std::string ee_joint_name_;
     std::string ee_link_name;
     int64_t ee_link_idx_;
-
 };

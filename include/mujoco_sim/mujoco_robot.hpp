@@ -17,6 +17,25 @@
 #include "mujoco_sim/mujoco_panda_env.hpp"
 #include "mujoco_sim/mujoco_viewer.hpp"
 
+class MujocoModel
+{
+  public:
+    explicit MujocoModel(MujocoPandaEnv* env);
+
+    mjModel* getModel() const
+    {
+        return env_->getModel();
+    }
+
+    mjData* getData() const
+    {
+        return env_->getData();
+    }
+
+  private:
+    MujocoPandaEnv* env_;
+};
+
 class MujocoRobot
 {
   public:

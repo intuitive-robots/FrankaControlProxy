@@ -10,22 +10,50 @@
 #include "utils/robot_model.hpp"
 #include "utils/robot_utils.hpp"
 
-struct ControllerConfig
+struct AbstractConfig
+{
+    AbstractConfig() = default;
+    ~AbstractConfig() = default;
+    virtual void fromFile(const std::string& controller_config_path) = 0;
+};
+
+struct ControllerConfig : public AbstractConfig
 {
     // communication
     std::string controller_name;
     std::string command_topic;
+
     ControllerConfig() = default;
 
-    virtual void fromFile(const std::string& controller_config_path)
-    {
-        throw std::runtime_error("fromFile() not implemented");
-    };
-    void readBaseConfig(const ConfigFileReader& reader)
-    {
-        controller_name = reader.getValue<std::string>("name");
-        command_topic = reader.getValue<std::string>("command_topic");
-    }
+    // void fromFile(const std::string& controller_config_path) override;
+    void readBaseConfig(const ConfigFileReader& reader);
+};
+
+struct SafetyLimitConfig : public AbstractConfig
+{
+    // control settings
+    bool limit_rate;
+    double lpf_cutoff_freq;
+
+    // cartesian limits
+    std::array<double, 3> cartesian_pos_upper_limits;
+    std::array<double, 3> cartesian_pos_lower_limits;
+
+    // joint limits
+    std::array<double, NUM_DOFS> joint_pos_upper_limits;
+    std::array<double, NUM_DOFS> joint_pos_lower_limits;
+    std::array<double, NUM_DOFS> joint_vel_upper_limits;
+    std::array<double, NUM_DOFS> joint_vel_lower_limits;
+    std::array<double, NUM_DOFS> joint_torques_limits;
+
+    // safety controller
+    double margin_joint_pos;
+    double margin_joint_vel;
+    double k_joint_pos;
+    double k_joint_vel;
+
+    SafetyLimitConfig() = default;
+    void fromFile(const std::string& controller_config_path) override;
 };
 
 class AbstractControlMode
@@ -33,107 +61,36 @@ class AbstractControlMode
   public:
     virtual ~AbstractControlMode() = default;
 
-    virtual void initController(FrankaPanda& robot, PandaPinocchioModel& model,
-                                AtomicDoubleBuffer<franka::RobotState>& state_buffer)
-    {
-        robot_ = &robot;
-        model_ = &model;
-        state_buffer_ = &state_buffer;
-    };
-    void startControl()
-    {
-        robot_->automaticErrorRecovery();
-        zlc::info("[{}] Robot control started.", getModeName());
-        is_running_ = true;
-        control_thread_ = std::thread(&AbstractControlMode::controlTask, this);
-        zlc::info("[{}] Control thread launched.", getModeName());
-    };
-
-    void stopControl()
-    {
-        is_running_ = false;
-        if (control_thread_.joinable())
-        {
-            zlc::info("[{}] Stopping control thread...", getModeName());
-            control_thread_.join();
-        }
-        zlc::info("[{}] Stopped.", getModeName());
-    };
-    const std::string getModeName()
-    {
-        return controller_name;
-    };
-
-    void controlTask()
-    {
-        zlc::info("[{}] Control thread started.", getModeName());
-        auto control_callback = [this](const franka::RobotState& state,
-                                       franka::Duration duration) -> franka::Torques
-        { return this->controlLoop(state, duration); };
-        while (is_running_)
-        {
-            try
-            {
-                robot_->control(control_callback);
-            }
-            catch (const std::exception& ex)
-            {
-                zlc::error("[CartesianVelocityMode] Robot is unable to be controlled: {}",
-                           ex.what());
-                break;
-            }
-            bool recovered = tryRecovery();
-            if (!recovered)
-            {
-                zlc::error(
-                    "[CartesianVelocityMode] Unable to recover robot. Exiting control loop.");
-                break;
-            }
-        }
-        zlc::info("[{}] Control thread ended.", getModeName());
-    }
+    virtual void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
+                                AtomicDoubleBuffer<franka::RobotState>& state_buffer);
+    void startControl();
+    void stopControl();
+    const std::string getModeName();
+    void controlTask();
 
   protected:
-    AbstractControlMode() = default;
+    AbstractControlMode(const SafetyLimitConfig& safety_config) : safety_config_(safety_config) {}
     FrankaPanda* robot_;
-    PandaPinocchioModel* model_;
+    PandaPinocchioModel* pinocchio_model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 
-    std::string controller_name;
-
     bool is_running_ = false;
-
-    bool tryRecovery(int max_attempts = 3)
-    {
-        for (size_t i = 0; i < max_attempts; i++)
-        {
-            try
-            {
-                robot_->automaticErrorRecovery();
-                zlc::info("[{}] Recovery successful.", getModeName());
-                return true;
-            }
-            catch (const franka::Exception& e)
-            {
-                zlc::error("[{}] Recovery failed: {}", getModeName(), e.what());
-                return false;
-            }
-        }
-        return false;
-    };
+    std::string controller_name{"AbstractControlMode"};
+    bool tryRecovery(int max_attempts = 3);
 
     virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
                                         franka::Duration duration) = 0;
     std::thread control_thread_;
-private:
-  void checkStateLimits()
-  {
-    // TODO: implement state limits checking
-  }
+    const SafetyLimitConfig& safety_config_;
 
-  void postprocessTorques(franka::Torques& torques)
-  {
-    // TODO: implement torque post-processing
-  }
-
+  private:
+    void checkStateLimits(const franka::RobotState& robot_state, franka::Torques& torque_out,
+                          const SafetyLimitConfig& safety_config_);
+    void postprocessTorques(franka::Torques& torque_applied,
+                            const std::array<double, NUM_DOFS>& torque_limits);
+    template <std::size_t N>
+    void computeSafetyReflex(std::array<double, N> values, std::array<double, N> lower_limit,
+                             std::array<double, N> upper_limit, std::array<double, N>& torques_out,
+                             double margin, double k);
+    std::unordered_map<std::string, bool> active_constraints_map_;
 };
