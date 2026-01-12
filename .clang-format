@@ -1,13 +1,25 @@
 BasedOnStyle: Google
+Language: Cpp
+
 IndentWidth: 4
+TabWidth: 4
+UseTab: Never
 ColumnLimit: 100
+
+AccessModifierOffset: -2
+AlignAfterOpenBracket: Align
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Allman
+ConstructorInitializerIndentWidth: 4
 DerivePointerAlignment: false
 PointerAlignment: Left
-AllowShortFunctionsOnASingleLine: Empty
-AccessModifierOffset: -2
-BreakBeforeBraces: Allman
-SortIncludes: true
-IncludeBlocks: Regroup
-NamespaceIndentation: All
 SpacesBeforeTrailingComments: 1
+
+IncludeBlocks: Regroup
+SortIncludes: true
+NamespaceIndentation: All
 ReflowComments: false
+Standard: c++17

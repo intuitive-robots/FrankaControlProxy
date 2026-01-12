@@ -1,89 +1,91 @@
-#include "control_mode/cartesian_pose_mode.hpp"
-#include "protocol/mode_id.hpp"
-#include "protocol/codec.hpp"
-#include <franka/exception.h>
-#include "utils/logger.hpp"
-#include <unistd.h>
-//Note: Pose is represented as a 4x4 matrix in column-major format.
-CartesianPoseMode::CartesianPoseMode():
-    desired_pose_(franka::CartesianPose{
-        {1.0, 0.0, 0.0, 0.0,
-         0.0, 1.0, 0.0, 0.0,
-         0.0, 0.0, 1.0, 0.0,
-         0.306, 0.0, 0.485, 1.0}
-    })
-{};
-CartesianPoseMode::~CartesianPoseMode() = default;
+// #include "control_mode/cartesian_pose_mode.hpp"
 
-void CartesianPoseMode::controlLoop() {
-    LOG_INFO("[CartesianPoseMode] Started.");
-    is_running_ = true;
+// #include <franka/exception.h>
 
-    // Initialize desired Cartesian pose to identity (no movement)`
-    desired_pose_.write(franka::CartesianPose{
-        {1.0, 0.0, 0.0, 0.0,   // col 1 (rotationx 0)
-         0.0, 1.0, 0.0, 0.0,   // col 2 (rotationy 0)
-         0.0, 0.0, 1.0, 0.0,   // col 3 (rotationz 0)
-         0.306, 0.0, 0.485}   // col 4 (translation 1)
-    });
+// #include <Eigen/Geometry>
 
-    if (!robot_ || !model_) {
-        LOG_ERROR("[CartesianPoseMode] Robot or model not set.");
-        return;
-    }
+// CartesianPoseMode::CartesianPoseMode()
+//     : desired_pose_({0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}), config_(CartesianPoseConfig())
+// {
+// }
 
-    robot_->automaticErrorRecovery();
+// CartesianPoseMode::~CartesianPoseMode() = default;
 
-    std::function<franka::CartesianPose(const franka::RobotState&, franka::Duration)> motion_generator_callback =
-        [this](const franka::RobotState& state, franka::Duration) -> franka::CartesianPose {
-            // if (!is_running_) {
-            //     throw franka::ControlException("CartesianPoseMode stopped.");
-            // }
-            updateRobotState(state);
-            auto desired = desired_pose_.read();
-            if (!is_running_) {
-                return franka::MotionFinished(desired);
-            }
+// void CartesianPoseMode::initController()
+// {
+//     zlc::registerSubscriberHandler(config_.command_topic, &CartesianPoseMode::writeCommand, this);
+// }
 
-            return desired;
-        };
-    bool is_robot_operational = true;
-    while (is_running_ && is_robot_operational) {
-        try {
-            robot_->control(motion_generator_callback);
-    } catch (const std::exception &ex) {
-        LOG_ERROR("[CartesianPoseMode] Robot is unable to be controlled: {}", ex.what());
-        is_robot_operational = false;
-    }
-    for (int i = 0; i < 3; i++) {
-        LOG_WARN("[CartesianPoseMode] Waiting {} seconds before recovery attempt...", 3);
+// void CartesianPoseMode::writeCommand(const CartesianPoseCommand& cmd)
+// {
+//     desired_pose_.write(cmd.pose);
+//     has_target_.store(true, std::memory_order_release);
+// }
 
-        // Wait
-        usleep(1000 * 3);
-        // Attempt recovery
-        try {
-            robot_->automaticErrorRecovery();
-            LOG_INFO("[CartesianPoseMode] Robot operation recovered.");
-            is_robot_operational = true;
-            break;
-            } catch (const std::exception &ex) {
-                LOG_ERROR("[CartesianPoseMode] Recovery failed: {}", ex.what());
-            }
-        }
-    
-    }
-}
+// franka::Torques CartesianPoseMode::controlLoop(const franka::RobotState& robot_state,
+//                                                franka::Duration /*duration*/)
+// {
+//     if (!robot_ || !model_ || !state_buffer_)
+//     {
+//         return franka::Torques{{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+//     }
 
-protocol::ModeID CartesianPoseMode::getModeID() const {
-    return protocol::ModeID::CARTESIAN_POSE;
-}
+//     state_buffer_->write(robot_state);
 
-void CartesianPoseMode::writeCommand(const protocol::ByteView& data) {
-    franka::CartesianPose pose = protocol::decode<franka::CartesianPose>(data);
-    desired_pose_.write(pose);
-}
+//     if (!has_target_.load(std::memory_order_acquire))
+//     {
+//         desired_pose_.write(model_->forwardKinematics(robot_state.q));
+//         has_target_.store(true, std::memory_order_release);
+//     }
 
-void CartesianPoseMode::writeZeroCommand() {
-    franka::CartesianPose current_pose = current_state_->read().O_T_EE;
-    desired_pose_.write(current_pose);
-}
+//     const std::array<double, 7> desired_pose = desired_pose_.read();
+//     const std::array<double, 7> current_pose = model_->forwardKinematics(robot_state.q);
+
+//     Eigen::Vector3d p_des(desired_pose[0], desired_pose[1], desired_pose[2]);
+//     Eigen::Vector3d p_cur(current_pose[0], current_pose[1], current_pose[2]);
+//     Eigen::Vector3d p_err = p_des - p_cur;
+
+//     Eigen::Quaterniond q_des(desired_pose[6], desired_pose[3], desired_pose[4], desired_pose[5]);
+//     Eigen::Quaterniond q_cur(current_pose[6], current_pose[3], current_pose[4], current_pose[5]);
+
+//     Eigen::Quaterniond q_err = q_des * q_cur.conjugate();
+//     if (q_err.w() < 0.0)
+//     {
+//         q_err.coeffs() *= -1.0;
+//     }
+//     Eigen::Vector3d o_err = 2.0 * q_err.vec();
+
+//     Eigen::Matrix<double, 6, 1> error;
+//     error << p_err, o_err;
+
+//     Eigen::Matrix<double, 6, 7> J = model_->computeJacobian(robot_state.q);
+
+//     Eigen::Matrix<double, 7, 1> dq;
+//     for (int i = 0; i < 7; i++)
+//     {
+//         dq[i] = robot_state.dq[i];
+//     }
+//     Eigen::Matrix<double, 6, 1> ee_vel = J * dq;
+
+//     Eigen::Matrix<double, 6, 1> wrench = Eigen::Matrix<double, 6, 1>::Zero();
+//     for (int i = 0; i < 6; i++)
+//     {
+//         wrench[i] = config_.k_gains[i] * error[i] - config_.d_gains[i] * ee_vel[i];
+//     }
+
+//     Eigen::Matrix<double, 7, 1> tau = J.transpose() * wrench;
+
+//     std::array<double, 7> tau_ff =
+//         model_->inverseDynamics(robot_state.q, robot_state.dq, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+//     for (int i = 0; i < 7; i++)
+//     {
+//         tau[i] += tau_ff[i];
+//     }
+
+//     std::array<double, 7> tau_cmd{};
+//     for (int i = 0; i < 7; i++)
+//     {
+//         tau_cmd[i] = tau[i];
+//     }
+//     return franka::Torques{tau_cmd};
+// }

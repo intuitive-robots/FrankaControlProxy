@@ -1,5 +1,5 @@
 ﻿// #include "protocol/request_result.hpp"
-// #include "protocol/codec.hpp" // encode_u16 / decode_u16
+//  // encode_u16 / decode_u16
 
 // #include <cstring>
 // #include <limits>
@@ -52,4 +52,3 @@
 // }
 
 // } // namespace protocol
-

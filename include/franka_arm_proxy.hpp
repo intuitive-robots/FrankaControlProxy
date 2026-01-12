@@ -1,98 +1,134 @@
 #pragma once
-#include <zmq.hpp>
-#include <thread>
+#include <algorithm>
+#include <array>
 #include <atomic>
+#include <chrono>
+#include <csignal>
+#include <memory>
 #include <mutex>
 #include <string>
-#include <memory>
+#include <zerolancom/zerolancom.hpp>
 
-#include <franka/robot.h>
-#include <franka/model.h>
-#include <franka/robot_state.h>
-#include <yaml-cpp/yaml.h>
-#include "control_mode/abstract_control_mode.hpp"
+#include "control_mode/control_mode.hpp"
+#include "protocol/msg.hpp"
 #include "utils/atomic_double_buffer.hpp"
-#include "utils/service_registry.hpp" 
-#include "utils/franka_config.hpp"
-#include "protocol/codec.hpp"
+#include "utils/config_file_reader.hpp"
+#include "utils/robot_model.hpp"
 
-class FrankaArmProxy {
+struct FrankaArmConfig
+{
+    // communication
+    std::string name;
+    std::string robot_ip;
 
-public:
+    // arm
+    std::array<double, 7> arm_default_state_q;
+    std::array<double, 16> arm_default_state_O_T_EE{};
+    int arm_state_pub_rate_hz{100};
+    int arm_socket_timeout_ms{100};
+    int arm_max_message_size{4096};
+    // collision behavior thresholds
+    std::array<double, 7> arm_col_lower_torque_acc{};
+    std::array<double, 7> arm_col_upper_torque_acc{};
+    std::array<double, 7> arm_col_lower_torque_nom{};
+    std::array<double, 7> arm_col_upper_torque_nom{};
+    std::array<double, 6> arm_col_lower_force_acc{};
+    std::array<double, 6> arm_col_upper_force_acc{};
+    std::array<double, 6> arm_col_lower_force_nom{};
+    std::array<double, 6> arm_col_upper_force_nom{};
+
+    FrankaArmConfig(const std::string& arm_config_path)
+    {
+        fromFile(arm_config_path);
+    }
+
+    void fromFile(const std::string& arm_config_path)
+    {
+        ConfigFileReader reader(arm_config_path);
+        // defaults for arrays
+        const std::array<double, 16> default_O_T_EE{
+            {1.0, 0.0, 0.0, 0.3, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0}};
+
+        // communication
+        name = reader.getValue<std::string>("name");
+        robot_ip = reader.getValue<std::string>("robot_ip");
+        // arm
+        arm_default_state_q = reader.getArray<double, 7>("arm_default_state_q");
+
+        arm_default_state_O_T_EE = reader.getArray<double, 16>("arm_default_state_O_T_EE");
+        arm_state_pub_rate_hz = reader.getValue<int>("arm_state_pub_rate_hz");
+        arm_socket_timeout_ms = reader.getValue<int>("arm_socket_timeout_ms");
+        arm_max_message_size = reader.getValue<int>("arm_max_message_size");
+
+        arm_col_lower_torque_acc =
+            reader.getArray<double, 7>("arm_collision_lower_torque_thresholds_acc");
+        arm_col_upper_torque_acc =
+            reader.getArray<double, 7>("arm_collision_upper_torque_thresholds_acc");
+        arm_col_lower_torque_nom =
+            reader.getArray<double, 7>("arm_collision_lower_torque_thresholds_nom");
+        arm_col_upper_torque_nom =
+            reader.getArray<double, 7>("arm_collision_upper_torque_thresholds_nom");
+        arm_col_lower_force_acc =
+            reader.getArray<double, 6>("arm_collision_lower_force_thresholds_acc");
+        arm_col_upper_force_acc =
+            reader.getArray<double, 6>("arm_collision_upper_force_thresholds_acc");
+        arm_col_lower_force_nom =
+            reader.getArray<double, 6>("arm_collision_lower_force_thresholds_nom");
+        arm_col_upper_force_nom =
+            reader.getArray<double, 6>("arm_collision_upper_force_thresholds_nom");
+    }
+};
+
+class FrankaArmProxy
+{
+  public:
     // Constructor & Destructor
-    explicit FrankaArmProxy(const FrankaConfigData& config);// Constructor that initializes the proxy with a configuration file
-    ~FrankaArmProxy();// Destructor to clean up resources
+    explicit FrankaArmProxy(
+        const std::string&
+            config_path); // Constructor that initializes the proxy with a configuration file
+    ~FrankaArmProxy();    // Destructor to clean up resources
 
     // Core server operations
-    bool start();// Starts the Franka server, initializing the robot and communication sockets
-    void stop();// Stops the server, cleaning up resources and shutting down communication
-    void spin();// Main loop for processing requests
-    std::string getType() const { return type_; } // Returns the type of the proxy (e.g., "Arm" or "Gripper")
+    void stop(); // Stops the server, cleaning up resources and shutting down communication
+    void spin(); // Main loop for processing requests
     // State management
-    void setControlMode(const protocol::FrankaArmControlMode& mode);// Sets the current control mode of the Franka arm
-    franka::RobotState getCurrentState(const std::string& request);// Return the current state of the robot
-    
-private:
+    zlc::Empty setControlMode(
+        const std::string& mode); // Sets the current control mode of the Franka arm
+    franka::RobotState getCurrentState(
+        const std::string& request); // Return the current state of the robot
+
+  private:
     // Initialization
-    void initialize(const std::string &filename);// Initializes the FrankaProxy with the given configuration file and set up communication sockets
-    // Thread functions
-    void statePublishThread();// ZMQ PUB, Publishes the current state of the robot at a fixed rate
-    void responseSocketThread();// ZMQ REP,responds to incoming requests from clients
-    // Service handler
-    void handleServiceRequest(const std::string& service_name, const protocol::ByteView& request, std::vector<uint8_t>& response);
-
-
-
-    //Start
-    bool startArm();// Starts the arm control loop and initializes the necessary threads
-    //Stop
-    void stopArm();// Stops the arm control loop and cleans up resources
-
-    void controlLoopThread();// Main control loop for processing commands and updating the robot state
-    void stateSubscribeThread();// ZMQ SUB, Subscribes to the state updates from a leader robot (for follower mode)
-    void gripperSubscribeThread();// ZMQ SUB, Subscribes to the gripper updates
-
-    
-private:
-    std::string type_;
-    std::string robot_ip_;
-    std::string service_addr_;
-    std::string state_pub_addr_;
+    void initRobot();
+    SafetyLimitConfig safety_config_;
     // Franka robot
-    std::shared_ptr<franka::Robot> robot_;
-    std::shared_ptr<franka::Model> model_;
-    
-    // ZMQ communication
-    zmq::socket_t state_pub_socket_;//arm state publish socket
-    
+    std::unique_ptr<FrankaPanda> robot_;
+    std::unique_ptr<PandaPinocchioModel> model_;
+
     // Threading
-    std::thread state_pub_thread_;
-        
+    std::thread state_pub_thread;
+
+    // Control modes registry
+    std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>> control_modes_;
+
     // Synchronization
     std::atomic<bool> is_running; // for threads
-    
+
     //Control mode
-    std::shared_ptr<AbstractControlMode> current_mode_;
+    AbstractControlMode* current_control_mode_ = nullptr;
 
     // Current robot state
-    AtomicDoubleBuffer<franka::RobotState> current_state_;
+    AtomicDoubleBuffer<franka::RobotState> current_state;
 
-    FrankaConfigData config_;
-    franka::RobotState default_state_;
+    FrankaArmConfig config_;
 
     // initialize
     void initializeControlMode();
     void initializeService();
 
-    // service registry
-    ServiceRegistry service_registry_;
-    franka::RobotState getFrankaArmState();
-    uint8_t getFrankaArmControlMode();
-    const std::string& getFrankaArmStatePubPort();
-    
-    // TODO: put all the Constants to a config file
-    static constexpr int STATE_PUB_RATE_HZ = 100;
-    static constexpr int GRIPPER_PUB_RATE_HZ = 100;
-    static constexpr int SOCKET_TIMEOUT_MS = 100;
-    static constexpr int MAX_MESSAGE_SIZE = 4096;
+    // Service callbacks
+    FrankaArmState getFrankaArmState(const zlc::Empty&); // Gets the current state of the Franka arm
+    std::string getFrankaArmControlMode(const zlc::Empty&);
+
+    void statePublishThread();
 };

@@ -1,37 +1,38 @@
 #include <ctime>
 #include <memory>
 #include <vector>
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include "utils/logger.hpp"
-#include "utils/franka_config.hpp"
+#include <zerolancom/zerolancom.hpp>
+
 #include "franka_arm_proxy.hpp"
-#include "franka_gripper_proxy.hpp"
 
-
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-    //initialize logger
-    utils::Logger::init(false);//true to enable file logging
-    utils::Logger::setLevel(utils::LogLevel::INFO);
-
-
-
-
-    //check configpath argument
-    if (argc != 2) {
-        LOG_ERROR("Please provide the config path as the sole argument.");
+    // check configpath arguments
+    if (argc != 2)
+    {
+        zlc::error("Please provide proxy config path");
         return 1;
     }
+
     //initialize and start proxies
-    std::string config_path = argv[1];
-    FrankaConfig config(config_path);
-    const auto& cfg = config.data();
-    FrankaArmProxy robot_proxy(cfg);
-    FrankaGripperProxy gripper_proxy(cfg);
-    robot_proxy.start();
-    gripper_proxy.start();
-    robot_proxy.spin();
+    std::string proxy_config_path = argv[1];
+    ConfigFileReader proxy_reader(proxy_config_path);
+    std::string node_name = proxy_reader.getValue<std::string>("node_name");
+    std::string proxy_ip = proxy_reader.getValue<std::string>("proxy_ip");
+    zlc::info("Starting Franka Control Proxy with node name: {}", node_name);
+    zlc::info("Using proxy IP address: {}", proxy_ip);
+    zlc::init(node_name, proxy_ip);
+
+    std::string arm_config_path = proxy_reader.getValue<std::string>("arm_config_path");
+    if (arm_config_path.empty())
+    {
+        zlc::error("Arm config path is empty in proxy config file.");
+        return 1;
+    }
+    FrankaArmProxy robot_proxy(arm_config_path);
+
+    // FrankaGripperProxy gripper_proxy(gripper_cfg);
+    // gripper_proxy.start();
+    zlc::spin();
     return 0;
 }

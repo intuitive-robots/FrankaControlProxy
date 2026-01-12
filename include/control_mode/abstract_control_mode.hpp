@@ -1,127 +1,96 @@
 #pragma once
-#include <franka/robot.h>
-#include <franka/model.h>
-#include <franka/robot_state.h>
-#include <franka/exception.h>
+
 #include <memory>
 #include <mutex>
-#include <zmq.hpp>
 #include <thread>
-#include <zmq.hpp>
-#include "utils/logger.hpp"
+#include <zerolancom/zerolancom.hpp>
 
 #include "utils/atomic_double_buffer.hpp"
-#include "utils/zmq_context.hpp"
-#include "protocol/mode_id.hpp"
-#include "protocol/codec.hpp"
+#include "utils/config_file_reader.hpp"
+#include "utils/robot_model.hpp"
+#include "utils/robot_utils.hpp"
 
-//todo:reform and check the leadter state get and the is_running
-class AbstractControlMode {
-public:
-    // Virtual destructor for proper cleanup in derived classes
+struct AbstractConfig
+{
+    AbstractConfig() = default;
+    ~AbstractConfig() = default;
+    virtual void fromFile(const std::string& controller_config_path) = 0;
+};
+
+struct ControllerConfig : public AbstractConfig
+{
+    // communication
+    std::string controller_name;
+    std::string command_topic;
+
+    ControllerConfig() = default;
+
+    // void fromFile(const std::string& controller_config_path) override;
+    void readBaseConfig(const ConfigFileReader& reader);
+};
+
+struct SafetyLimitConfig : public AbstractConfig
+{
+    // control settings
+    bool limit_rate;
+    double lpf_cutoff_freq;
+
+    // cartesian limits
+    std::array<double, 3> cartesian_pos_upper_limits;
+    std::array<double, 3> cartesian_pos_lower_limits;
+
+    // joint limits
+    std::array<double, NUM_DOFS> joint_pos_upper_limits;
+    std::array<double, NUM_DOFS> joint_pos_lower_limits;
+    std::array<double, NUM_DOFS> joint_vel_upper_limits;
+    std::array<double, NUM_DOFS> joint_vel_lower_limits;
+    std::array<double, NUM_DOFS> joint_torques_limits;
+
+    // safety controller
+    double margin_joint_pos;
+    double margin_joint_vel;
+    double k_joint_pos;
+    double k_joint_vel;
+
+    SafetyLimitConfig() = default;
+    void fromFile(const std::string& controller_config_path) override;
+};
+
+class AbstractControlMode
+{
+  public:
     virtual ~AbstractControlMode() = default;
-    // Pure virtual public functions
-    //virtual void initialize(const RobotState& initial_state);
-    virtual void start() {
-        startRobot();
-        control_thread_ = std::thread(&AbstractControlMode::controlLoop, this);
-        LOG_INFO("[{}] Control thread launched.", getModeName());
-        command_thread_ = std::thread(&AbstractControlMode::commandSubscriptionLoop, this);
-        LOG_INFO("[{}] Command subscription thread launched.", getModeName());
-    };
 
-    void startRobot() {
-#if !LOCAL_TESTING
-        if (!robot_ || !model_) {
-            LOG_ERROR("[{}] Robot or model not set.", getModeName());
-            return;
-        }
-        robot_->automaticErrorRecovery();
-#endif
-        LOG_INFO("[{}] Robot control started.", getModeName());
-        is_running_ = true;
-    };
+    virtual void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
+                                AtomicDoubleBuffer<franka::RobotState>& state_buffer);
+    void startControl();
+    void stopControl();
+    const std::string getModeName();
+    void controlTask();
 
-    virtual void stop() {
-        is_running_ = false;
-        if (control_thread_.joinable()) {
-            LOG_INFO("[{}] Stopping control thread...", getModeName());
-            control_thread_.join();
-        }
-        if (command_thread_.joinable()) {
-            LOG_INFO("[{}] Stopping command subscription thread...", getModeName());
-            command_thread_.join();
-        }
-        LOG_INFO("[{}] Stopped.", getModeName());
-    };
-    // Get the mode ID for this control mode
-    virtual protocol::ModeID getModeID() const = 0; // Return the mode ID as an integer
-    void setRobot(std::shared_ptr<franka::Robot> robot) {
-        robot_ = std::move(robot);
-    }
-    void setModel(std::shared_ptr<franka::Model> model) {
-        model_ = std::move(model);
-    }
-    void setCurrentStateBuffer(AtomicDoubleBuffer<franka::RobotState>* state_buffer) {
-        current_state_ = state_buffer;
-    }
-    void setupCommandSubscription(const std::string& address) {
-        command_sub_addr_ = address;
-    }
-    // get current state of robot
-    void updateRobotState(const franka::RobotState& new_state) {
-        current_state_->write(new_state);
-    }
-
-    const std::string getModeName() const {
-        return protocol::toString(getModeID());
-    }
-
-protected:
-    // Protected constructor to prevent direct instantiation
-    AbstractControlMode() = default;
-    // Protected setup function for derived classes
-    std::shared_ptr<franka::Robot> robot_;
-    std::shared_ptr<franka::Model> model_;
-    AtomicDoubleBuffer<franka::RobotState>* current_state_ = nullptr;
-    
-    std::thread control_thread_;
-    std::thread command_thread_;
+  protected:
+    AbstractControlMode(const SafetyLimitConfig& safety_config) : safety_config_(safety_config) {}
+    FrankaPanda* robot_;
+    PandaPinocchioModel* pinocchio_model_;
+    AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 
     bool is_running_ = false;
-    std::string command_sub_addr_;
-    virtual void controlLoop() = 0;
+    std::string controller_name{"AbstractControlMode"};
+    bool tryRecovery(int max_attempts = 3);
 
-    void commandSubscriptionLoop() {
-        zmq::socket_t sub_socket_(ZmqContext::instance(), ZMQ_SUB);
-        sub_socket_.set(zmq::sockopt::rcvtimeo, 200); // 100 ms timeout
-        if (command_sub_addr_.empty()) {
-            LOG_WARN("[{}] Command subscription address is empty. Exiting command subscription loop.", getModeName());
-            return;
-        }
-        sub_socket_.connect(command_sub_addr_);
-        sub_socket_.set(zmq::sockopt::subscribe, ""); // Subscribe to all messages
-        while (is_running_) {
-            try {
-                zmq::message_t message;
-                if (!sub_socket_.recv(message, zmq::recv_flags::none)) {
-                    writeZeroCommand();
-                    continue; // Skip this iteration if no message received
-                }
-                protocol::ByteView data{
-                    static_cast<const uint8_t*>(message.data()),
-                    message.size()
-                };
-                writeCommand(data);
-            } catch (const zmq::error_t& e) {
-                LOG_ERROR("[FrankaProxy] ZMQ recv error: {}", e.what());
-                break;
-            }
-        }
-        sub_socket_.close();
-        LOG_INFO("[{}] Command subscription loop exited.", getModeName());
-    };
+    virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
+                                        franka::Duration duration) = 0;
+    std::thread control_thread_;
+    const SafetyLimitConfig& safety_config_;
 
-    virtual void writeCommand(const protocol::ByteView& data) = 0;
-    virtual void writeZeroCommand() = 0;
+  private:
+    void checkStateLimits(const franka::RobotState& robot_state, franka::Torques& torque_out,
+                          const SafetyLimitConfig& safety_config_);
+    void postprocessTorques(franka::Torques& torque_applied,
+                            const std::array<double, NUM_DOFS>& torque_limits);
+    template <std::size_t N>
+    void computeSafetyReflex(std::array<double, N> values, std::array<double, N> lower_limit,
+                             std::array<double, N> upper_limit, std::array<double, N>& torques_out,
+                             double margin, double k);
+    std::unordered_map<std::string, bool> active_constraints_map_;
 };

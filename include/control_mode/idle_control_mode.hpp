@@ -1,25 +1,19 @@
 #pragma once
-#include "abstract_control_mode.hpp"
-#include <franka/robot.h>
-#include <franka/model.h>
-#include <franka/robot_state.h>
-#include <franka/exception.h>
-#include <memory>
-#include <mutex>
-#include <franka/exception.h>
-#include <iostream>
 
+#include "control_mode/abstract_control_mode.hpp"
 
-class IdleControlMode : public AbstractControlMode {
-public:
-    IdleControlMode();
-    ~IdleControlMode() override ;
-    void start() override;
-    //void initialize(const franka::RobotState& initial_state) override;
-    protocol::ModeID getModeID() const override;
+class IdleControlMode : public AbstractControlMode
+{
+  public:
+    IdleControlMode(const SafetyLimitConfig& safety_config) : AbstractControlMode(safety_config)
+    {
+        controller_name = "IdleControlMode";
+    };
+    ~IdleControlMode() override = default;
 
-private:
-    void controlLoop() override;
-    void writeCommand(const protocol::ByteView& data) override;
-    void writeZeroCommand() override;
+  private:
+    void initController(FrankaPanda& robot, PandaPinocchioModel& model,
+                        AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
+    franka::Torques controlLoop(const franka::RobotState& robot_state,
+                                franka::Duration duration) override;
 };

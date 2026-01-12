@@ -35,3 +35,8 @@
 build/
 
 .vscode/
+
+MUJOCO_LOG.TXT
+
+!models/franka_emika_panda/assets/
+!models/franka_emika_panda/assets/*.obj

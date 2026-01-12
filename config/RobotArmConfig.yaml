@@ -1,0 +1,24 @@
+# Franka Arm Configuration for P10
+name: FrankaPanda
+robot_ip: 10.10.10.10
+
+# Arm default state
+arm_default_state_q: [0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785]
+arm_default_state_O_T_EE: [1.0, 0.0, 0.0, 0.3, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0]
+
+# Arm settings
+arm_state_pub_rate_hz: 100
+arm_socket_timeout_ms: 100
+arm_max_message_size: 4096
+
+# Collision thresholds (acceleration)
+arm_collision_lower_torque_thresholds_acc: [30, 30, 30, 30, 30, 30, 30]
+arm_collision_upper_torque_thresholds_acc: [45, 45, 45, 45, 45, 45, 45]
+arm_collision_lower_force_thresholds_acc: [8, 8, 8, 8, 8, 8]
+arm_collision_upper_force_thresholds_acc: [15, 15, 15, 15, 15, 15]
+
+# Collision thresholds (nominal)
+arm_collision_lower_torque_thresholds_nom: [35, 35, 35, 35, 35, 35, 35]
+arm_collision_upper_torque_thresholds_nom: [50, 50, 50, 50, 50, 50, 50]
+arm_collision_lower_force_thresholds_nom: [12, 12, 12, 12, 12, 12]
+arm_collision_upper_force_thresholds_nom: [20, 20, 20, 20, 20, 20]

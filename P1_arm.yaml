@@ -1,7 +1,0 @@
-type:Arm
-follower:true
-robot_ip:172.16.1.2
-state_pub_addr:tcp://192.168.0.134:51000
-service_addr:tcp://192.168.0.134:51001
-sub_addr:tcp://192.168.0.134:52000
-useGripper:true
