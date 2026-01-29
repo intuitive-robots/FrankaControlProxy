@@ -42,6 +42,8 @@ franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotStat
 
     JointTorque torque_forward =
         pinocchio_model_->inverseDynamics(current_pos, current_vel, JointAcceleration::Zero());
+    torque_forward -= pinocchio_model_->inverseDynamics(
+        current_pos, JointVelocity::Zero(), JointAcceleration::Zero());  // remove gravity compensation if needed
     std::array<double, 7> tau_cmd{};
     for (size_t i = 0; i < 7; i++)
     {

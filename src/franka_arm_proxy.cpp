@@ -82,10 +82,8 @@ void FrankaArmProxy::initRobot()
     try
     {
         robot_ = std::make_unique<FrankaPanda>(config_.robot_ip);
-        // model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf",
-        //                                                "panda_link8");
-        model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_robotiq_85.urdf",
-                                                       "panda_joint_ee");
+        model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf",
+                                                       "panda_link8");
     }
     catch (const franka::NetworkException& e)
     {

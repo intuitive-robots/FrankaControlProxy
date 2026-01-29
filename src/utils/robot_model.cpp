@@ -1,3 +1,4 @@
+
 #include "utils/robot_model.hpp"
 
 #include "pinocchio/algorithm/frames.hpp"
@@ -7,33 +8,16 @@
 #include "pinocchio/algorithm/rnea.hpp"
 #include "pinocchio/parsers/sample-models.hpp"
 #include "pinocchio/parsers/urdf.hpp"
-#include <fstream>
-#include <iostream>
 
 PandaPinocchioModel::PandaPinocchioModel(std::string urdf_filename, std::string ee_joint_name)
 {
     ee_joint_name_ = std::move(ee_joint_name);
 
     std::ifstream stream(urdf_filename);
-    if (!stream.is_open()) {
-        throw std::runtime_error("Cannot open URDF file: " + urdf_filename);
-    }
-    
     xml_buffer_ =
         std::string((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
     pinocchio::urdf::buildModelFromXML(xml_buffer_, model_);
     model_data_ = pinocchio::Data(model_);
-    
-    // Check if the frame exists
-    if (!model_.existFrame(ee_joint_name_)) {
-        std::cerr << "Frame '" << ee_joint_name_ << "' not found in model!" << std::endl;
-        std::cerr << "Available frames:" << std::endl;
-        for (size_t i = 0; i < model_.nframes; ++i) {
-            std::cerr << "  " << i << ": " << model_.frames[i].name << std::endl;
-        }
-        throw std::runtime_error("Frame '" + ee_joint_name_ + "' not found in URDF model");
-    }
-    
     ee_link_idx_ = model_.getFrameId(ee_joint_name_);
 }
 
@@ -126,27 +110,7 @@ JointPosition PandaPinocchioModel::inverseDynamics(JointPosition joint_position,
                                                    JointVelocity joint_velocity,
                                                    JointAcceleration joint_acceleration)
 {
-    // If model has more than 7 DOF (e.g., with gripper), use only first 7
-    if (model_.nv > 7)
-    {
-        // Pad joint position, velocity, and acceleration to match model DOF
-        Eigen::VectorXd q_full = Eigen::VectorXd::Zero(model_.nv);
-        Eigen::VectorXd dq_full = Eigen::VectorXd::Zero(model_.nv);
-        Eigen::VectorXd ddq_full = Eigen::VectorXd::Zero(model_.nv);
-        
-        q_full.head(7) = joint_position;
-        dq_full.head(7) = joint_velocity;
-        ddq_full.head(7) = joint_acceleration;
-        
-        Eigen::VectorXd tau_full = pinocchio::rnea(model_, model_data_, q_full, dq_full, ddq_full);
-        
-        // Return only first 7 elements
-        return tau_full.head(7);
-    }
-    else
-    {
-        return pinocchio::rnea(model_, model_data_, joint_position, joint_velocity, joint_acceleration);
-    }
+    return pinocchio::rnea(model_, model_data_, joint_position, joint_velocity, joint_acceleration);
 }
 
 // JointPosition PandaPinocchioModel::coriolis(JointPosition joint_position,
