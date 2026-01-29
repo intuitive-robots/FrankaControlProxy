@@ -1,6 +1,8 @@
 
 #include "franka_arm_proxy.hpp"
 
+#include <algorithm>
+
 static std::atomic<bool> running_flag{true}; // let ctrl-c stop the server
 static void signalHandler(int signum)
 {
@@ -50,8 +52,14 @@ void FrankaArmProxy::initializeService()
     zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::getFrankaArmState, this);
     service_namespace = fmt::format("{}/get_franka_arm_control_mode", config_.name);
     zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::getFrankaArmControlMode, this);
-    // zlc::registerServiceHandler("MOVE_FRANKA_ARM_TO_JOINT_POSITION", &FrankaArmProxy::moveFrankaArmToJointPosition, this);
-    // zlc::registerServiceHandler("MOVE_FRANKA_ARM_TO_CARTESIAN_POSITION", &FrankaArmProxy::moveFrankaArmToCartesianPosition, this);
+    service_namespace =
+        fmt::format("{}/move_franka_arm_to_joint_position", config_.name);
+    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::moveFrankaArmToJointPosition,
+                                this);
+    service_namespace =
+        fmt::format("{}/move_franka_arm_to_cartesian_position", config_.name);
+    // zlc::registerServiceHandler(service_namespace,
+    //                             &FrankaArmProxy::moveFrankaArmToCartesianPosition, this);
 }
 
 FrankaArmProxy::~FrankaArmProxy()
@@ -154,4 +162,26 @@ std::string FrankaArmProxy::getFrankaArmControlMode(const zlc::Empty&)
         return "None";
     }
     return current_control_mode_->getModeName();
+}
+
+std::pair<std::string, std::vector<uint8_t>> FrankaArmProxy::moveFrankaArmToJointPosition(
+    const std::vector<double>& target_q)
+{
+    if (!current_control_mode_)
+    {
+        return {std::string(protocol::FrankaResponseCode::FAIL), {}};
+    }
+    if (target_q.size() != 7)
+    {
+        zlc::warn("moveFrankaArmToJointPosition: invalid payload size {} (expected 7)",
+                  target_q.size());
+        return {std::string(protocol::FrankaResponseCode::INVALID_ARG), {}};
+    }
+    std::array<double, 7> target_q_array{};
+    std::copy(target_q.begin(), target_q.end(), target_q_array.begin());
+    current_control_mode_->stopControl();
+    const bool ok = current_control_mode_->moveToJointPosition(target_q_array);
+    return {std::string(ok ? protocol::FrankaResponseCode::SUCCESS
+                           : protocol::FrankaResponseCode::FAIL),
+            {}};
 }

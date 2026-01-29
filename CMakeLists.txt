@@ -15,7 +15,7 @@ endif()
 # -----------------------------
 # Build options
 # -----------------------------
-option(NO_ROBOT_TESTING "Enable local test mode (skip robot connection etc.)" ON)
+option(NO_ROBOT_TESTING "Enable local test mode (skip robot connection etc.)" OFF)
 
 if(NO_ROBOT_TESTING)
     message(STATUS "NO_ROBOT_TESTING mode is ON")

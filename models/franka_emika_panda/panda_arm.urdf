@@ -228,4 +228,20 @@
     <child link="panda_link8"/>
     <axis xyz="0 0 0"/>
   </joint>
+  <link name="robotiq_payload">
+  <inertial>
+    <origin xyz="0 0 0.057" rpy="0 0 0"/>
+    <mass value="1.05"/>
+    <inertia
+      ixx="0.002768" ixy="0.0" ixz="0.0"
+      iyy="0.003149" iyz="0.0"
+      izz="0.000564"/>
+  </inertial>
+  </link>
+
+  <joint name="panda_robotiq_payload_joint" type="fixed">
+    <parent link="panda_link8"/>
+    <child link="robotiq_payload"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint> 
 </robot>
