@@ -4,6 +4,7 @@
 #include <zerolancom/zerolancom.hpp>
 
 #include "franka_arm_proxy.hpp"
+#include "franka_gripper_proxy.hpp"
 
 int main(int argc, char** argv)
 {
@@ -34,8 +35,15 @@ int main(int argc, char** argv)
     }
     FrankaArmProxy robot_proxy(arm_config_path);
 
-    // FrankaGripperProxy gripper_proxy(gripper_cfg);
-    // gripper_proxy.start();
+    std::string gripper_config_path = proxy_reader.getValue<std::string>("gripper_config_path");
+    if (gripper_config_path.empty())
+    {
+        zlc::error("Gripper config path is empty in proxy config file.");
+        return 1;
+    }
+
+    FrankaGripperProxy gripper_proxy(proxy_reader.getValue<std::string>("gripper_config_path"));
+
     zlc::spin();
     return 0;
 }

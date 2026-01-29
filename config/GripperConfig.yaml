@@ -1,9 +1,9 @@
 # Gripper settings
+name: FrankaPandaGripper
+gripper_ip: 10.10.10.10
+
+command_topic: franka_gripper_command
+state_topic: franka_gripper_state
+
 gripper_pub_rate_hz: 100
 gripper_command_rcvtimeo_ms: 500
-
-# Gripper defaults
-gripper_default_close_open_threshold: 0.01
-gripper_default_speed_slow: 0.01
-gripper_default_speed_fast: 20.0
-gripper_default_force: 20.0
