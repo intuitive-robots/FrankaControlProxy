@@ -21,7 +21,7 @@ int main(int argc, char** argv)
     std::string proxy_ip = proxy_reader.getValue<std::string>("proxy_ip");
     zlc::info("Starting Franka Control Proxy with node name: {}", node_name);
     zlc::info("Using proxy IP address: {}", proxy_ip);
-    zlc::init(node_name, proxy_ip);
+    zlc::init(node_name, proxy_ip, "224.0.0.1", 7720, "localtest");
 
     std::string arm_config_path = proxy_reader.getValue<std::string>("arm_config_path");
     if (arm_config_path.empty())

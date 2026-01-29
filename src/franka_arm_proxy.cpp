@@ -9,31 +9,11 @@ static void signalHandler(int signum)
     zlc::info("Caught signal {}, shutting down...", signum);
     running_flag = false;
 }
-// namespace {
-franka::RobotState createDefaultState(const FrankaArmConfig& cfg)
-{
-    franka::RobotState state{};
-    std::array<double, 7> q{};
-    const auto& q_src = cfg.arm_default_state_q.size() == 7
-                            ? cfg.arm_default_state_q
-                            : std::array<double, 7>{{0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785}};
-    std::copy(q_src.begin(), q_src.begin() + 7, q.begin());
-    state.q = q;
-
-    std::array<double, 16> pose = cfg.arm_default_state_O_T_EE;
-    if (pose == std::array<double, 16>{})
-    {
-        pose = {{1.0, 0.0, 0.0, 0.3, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0}};
-    }
-    state.O_T_EE = pose;
-    return state;
-}
-// }
 
 FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     : is_running(false),
       config_(config_path),
-      current_state(AtomicDoubleBuffer<franka::RobotState>(createDefaultState(config_)))
+      current_state(AtomicDoubleBuffer<franka::RobotState>(franka::RobotState{}))
 {
     // Register service handlers
     initRobot();
@@ -50,6 +30,7 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     ControlModeFactory::registerControlModes(control_modes_, *robot_, *model_, current_state,
                                              safety_config_);
     setControlMode("Idle");
+    current_control_mode_->moveToJointPosition(config_.arm_default_state_q);
     initializeService();
 }
 
