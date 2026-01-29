@@ -20,12 +20,17 @@ struct FrankaArmState
                        O_F_ext_hat_K, K_F_ext_hat_K);
 
     FrankaArmState(const franka::RobotState& state)
-        : q(state.q.begin(), state.q.end()),
+        : time_ms(0),
+          O_T_EE(state.O_T_EE.begin(), state.O_T_EE.end()),
+          O_T_EE_d(state.O_T_EE_d.begin(), state.O_T_EE_d.end()),
+          q(state.q.begin(), state.q.end()),
           q_d(state.q_d.begin(), state.q_d.end()),
           dq(state.dq.begin(), state.dq.end()),
           dq_d(state.dq_d.begin(), state.dq_d.end()),
           tau_ext_hat_filtered(state.tau_ext_hat_filtered.begin(),
-                               state.tau_ext_hat_filtered.end()){};
+                               state.tau_ext_hat_filtered.end()),
+          O_F_ext_hat_K(state.O_F_ext_hat_K.begin(), state.O_F_ext_hat_K.end()),
+          K_F_ext_hat_K(state.K_F_ext_hat_K.begin(), state.K_F_ext_hat_K.end()){};
 };
 
 struct FrankaGripperState

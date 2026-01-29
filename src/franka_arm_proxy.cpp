@@ -37,6 +37,15 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
 {
     // Register service handlers
     initRobot();
+    
+    // Check if robot and model initialization was successful
+    if (!robot_ || !model_)
+    {
+        zlc::error("Robot or model initialization failed. Proxy cannot continue.");
+        is_running = false;
+        return;
+    }
+    
     safety_config_.fromFile("./config/SafetyLimitConfig.cfg");
     ControlModeFactory::registerControlModes(control_modes_, *robot_, *model_, current_state,
                                              safety_config_);
@@ -73,13 +82,28 @@ void FrankaArmProxy::initRobot()
     try
     {
         robot_ = std::make_unique<FrankaPanda>(config_.robot_ip);
-        model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf",
-                                                       "panda_link8");
+        // model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf",
+        //                                                "panda_link8");
+        model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_robotiq_85.urdf",
+                                                       "panda_joint_ee");
     }
     catch (const franka::NetworkException& e)
     {
-        zlc::error("{}", e.what());
+        zlc::error("Franka Network Exception: {}", e.what());
         this->stop();
+        return;
+    }
+    catch (const std::exception& e)
+    {
+        zlc::error("Exception during robot/model initialization: {}", e.what());
+        this->stop();
+        return;
+    }
+    catch (...)
+    {
+        zlc::error("Unknown exception during robot/model initialization");
+        this->stop();
+        return;
     }
     current_state.write(robot_->readOnce());
     state_pub_thread = std::thread(&FrankaArmProxy::statePublishThread, this);
