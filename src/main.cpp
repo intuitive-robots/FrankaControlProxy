@@ -19,9 +19,12 @@ int main(int argc, char** argv)
     ConfigFileReader proxy_reader(proxy_config_path);
     std::string node_name = proxy_reader.getValue<std::string>("node_name");
     std::string proxy_ip = proxy_reader.getValue<std::string>("proxy_ip");
+    std::string group = proxy_reader.getValue<std::string>("group");
+    int group_port = proxy_reader.getValue<int>("group_port");
+    std::string group_name = proxy_reader.getValue<std::string>("group_name");
+    zlc::init(node_name, proxy_ip, group, group_port, group_name);
     zlc::info("Starting Franka Control Proxy with node name: {}", node_name);
-    zlc::info("Using proxy IP address: {}", proxy_ip);
-    zlc::init(node_name, proxy_ip, "224.0.0.1", 7720, "localtest");
+    zlc::info("Using proxy IP address: {} at group {}:{} with group name {}", proxy_ip, group, group_port, group_name);
 
     std::string arm_config_path = proxy_reader.getValue<std::string>("arm_config_path");
     if (arm_config_path.empty())
