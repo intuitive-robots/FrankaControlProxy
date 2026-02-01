@@ -6,6 +6,8 @@
 #include <franka/duration.h>
 #include <franka/control_types.h>
 
+#include "utils/atomic_double_buffer.hpp"
+
 class CartesianPoseMotionGenerator 
 {
   public:
@@ -15,6 +17,7 @@ class CartesianPoseMotionGenerator
      * @param[in] speed_factor General speed factor in range [0, 1].
      * @param[in] goal_position Target position [x, y, z] in meters.
      * @param[in] goal_orientation Target orientation as quaternion.
+     * @param[in] state_buffer Buffer to write robot state updates during motion.
      * @param[in] dx_max Maximum translational velocity in m/s (default: 0.3).
      * @param[in] ddx_max_start Maximum translational acceleration at start in m/s² (default: 1.0).
      * @param[in] ddx_max_goal Maximum translational acceleration at goal in m/s² (default: 1.0).
@@ -25,6 +28,7 @@ class CartesianPoseMotionGenerator
     CartesianPoseMotionGenerator(double speed_factor,
                                   const Eigen::Vector3d& goal_position,
                                   const Eigen::Quaterniond& goal_orientation,
+                                  AtomicDoubleBuffer<franka::RobotState>& state_buffer,
                                   double dx_max = 0.3,
                                   double ddx_max_start = 1.0,
                                   double ddx_max_goal = 1.0,
@@ -94,4 +98,6 @@ class CartesianPoseMotionGenerator
     double omega_max_;
     double domega_max_start_;
     double domega_max_goal_;
+
+    AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 };

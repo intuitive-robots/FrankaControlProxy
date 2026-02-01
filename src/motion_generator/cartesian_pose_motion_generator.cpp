@@ -1,4 +1,4 @@
-#include "control_mode/cartesian_pose_motion_generator.hpp"
+#include "motion_generator/cartesian_pose_motion_generator.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -7,6 +7,7 @@ CartesianPoseMotionGenerator::CartesianPoseMotionGenerator(
     double speed_factor,
     const Eigen::Vector3d& goal_position,
     const Eigen::Quaterniond& goal_orientation,
+    AtomicDoubleBuffer<franka::RobotState>& state_buffer,
     double dx_max,
     double ddx_max_start,
     double ddx_max_goal,
@@ -20,7 +21,8 @@ CartesianPoseMotionGenerator::CartesianPoseMotionGenerator(
       ddx_max_goal_(Vector3d::Constant(ddx_max_goal * speed_factor)),
       omega_max_(omega_max * speed_factor),
       domega_max_start_(domega_max_start * speed_factor),
-      domega_max_goal_(domega_max_goal * speed_factor) {
+      domega_max_goal_(domega_max_goal * speed_factor),
+      state_buffer_(&state_buffer) {
     dx_max_sync_.setZero();
     pos_start_.setZero();
     delta_pos_.setZero();
@@ -41,6 +43,7 @@ CartesianPoseMotionGenerator::CartesianPoseMotionGenerator(
 franka::CartesianPose CartesianPoseMotionGenerator::operator()(
     const franka::RobotState& robot_state,
     franka::Duration period) {
+    state_buffer_->write(robot_state);
     time_ += period.toSec();
 
     if (time_ == 0.0) {

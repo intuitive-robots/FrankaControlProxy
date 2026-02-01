@@ -1,17 +1,15 @@
 #include "control_mode/abstract_control_mode.hpp"
-#include "control_mode/joint_position_motion_generator.hpp"
-#include "control_mode/cartesian_pose_motion_generator.hpp"
-
-#include <franka/command_types.h>
-#include <cmath>
-#include <iostream>
-
-#include <franka/exception.h>
-#include <franka/robot.h>
+#include "motion_generator/cartesian_pose_motion_generator.hpp"
+#include "motion_generator/joint_position_motion_generator.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <stdexcept>
+
+#include <franka/command_types.h>
+#include <franka/exception.h>
+#include <franka/robot.h>
 
 void ControllerConfig::readBaseConfig(const ConfigFileReader& reader)
 {
@@ -123,7 +121,7 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
             {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-        JointPositionMotionGenerator motion_generator(max_velocity, target_q);
+        JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_);
         robot_->control(motion_generator);
         }catch (const franka::Exception& e) {
         std::cout << e.what() << std::endl;
@@ -158,7 +156,7 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
             {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-        CartesianPoseMotionGenerator motion_generator(max_velocity, target_position, target_orientation);
+        CartesianPoseMotionGenerator motion_generator(max_velocity, target_position, target_orientation, *state_buffer_);
         robot_->control(motion_generator);
     } catch (const franka::Exception& e) {
         std::cout << e.what() << std::endl;
