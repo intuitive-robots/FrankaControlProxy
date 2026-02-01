@@ -18,6 +18,7 @@ class CartesianPoseMotionGenerator
      * @param[in] goal_position Target position [x, y, z] in meters.
      * @param[in] goal_orientation Target orientation as quaternion.
      * @param[in] state_buffer Buffer to write robot state updates during motion.
+     * @param[in] tolerance If position error is below this threshold, motion finishes immediately (default: 1e-3 m).
      * @param[in] dx_max Maximum translational velocity in m/s (default: 0.3).
      * @param[in] ddx_max_start Maximum translational acceleration at start in m/s² (default: 1.0).
      * @param[in] ddx_max_goal Maximum translational acceleration at goal in m/s² (default: 1.0).
@@ -29,6 +30,7 @@ class CartesianPoseMotionGenerator
                                   const Eigen::Vector3d& goal_position,
                                   const Eigen::Quaterniond& goal_orientation,
                                   AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                                  double tolerance = 1e-3,
                                   double dx_max = 0.3,
                                   double ddx_max_start = 1.0,
                                   double ddx_max_goal = 1.0,
@@ -100,4 +102,5 @@ class CartesianPoseMotionGenerator
     double domega_max_goal_;
 
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
+    double tolerance_;
 };

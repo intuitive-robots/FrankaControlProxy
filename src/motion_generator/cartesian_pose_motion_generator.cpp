@@ -8,6 +8,7 @@ CartesianPoseMotionGenerator::CartesianPoseMotionGenerator(
     const Eigen::Vector3d& goal_position,
     const Eigen::Quaterniond& goal_orientation,
     AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+    double tolerance,
     double dx_max,
     double ddx_max_start,
     double ddx_max_goal,
@@ -22,7 +23,8 @@ CartesianPoseMotionGenerator::CartesianPoseMotionGenerator(
       omega_max_(omega_max * speed_factor),
       domega_max_start_(domega_max_start * speed_factor),
       domega_max_goal_(domega_max_goal * speed_factor),
-      state_buffer_(&state_buffer) {
+      state_buffer_(&state_buffer),
+      tolerance_(tolerance) {
     dx_max_sync_.setZero();
     pos_start_.setZero();
     delta_pos_.setZero();
@@ -67,6 +69,13 @@ franka::CartesianPose CartesianPoseMotionGenerator::operator()(
         // Calculate total rotation angle
         Eigen::Quaterniond q_diff = q_start_.inverse() * q_goal_;
         delta_rot_ = 2.0 * std::acos(std::clamp(std::abs(q_diff.w()), 0.0, 1.0));
+
+        // Check if already within tolerance - skip motion if so
+        if (delta_pos_.norm() < tolerance_ && delta_rot_ < tolerance_) {
+            franka::CartesianPose output(robot_state.O_T_EE);
+            output.motion_finished = true;
+            return output;
+        }
 
         calculateSynchronizedValues();
     }

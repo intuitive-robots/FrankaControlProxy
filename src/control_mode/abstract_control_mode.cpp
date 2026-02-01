@@ -121,7 +121,7 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
             {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-        JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_);
+        JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_, tolerance);
         robot_->control(motion_generator);
         }catch (const franka::Exception& e) {
         std::cout << e.what() << std::endl;
@@ -156,7 +156,7 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
             {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
             {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-        CartesianPoseMotionGenerator motion_generator(max_velocity, target_position, target_orientation, *state_buffer_);
+        CartesianPoseMotionGenerator motion_generator(max_velocity, target_position, target_orientation, *state_buffer_, tolerance);
         robot_->control(motion_generator);
     } catch (const franka::Exception& e) {
         std::cout << e.what() << std::endl;

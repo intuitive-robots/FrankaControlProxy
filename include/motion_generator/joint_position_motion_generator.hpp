@@ -17,9 +17,11 @@ class JointPositionMotionGenerator
      * @param[in] speed_factor General speed factor in range [0, 1].
      * @param[in] q_goal Target joint positions.
      * @param[in] state_buffer Buffer to write robot state updates during motion.
+     * @param[in] tolerance If max joint error is below this threshold, motion finishes immediately (default: 1e-3 rad).
      */
     JointPositionMotionGenerator(double speed_factor, const std::array<double, 7>& q_goal,
-                                 AtomicDoubleBuffer<franka::RobotState>& state_buffer);
+                                 AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                                 double tolerance = 1e-3);
 
       /**
        * Sends joint position calculations
@@ -57,4 +59,5 @@ class JointPositionMotionGenerator
       Vector7d ddq_max_goal_ = (Vector7d() << 5, 5, 5, 5, 5, 5, 5).finished();
 
       AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
+      double tolerance_;
 };

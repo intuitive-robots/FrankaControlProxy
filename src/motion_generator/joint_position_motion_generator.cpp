@@ -4,8 +4,9 @@
 #include <cmath>
 
 JointPositionMotionGenerator::JointPositionMotionGenerator(double speed_factor, const std::array<double, 7>& q_goal,
-                                                           AtomicDoubleBuffer<franka::RobotState>& state_buffer)
-        : q_goal_(q_goal.data()), state_buffer_(&state_buffer) {
+                                                           AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                                                           double tolerance)
+        : q_goal_(q_goal.data()), state_buffer_(&state_buffer), tolerance_(tolerance) {
     dq_max_ *= speed_factor;
     ddq_max_start_ *= speed_factor;
     ddq_max_goal_ *= speed_factor;
@@ -26,6 +27,14 @@ franka::JointPositions JointPositionMotionGenerator::operator()(const franka::Ro
     if (time_ == 0.0) {
         q_start_ = JointPositionMotionGenerator::Vector7d(robot_state.q.data());
         delta_q_ = q_goal_ - q_start_;
+
+        // Check if already within tolerance - skip motion if so
+        if (delta_q_.cwiseAbs().maxCoeff() < tolerance_) {
+            franka::JointPositions output(robot_state.q);
+            output.motion_finished = true;
+            return output;
+        }
+
         calculateSynchronizedValues();
     }
 
