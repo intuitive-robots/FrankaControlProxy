@@ -1,4 +1,3 @@
-
 #include "franka_arm_proxy.hpp"
 
 #include <algorithm>

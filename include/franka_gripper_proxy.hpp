@@ -18,9 +18,9 @@ struct GripperStateMsg {
     double max_width;
     bool is_grasped;
     uint16_t temperature;
-    int64_t time;
+    uint64_t time;
 
-    MSGPACK_DEFINE_MAP(width, max_width, is_grasped, temperature, time);
+    MSGPACK_DEFINE_MAP(width, max_width, is_grasped, temperature, time)
 };
 
 struct GraspCommand
