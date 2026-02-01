@@ -44,6 +44,7 @@ struct FrankaGripperConfig
 
     std::string command_topic;
     std::string state_topic;
+    bool enable_control{true};
 
     FrankaGripperConfig(const std::string& gripper_config_path)
     {
@@ -57,6 +58,7 @@ struct FrankaGripperConfig
         gripper_ip = reader.getValue<std::string>("gripper_ip");
         command_topic = reader.getValue<std::string>("command_topic");
         state_topic = reader.getValue<std::string>("state_topic");
+        enable_control = reader.getValue<bool>("enable_control", true);
     }
 };
 
@@ -74,12 +76,23 @@ public:
     {
         gripper_ = std::make_shared<franka::Gripper>(config_.gripper_ip);
         gripper_->homing();
-        command_.write(GraspCommand{0.0f, 0.1f});
+        // Initialize the command to the current width so the gripper doesn't immediately
+        // try to close by default on startup.
+        const franka::GripperState gs0 = gripper_->readOnce();
+        command_.write(GraspCommand{static_cast<float>(gs0.width), 0.1f});
         is_running = true;
         zlc::info("Gripper proxy running flag set to {}", is_running.load());
-        zlc::registerSubscriberHandler(config_.command_topic, &FrankaGripperProxy::updateCommand, this);
         state_pub_thread_ = std::thread(&FrankaGripperProxy::statePubThread, this);
-        control_thread_ = std::thread(&FrankaGripperProxy::controlLoopThread, this);
+        if (config_.enable_control)
+        {
+            zlc::registerSubscriberHandler(config_.command_topic, &FrankaGripperProxy::updateCommand, this);
+            control_thread_ = std::thread(&FrankaGripperProxy::controlLoopThread, this);
+            zlc::info("Gripper control enabled: subscribing to '{}'", config_.command_topic);
+        }
+        else
+        {
+            zlc::info("Gripper control disabled (monitor-only): publishing '{}' only", config_.state_topic);
+        }
 
     };
     ~FrankaGripperProxy() {

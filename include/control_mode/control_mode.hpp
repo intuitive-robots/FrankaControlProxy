@@ -7,6 +7,7 @@
 #include <control_mode/hybrid_joint_impedance_control.hpp>
 #include <control_mode/idle_control_mode.hpp>
 #include <control_mode/joint_impedance_control.hpp>
+#include <control_mode/gravity_comp_control.hpp>
 
 class ControlModeFactory
 {
@@ -32,6 +33,7 @@ class ControlModeFactory
         const SafetyLimitConfig& safety_config)
     {
         registry["Idle"] = std::make_unique<IdleControlMode>(safety_config);
+        registry["GravityComp"] = std::make_unique<GravityCompControl>(safety_config);
         registry["HybridJointImpedance"] =
             std::make_unique<HybridJointImpedanceControl>(safety_config);
         for (const auto& pair : registry)

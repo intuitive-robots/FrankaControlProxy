@@ -1,0 +1,10 @@
+# Gripper settings
+name: FrankaFollowerGripper
+gripper_ip: 10.10.10.202
+
+command_topic: FrankaFollowerGripper/franka_gripper_command
+state_topic: franka_gripper_state
+enable_control: true
+
+gripper_pub_rate_hz: 100
+gripper_command_rcvtimeo_ms: 500
