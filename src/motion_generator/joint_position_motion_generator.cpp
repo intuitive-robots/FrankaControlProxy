@@ -1,10 +1,12 @@
-#include "control_mode/joint_position_motion_generator.hpp"
+#include "motion_generator/joint_position_motion_generator.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-JointPositionMotionGenerator::JointPositionMotionGenerator(double speed_factor, const std::array<double, 7>& q_goal)
-        : q_goal_(q_goal.data()) {
+JointPositionMotionGenerator::JointPositionMotionGenerator(double speed_factor, const std::array<double, 7>& q_goal,
+                                                           AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                                                           double tolerance)
+        : q_goal_(q_goal.data()), state_buffer_(&state_buffer), tolerance_(tolerance) {
     dq_max_ *= speed_factor;
     ddq_max_start_ *= speed_factor;
     ddq_max_goal_ *= speed_factor;
@@ -16,13 +18,23 @@ JointPositionMotionGenerator::JointPositionMotionGenerator(double speed_factor, 
     t_f_sync_.setZero();
     q_1_.setZero();
 }
+
 franka::JointPositions JointPositionMotionGenerator::operator()(const franka::RobotState& robot_state,
                                                    franka::Duration period) {
+    state_buffer_->write(robot_state);
     time_ += period.toSec();
 
     if (time_ == 0.0) {
         q_start_ = JointPositionMotionGenerator::Vector7d(robot_state.q.data());
         delta_q_ = q_goal_ - q_start_;
+
+        // Check if already within tolerance - skip motion if so
+        if (delta_q_.cwiseAbs().maxCoeff() < tolerance_) {
+            franka::JointPositions output(robot_state.q);
+            output.motion_finished = true;
+            return output;
+        }
+
         calculateSynchronizedValues();
     }
 

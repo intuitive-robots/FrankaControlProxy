@@ -1,13 +1,13 @@
 #include "mujoco_sim/mujoco_robot.hpp"
 
-#include <franka/exception.h>
-#include <mujoco/mujoco.h>
-
-#include <Eigen/Dense>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <thread>
+
+#include <Eigen/Dense>
+#include <franka/exception.h>
+#include <mujoco/mujoco.h>
 
 #include "mujoco_sim/mujoco_panda_env.hpp"
 

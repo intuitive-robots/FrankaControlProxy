@@ -1,3 +1,5 @@
+#pragma once
+
 #include <franka/control_types.h>
 #include <franka/exception.h>
 #include <franka/model.h>
