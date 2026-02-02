@@ -185,7 +185,7 @@ std::pair<std::string, std::vector<uint8_t>> FrankaArmProxy::moveFrankaArmToJoin
     }
     std::array<double, 7> target_q_array{};
     std::copy(target_q.begin(), target_q.end(), target_q_array.begin());
-    current_control_mode_->stopControl();
+    // current_control_mode_->stopControl();
     const bool ok = current_control_mode_->moveToJointPosition(target_q_array);
     return {std::string(ok ? protocol::FrankaResponseCode::SUCCESS
                            : protocol::FrankaResponseCode::FAIL),

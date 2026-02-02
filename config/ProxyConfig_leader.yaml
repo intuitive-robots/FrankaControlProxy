@@ -4,7 +4,7 @@ robot_ip: 10.10.10.201
 proxy_ip: 141.3.53.63
 group: 224.0.0.1
 group_port: 7720
-group_name: "RobotControlGroup"
+group_name: hardware_collection
 
 
 arm_config_path: config/RobotArmConfig_leader.yaml

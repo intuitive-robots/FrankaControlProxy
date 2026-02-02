@@ -130,6 +130,7 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
         return false;
     }
     zlc::info("[{}] Reached target joint position.", getModeName());
+    startControl();
     return true;
 }
 
