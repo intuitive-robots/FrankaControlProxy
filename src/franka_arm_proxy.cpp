@@ -30,9 +30,10 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
                                              safety_config_);
     // Safety: don't start any control loop by default. If we start "Idle" here (0 torque),
     // the arm can sag under gravity before a client switches to an active mode.
-    current_control_mode_ = control_modes_.at("GravityComp").get();
-    zlc::info("Default control mode set to 'GravityComp' (not started). Waiting for client service call: {}/set_franka_arm_control_mode",
-            config_.name);
+    // current_control_mode_ = control_modes_.at("GravityComp").get();
+    // zlc::info("Default control mode set to 'GravityComp' (not started). Waiting for client service call: {}/set_franka_arm_control_mode",
+    //         config_.name);
+    setControlMode("Idle");
     initializeService();
 }
 

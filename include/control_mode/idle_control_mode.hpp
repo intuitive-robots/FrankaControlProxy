@@ -14,6 +14,7 @@ class IdleControlMode : public AbstractControlMode
   private:
     void initController(FrankaPanda& robot, PandaPinocchioModel& model,
                         AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
+    void controlTask() override;
     franka::Torques controlLoop(const franka::RobotState& robot_state,
                                 franka::Duration duration) override;
 };

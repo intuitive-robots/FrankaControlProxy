@@ -35,7 +35,7 @@ franka::Torques GravityCompControl::controlLoop(const franka::RobotState& robot_
     // Simple spring + damping (no gravity compensation).
     // Tune these two values to change hand-guiding feel.
     const std::array<double, 7> k_hold = {0.08, 0.08, 0.08, 0.04, 0.04, 0.08, 0.08};
-    const std::array<double, 7> damping = {0.4, 0.4, 0.4, 0.3, 0.2, 0.4, 0.4};
+    const std::array<double, 7> damping = {0.5, 0.5, 0.5, 0.4, 0.3, 0.5, 0.5};
 
     std::array<double, 7> tau_cmd{};
     for (int i = 0; i < 7; i++)

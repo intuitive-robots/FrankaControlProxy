@@ -10,6 +10,17 @@ void IdleControlMode::initController(FrankaPanda& robot, PandaPinocchioModel& mo
     controller_name = "Idle";
 }
 
+void IdleControlMode::controlTask()
+{
+    while (is_running_)
+    {
+        auto robot_state = robot_->readOnce();
+        state_buffer_->write(robot_state);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    zlc::info("[{}] Control thread ended.", getModeName());
+}
+
 franka::Torques IdleControlMode::controlLoop(const franka::RobotState& robot_state,
                                              franka::Duration /*duration*/)
 {

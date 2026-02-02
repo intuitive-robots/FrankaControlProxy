@@ -67,7 +67,7 @@ class AbstractControlMode
     void startControl();
     void stopControl();
     const std::string getModeName();
-    void controlTask();
+    virtual void controlTask();
     bool moveToJointPosition(const std::array<double, NUM_DOFS>& target_q,
                              double max_velocity = 0.1, double tolerance = 1e-2);
     bool moveToCartesianPose(const Eigen::Vector3d& target_position,

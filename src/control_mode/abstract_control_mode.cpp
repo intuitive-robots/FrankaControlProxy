@@ -88,13 +88,12 @@ void AbstractControlMode::controlTask()
         }
         catch (const std::exception& ex)
         {
-            zlc::error("[CartesianVelocityMode] Robot is unable to be controlled: {}", ex.what());
-            break;
+            zlc::error("[{}] Robot is unable to be controlled: {}", getModeName(), ex.what());
         }
         bool recovered = tryRecovery();
         if (!recovered)
         {
-            zlc::error("[CartesianVelocityMode] Unable to recover robot. Exiting control loop.");
+            zlc::error("[{}] Unable to recover robot. Exiting control loop.", getModeName());
             break;
         }
     }
@@ -115,17 +114,25 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
         zlc::warn("[{}] moveToJointPosition rejected: control thread is running.", getModeName());
         return false;
     }
-    try {
-        robot_->setCollisionBehavior(
-            {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-            {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-            {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-            {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-        JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_, tolerance);
-        robot_->control(motion_generator);
+    robot_->setCollisionBehavior(
+        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+        {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+        {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
+    for (size_t i = 0; i < 5; i++)
+    {
+        try {
+            JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_, tolerance);
+            robot_->control(motion_generator);
         }catch (const franka::Exception& e) {
-        std::cout << e.what() << std::endl;
-        return false;
+            zlc::error("Error when move joint position {}", e.what());
+        }
+        bool recovered = tryRecovery();
+        if (!recovered)
+        {
+            zlc::error("[{}] Unable to recover robot. Exiting control loop.", getModeName());
+            break;
+        }
     }
     zlc::info("[{}] Reached target joint position.", getModeName());
     startControl();
