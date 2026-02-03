@@ -99,6 +99,7 @@ void AbstractControlMode::controlTask()
     }
     zlc::info("[{}] Control thread ended.", getModeName());
 }
+
 bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>& target_q,
                                               double max_velocity, double tolerance)
 {

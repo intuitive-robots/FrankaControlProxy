@@ -42,8 +42,8 @@ struct HybridJointImpedanceConfig : public ControllerConfig
 class HybridJointImpedanceControl : public AbstractControlMode
 {
   public:
-    HybridJointImpedanceControl(const SafetyLimitConfig& safety_config)
-        : AbstractControlMode(safety_config)
+    HybridJointImpedanceControl(const SafetyLimitConfig& safety_config, const std::string& robot_name)
+        : AbstractControlMode(safety_config, robot_name)
     {
         controller_name = "HybridJointImpedanceControl";
     };

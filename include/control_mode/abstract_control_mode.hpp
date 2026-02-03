@@ -74,7 +74,7 @@ class AbstractControlMode
                              const Eigen::Quaterniond& target_orientation,
                              double max_velocity = 0.5, double tolerance = 1e-3);
   protected:
-    AbstractControlMode(const SafetyLimitConfig& safety_config) : safety_config_(safety_config) {}
+    AbstractControlMode(const SafetyLimitConfig& safety_config, const std::string& robot_name) : safety_config_(safety_config), robot_name_(robot_name) {}
     FrankaPanda* robot_;
     PandaPinocchioModel* pinocchio_model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
@@ -84,9 +84,10 @@ class AbstractControlMode
     bool tryRecovery(int max_attempts = 3);
 
     virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                        franka::Duration duration) = 0;
+                                        franka::Duration duration) { return franka::Torques{}; }
     std::thread control_thread_;
     const SafetyLimitConfig& safety_config_;
+    std::string robot_name_;
 
   private:
     void checkStateLimits(const franka::RobotState& robot_state, franka::Torques& torque_out,
