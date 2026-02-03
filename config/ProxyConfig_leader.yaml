@@ -3,7 +3,7 @@ node_name: FrankaLeader
 robot_ip: 10.10.10.201
 proxy_ip: 141.3.53.63
 group: 224.0.0.1
-group_port: 7720
+group_port: 7721
 group_name: hardware_collection
 
 
