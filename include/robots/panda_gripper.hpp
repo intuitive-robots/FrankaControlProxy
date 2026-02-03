@@ -78,7 +78,8 @@ private:
     void controlLoopThread();
     void statePubThread();
     void updateCommand(const GraspCommand& cmd);
-
+    zlc::Empty startControl(const zlc::Empty&);
+    zlc::Empty stopControl(const zlc::Empty&);
     // Synchronization
     std::atomic<bool> is_running_;
 

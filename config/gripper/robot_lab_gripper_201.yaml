@@ -1,8 +1,8 @@
 # Gripper settings
-name: FrankaFollowerGripper
-gripper_ip: 10.10.10.202
+name: PandaGripper201
+gripper_ip: 10.10.10.201
 
-command_topic: FrankaFollowerGripper/franka_gripper_command
+command_topic: franka_gripper_command
 state_topic: franka_gripper_state
 enable_control: true
 
