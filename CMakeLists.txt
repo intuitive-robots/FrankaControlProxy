@@ -53,7 +53,6 @@ find_package(glfw3 REQUIRED)
 find_package(Franka REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(zerolancom REQUIRED)
-
 # -----------------------------
 # Source collection
 # -----------------------------
@@ -64,13 +63,17 @@ file(GLOB_RECURSE SOURCES
 # -----------------------------
 # Executable
 # -----------------------------
-add_executable(proxy src/main.cpp ${SOURCES})
+add_executable(proxy src/main.cpp ${SOURCES}
+    third_party/robotiq-gripper-interface/src/robotiq_gripper_interface.cc
+    third_party/robotiq-gripper-interface/src/helpers.cc
+    third_party/robotiq-gripper-interface/src/timeout_reader.cc)
 
 # -----------------------------
 # Include dirs & libs
 # -----------------------------
 target_include_directories(proxy PRIVATE
     include
+    third_party/robotiq-gripper-interface/include
     ${Franka_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIR}
     # ${pinocchio_INCLUDE_DIRS}
@@ -83,6 +86,7 @@ target_link_libraries(proxy
     pinocchio::pinocchio
     Eigen3::Eigen
     MuJoCo::MuJoCo
+    robotiq-gripper-interface
     glfw
     GL
     X11
