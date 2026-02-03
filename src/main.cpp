@@ -1,11 +1,10 @@
 #include <ctime>
 #include <memory>
 #include <vector>
-
 #include <zerolancom/zerolancom.hpp>
 
 #include "franka_arm_proxy.hpp"
-#include "franka_gripper_proxy.hpp"
+#include "robotiq_gripper_proxy.hpp"
 
 int main(int argc, char** argv)
 {
@@ -35,7 +34,7 @@ int main(int argc, char** argv)
         return 1;
     }
     FrankaArmProxy robot_proxy(arm_config_path);
-
+    sleep(1); // give some time to initialize before starting gripper
     std::string gripper_config_path = proxy_reader.getValue<std::string>("gripper_config_path");
     if (gripper_config_path.empty())
     {
@@ -43,7 +42,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    FrankaGripperProxy gripper_proxy(proxy_reader.getValue<std::string>("gripper_config_path"));
+    RobotiqGripperProxy gripper_proxy(proxy_reader.getValue<std::string>("gripper_config_path"));
 
     zlc::spin();
     return 0;
