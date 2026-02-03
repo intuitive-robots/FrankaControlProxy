@@ -1,4 +1,4 @@
-#include "franka_arm_proxy.hpp"
+#include "robots/panda_arm.hpp"
 
 #include <algorithm>
 
@@ -9,7 +9,7 @@ static void signalHandler(int signum)
     running_flag = false;
 }
 
-FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
+PandaArm::PandaArm(const std::string& config_path)
     : is_running(false),
       config_(config_path),
       current_state(AtomicDoubleBuffer<franka::RobotState>(franka::RobotState{}))
@@ -37,30 +37,30 @@ FrankaArmProxy::FrankaArmProxy(const std::string& config_path)
     initializeService();
 }
 
-void FrankaArmProxy::initializeService()
+void PandaArm::initializeService()
 {
     std::string service_namespace = fmt::format("{}/set_franka_arm_control_mode", config_.name);
-    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::setControlMode, this);
+    zlc::registerServiceHandler(service_namespace, &PandaArm::setControlMode, this);
     service_namespace = fmt::format("{}/get_franka_arm_state", config_.name);
-    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::getFrankaArmState, this);
+    zlc::registerServiceHandler(service_namespace, &PandaArm::getFrankaArmState, this);
     service_namespace = fmt::format("{}/get_franka_arm_control_mode", config_.name);
-    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::getFrankaArmControlMode, this);
+    zlc::registerServiceHandler(service_namespace, &PandaArm::getFrankaArmControlMode, this);
     service_namespace =
         fmt::format("{}/move_franka_arm_to_joint_position", config_.name);
-    zlc::registerServiceHandler(service_namespace, &FrankaArmProxy::moveFrankaArmToJointPosition,
+    zlc::registerServiceHandler(service_namespace, &PandaArm::moveFrankaArmToJointPosition,
                                 this);
     service_namespace =
         fmt::format("{}/move_franka_arm_to_cartesian_position", config_.name);
     // zlc::registerServiceHandler(service_namespace,
-    //                             &FrankaArmProxy::moveFrankaArmToCartesianPosition, this);
+    //                             &PandaArm::moveFrankaArmToCartesianPosition, this);
 }
 
-FrankaArmProxy::~FrankaArmProxy()
+PandaArm::~PandaArm()
 {
     stop();
 }
 
-void FrankaArmProxy::initRobot()
+void PandaArm::initRobot()
 {
     //initialize franka robot
     try
@@ -88,14 +88,14 @@ void FrankaArmProxy::initRobot()
         return;
     }
     current_state.write(robot_->readOnce());
-    state_pub_thread = std::thread(&FrankaArmProxy::statePublishThread, this);
-    zlc::info("FrankaArmProxy started successfully.");
+    state_pub_thread = std::thread(&PandaArm::statePublishThread, this);
+    zlc::info("PandaArm started successfully.");
     is_running = true;
 }
 
-void FrankaArmProxy::stop()
+void PandaArm::stop()
 {
-    zlc::info("Stopping FrankaArmProxy...");
+    zlc::info("Stopping PandaArm...");
     is_running = false;
     if (current_control_mode_)
         current_control_mode_->stopControl();
@@ -105,11 +105,11 @@ void FrankaArmProxy::stop()
     robot_.reset();
     model_.reset();
     current_control_mode_ = nullptr; // reset current control mode
-    zlc::info("FrankaArmProxy stopped successfully.");
+    zlc::info("PandaArm stopped successfully.");
 }
 
 // Main loop for processing requests, ctrl-c to stop the server
-void FrankaArmProxy::spin()
+void PandaArm::spin()
 {
     std::signal(SIGINT, signalHandler); //  Catch Ctrl+C to stop the server
     zlc::info("Entering main spin loop. Press Ctrl+C to exit.");
@@ -123,7 +123,7 @@ void FrankaArmProxy::spin()
 }
 
 // publish threads
-void FrankaArmProxy::statePublishThread()
+void PandaArm::statePublishThread()
 {
     const std::string topic_name = fmt::format("{}/franka_arm_state", config_.name);
     zlc::Publisher<FrankaArmState> state_pub(topic_name);
@@ -137,7 +137,7 @@ void FrankaArmProxy::statePublishThread()
     }
 }
 
-zlc::Empty FrankaArmProxy::setControlMode(const std::string& mode)
+zlc::Empty PandaArm::setControlMode(const std::string& mode)
 {
     if (control_modes_.find(mode) == control_modes_.end())
     {
@@ -155,12 +155,12 @@ zlc::Empty FrankaArmProxy::setControlMode(const std::string& mode)
     return zlc::empty;
 }
 
-FrankaArmState FrankaArmProxy::getFrankaArmState(const zlc::Empty&)
+FrankaArmState PandaArm::getFrankaArmState(const zlc::Empty&)
 {
     return FrankaArmState(current_state.read());
 }
 
-std::string FrankaArmProxy::getFrankaArmControlMode(const zlc::Empty&)
+std::string PandaArm::getFrankaArmControlMode(const zlc::Empty&)
 {
     if (!current_control_mode_)
     {
@@ -170,7 +170,7 @@ std::string FrankaArmProxy::getFrankaArmControlMode(const zlc::Empty&)
     return current_control_mode_->getModeName();
 }
 
-std::pair<std::string, std::vector<uint8_t>> FrankaArmProxy::moveFrankaArmToJointPosition(
+std::pair<std::string, std::vector<uint8_t>> PandaArm::moveFrankaArmToJointPosition(
     const std::vector<double>& target_q)
 {
     if (!current_control_mode_)

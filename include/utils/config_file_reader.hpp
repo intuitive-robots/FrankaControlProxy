@@ -17,6 +17,11 @@ class ConfigFileReader
 
     ConfigFileReader(const std::string& arm_config_path);
 
+    YAML::Node getSubNode(const std::string& key) const
+    {
+        return node[key];
+    }
+
     template <typename T>
     T getValue(const std::string& key) const
     {

@@ -34,7 +34,7 @@ struct FrankaArmState
           K_F_ext_hat_K(state.K_F_ext_hat_K.begin(), state.K_F_ext_hat_K.end()){};
 };
 
-struct FrankaGripperState
+struct PandaGripperState
 {
     double width;
     double max_width;

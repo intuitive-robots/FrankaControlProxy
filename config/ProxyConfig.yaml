@@ -1,9 +1,0 @@
-# Franka Arm Configuration for P10
-node_name: FrankaPanda
-group: 224.0.0.1
-group_port: 7720
-group_name: RobotControlGroup
-proxy_ip: 192.168.0.117
-
-arm_config_path: config/RobotArmConfig.yaml
-gripper_config_path: config/RobotiqGripperConfig.yaml

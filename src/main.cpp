@@ -3,8 +3,10 @@
 #include <vector>
 #include <zerolancom/zerolancom.hpp>
 
-#include "franka_arm_proxy.hpp"
-#include "robotiq_gripper_proxy.hpp"
+#include "robots/panda_arm.hpp"
+#include "robots/panda_gripper.hpp"
+#include "robots/robotiq_gripper.hpp"
+
 
 int main(int argc, char** argv)
 {
@@ -24,26 +26,64 @@ int main(int argc, char** argv)
     int group_port = proxy_reader.getValue<int>("group_port");
     std::string group_name = proxy_reader.getValue<std::string>("group_name");
     zlc::init(node_name, proxy_ip, group, group_port, group_name);
-    zlc::info("Starting Franka Control Proxy with node name: {}", node_name);
-    zlc::info("Using proxy IP address: {} at group {}:{} with group name {}", proxy_ip, group, group_port, group_name);
-
-    std::string arm_config_path = proxy_reader.getValue<std::string>("arm_config_path");
-    if (arm_config_path.empty())
-    {
-        zlc::error("Arm config path is empty in proxy config file.");
-        return 1;
+    YAML::Node robot_node = proxy_reader.getSubNode("robot");
+    std::vector<std::unique_ptr<PandaArm>> arms;
+    if (robot_node && robot_node.IsSequence()) {
+        for (size_t i = 0; i < robot_node.size(); ++i) {
+            std::string type = robot_node[i]["type"].as<std::string>();
+            std::string cfg  = robot_node[i]["config_path"].as<std::string>();
+            zlc::info("Robot [{}]: type={}, path={}", i, type, cfg);
+            try
+            {
+                if (type == "panda")
+                {
+                    arms.push_back(std::make_unique<PandaArm>(cfg));
+                }
+                else
+                {
+                    zlc::warn("Unknown robot type: {}", type);
+                }
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+                return 1;
+            }
+            
+        }
     }
-    FrankaArmProxy robot_proxy(arm_config_path);
-    sleep(1); // give some time to initialize before starting gripper
-    std::string gripper_config_path = proxy_reader.getValue<std::string>("gripper_config_path");
-    if (gripper_config_path.empty())
-    {
-        zlc::error("Gripper config path is empty in proxy config file.");
-        return 1;
+
+    YAML::Node gripper_node = proxy_reader.getSubNode("grippers");
+    std::vector<std::unique_ptr<PandaGripper>> franka_grippers;
+    std::vector<std::unique_ptr<RobotiqGripper>> robotiq_grippers;
+    if (gripper_node && gripper_node.IsSequence()) {
+        for (const auto& item : gripper_node) {
+            std::string type = item["type"].as<std::string>();
+            std::string cfg  = item["config_path"].as<std::string>();
+            zlc::info("Gripper: type={}, path={}", type, cfg);
+            try
+            {
+                if (type == "franka_gripper")
+                {
+                    franka_grippers.push_back(std::make_unique<PandaGripper>(cfg));
+                }
+                else if (type == "robotiq_gripper")
+                {
+                    robotiq_grippers.push_back(std::make_unique<RobotiqGripper>(cfg));
+                }
+                else
+                {
+                    zlc::warn("Unknown gripper type: {}", type);
+                }
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+                return 1;
+            }
+            
+        }
     }
-
-    RobotiqGripperProxy gripper_proxy(proxy_reader.getValue<std::string>("gripper_config_path"));
-
     zlc::spin();
     return 0;
 }

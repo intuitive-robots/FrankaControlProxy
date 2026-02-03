@@ -80,14 +80,14 @@ struct FrankaArmConfig
     }
 };
 
-class FrankaArmProxy
+class PandaArm
 {
   public:
     // Constructor & Destructor
-    explicit FrankaArmProxy(
+    explicit PandaArm(
         const std::string&
             config_path); // Constructor that initializes the proxy with a configuration file
-    ~FrankaArmProxy();    // Destructor to clean up resources
+    ~PandaArm();    // Destructor to clean up resources
 
     // Core server operations
     void stop(); // Stops the server, cleaning up resources and shutting down communication

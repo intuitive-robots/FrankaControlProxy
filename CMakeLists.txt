@@ -86,7 +86,6 @@ target_link_libraries(proxy
     pinocchio::pinocchio
     Eigen3::Eigen
     MuJoCo::MuJoCo
-    robotiq-gripper-interface
     glfw
     GL
     X11
