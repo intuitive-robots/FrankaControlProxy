@@ -57,6 +57,7 @@ franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotStat
     franka::Torques tau_command = franka::Torques{tau_cmd};
     if (!is_running_)
     {
+        tau_command = franka::Torques{};
         tau_command.motion_finished = true;
     }
     return tau_command;
