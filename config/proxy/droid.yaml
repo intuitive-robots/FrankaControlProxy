@@ -3,9 +3,8 @@ node_name: FrankaPanda
 robot_ip: 10.10.10.202
 proxy_ip: 192.168.0.117
 group: 224.0.0.1
-group_port: 7720
+group_port: 7727
 group_name: DroidGroup
-
 
 robot:
   - type: panda
