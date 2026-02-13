@@ -2,7 +2,7 @@
 name: FrankaPanda
 
 # Serial communication
-gripper_port: /dev/ttyUSB1
+gripper_port: /dev/ttyUSB0
 gripper_baud: 115200
 
 # Scaling (see robotiq interface docs)
