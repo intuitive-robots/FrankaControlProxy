@@ -1,4 +1,6 @@
+mkdir build
 cd build
 cmake -DLOCAL_TESTING=ON ..
 make -j8
-./proxy ../local_test.yaml
+cd ..
+./build/proxy ./config/ProxyConfig.yaml

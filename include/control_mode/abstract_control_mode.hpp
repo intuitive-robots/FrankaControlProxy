@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Eigen/Dense>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -66,8 +67,12 @@ class AbstractControlMode
     void startControl();
     void stopControl();
     const std::string getModeName();
-    void controlTask();
-
+    virtual void controlTask();
+    bool moveToJointPosition(const std::array<double, NUM_DOFS>& target_q,
+                             double max_velocity = 0.1, double tolerance = 1e-2);
+    bool moveToCartesianPose(const Eigen::Vector3d& target_position,
+                             const Eigen::Quaterniond& target_orientation,
+                             double max_velocity = 0.5, double tolerance = 1e-3);
   protected:
     AbstractControlMode(const SafetyLimitConfig& safety_config) : safety_config_(safety_config) {}
     FrankaPanda* robot_;

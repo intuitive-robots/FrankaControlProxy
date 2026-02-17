@@ -1,6 +1,15 @@
 #include "control_mode/abstract_control_mode.hpp"
+#include "motion_generator/cartesian_pose_motion_generator.hpp"
+#include "motion_generator/joint_position_motion_generator.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <iostream>
 #include <stdexcept>
+
+#include <franka/command_types.h>
+#include <franka/exception.h>
+#include <franka/robot.h>
 
 void ControllerConfig::readBaseConfig(const ConfigFileReader& reader)
 {
@@ -57,7 +66,7 @@ void AbstractControlMode::stopControl()
         zlc::info("[{}] Stopping control thread...", getModeName());
         control_thread_.join();
     }
-    zlc::info("[{}] Stopped.", getModeName());
+    zlc::info("{} Mode Stopped.", getModeName());
 }
 
 const std::string AbstractControlMode::getModeName()
@@ -79,18 +88,92 @@ void AbstractControlMode::controlTask()
         }
         catch (const std::exception& ex)
         {
-            zlc::error("[CartesianVelocityMode] Robot is unable to be controlled: {}", ex.what());
-            break;
+            zlc::error("[{}] Robot is unable to be controlled: {}", getModeName(), ex.what());
         }
         bool recovered = tryRecovery();
         if (!recovered)
         {
-            zlc::error("[CartesianVelocityMode] Unable to recover robot. Exiting control loop.");
+            zlc::error("[{}] Unable to recover robot. Exiting control loop.", getModeName());
             break;
         }
     }
     zlc::info("[{}] Control thread ended.", getModeName());
 }
+bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>& target_q,
+                                              double max_velocity, double tolerance)
+{
+    stopControl();
+    zlc::info("[{}] Moving to joint position...", getModeName());
+    if (!robot_)
+    {
+        zlc::error("[{}] moveToJointPosition failed: robot not initialized.", getModeName());
+        return false;
+    }
+    if (is_running_)
+    {
+        zlc::warn("[{}] moveToJointPosition rejected: control thread is running.", getModeName());
+        return false;
+    }
+    // robot_->setCollisionBehavior(
+    //     {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+    //     {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+    //     {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+    //     {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
+    for (size_t i = 0; i < 5; i++)
+    {
+        try {
+            JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_, tolerance);
+            robot_->control(motion_generator);
+        }catch (const franka::Exception& e) {
+            zlc::error("Error when move joint position {}", e.what());
+        }
+        bool recovered = tryRecovery();
+        if (!recovered)
+        {
+            zlc::error("[{}] Unable to recover robot. Exiting control loop.", getModeName());
+            break;
+        }
+    }
+    zlc::info("[{}] Reached target joint position.", getModeName());
+    startControl();
+    return true;
+}
+
+bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_position,
+                                              const Eigen::Quaterniond& target_orientation,
+                                              double max_velocity, double tolerance)
+{
+#if NO_ROBOT_TESTING
+    zlc::error("[{}] moveToCartesianPose is not supported in NO_ROBOT_TESTING mode.",
+               getModeName());
+    return false;
+#else
+    if (!robot_)
+    {
+        zlc::error("[{}] moveToCartesianPose failed: robot not initialized.", getModeName());
+        return false;
+    }
+    if (is_running_)
+    {
+        zlc::warn("[{}] moveToCartesianPose rejected: control thread is running.", getModeName());
+        return false;
+    }
+    try {
+        robot_->setCollisionBehavior(
+            {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+            {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
+            {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
+            {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
+        CartesianPoseMotionGenerator motion_generator(max_velocity, target_position, target_orientation, *state_buffer_, tolerance);
+        robot_->control(motion_generator);
+    } catch (const franka::Exception& e) {
+        std::cout << e.what() << std::endl;
+        return false;
+    }
+    return true;
+#endif
+}
+
 
 bool AbstractControlMode::tryRecovery(int max_attempts)
 {
