@@ -5,7 +5,7 @@
 class IdleControlMode : public AbstractControlMode
 {
   public:
-    IdleControlMode(const SafetyLimitConfig& safety_config) : AbstractControlMode(safety_config)
+    IdleControlMode(const SafetyLimitConfig& safety_config, const std::string& robot_name) : AbstractControlMode(safety_config, robot_name)
     {
         controller_name = "IdleControlMode";
     };
@@ -15,6 +15,4 @@ class IdleControlMode : public AbstractControlMode
     void initController(FrankaPanda& robot, PandaPinocchioModel& model,
                         AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
     void controlTask() override;
-    franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                franka::Duration duration) override;
 };

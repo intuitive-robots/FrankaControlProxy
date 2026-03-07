@@ -6,9 +6,8 @@
 #include <franka/robot.h>
 #include <franka/robot_state.h>
 
-#include "mujoco_sim/mujoco_robot.hpp"
-
 #if NO_ROBOT_TESTING
+#include "mujoco_sim/mujoco_robot.hpp"
 using FrankaPanda = MujocoRobot;
 #else
 using FrankaPanda = franka::Robot;

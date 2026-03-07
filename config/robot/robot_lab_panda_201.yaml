@@ -1,5 +1,5 @@
 # Franka Arm Configuration (leader)
-name: FrankaLeader
+name: Panda201
 robot_ip: 10.10.10.201
 
 # Arm default state

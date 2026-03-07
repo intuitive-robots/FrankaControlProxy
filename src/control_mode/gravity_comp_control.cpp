@@ -46,6 +46,10 @@ franka::Torques GravityCompControl::controlLoop(const franka::RobotState& robot_
     }
 
     franka::Torques out{tau_cmd};
-    if (!is_running_) out.motion_finished = true;
+    if (!is_running_)
+    {
+        out = franka::Torques{};
+        out.motion_finished = true;
+    }
     return out;
 }

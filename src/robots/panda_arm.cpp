@@ -27,7 +27,7 @@ PandaArm::PandaArm(const std::string& config_path)
     
     safety_config_.fromFile("./config/SafetyLimitConfig.cfg");
     ControlModeFactory::registerControlModes(control_modes_, *robot_, *model_, current_state,
-                                             safety_config_);
+                                             safety_config_, config_.name);
     // Safety: don't start any control loop by default. If we start "Idle" here (0 torque),
     // the arm can sag under gravity before a client switches to an active mode.
     // current_control_mode_ = control_modes_.at("GravityComp").get();

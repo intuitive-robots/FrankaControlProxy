@@ -14,16 +14,14 @@ PandaGripper::PandaGripper(const std::string& config_path)
     is_running_ = true;
     zlc::info("Gripper running flag set to {}", is_running_.load());
     state_pub_thread_ = std::thread(&PandaGripper::statePubThread, this);
-    if (config_.enable_control)
-    {
-        zlc::registerSubscriberHandler(config_.command_topic, &PandaGripper::updateCommand, this);
-        control_thread_ = std::thread(&PandaGripper::controlLoopThread, this);
-        zlc::info("Gripper control enabled: subscribing to '{}'", config_.command_topic);
-    }
-    else
-    {
-        zlc::info("Gripper control disabled (monitor-only): publishing '{}' only", config_.state_topic);
-    }
+    const std::string topic_name = fmt::format("{}/{}", config_.name, config_.command_topic);
+    zlc::registerSubscriberHandler(topic_name, &PandaGripper::updateCommand, this);
+    zlc::registerServiceHandler(
+        fmt::format("{}/start_gripper_control", config_.name),
+        &PandaGripper::startControl, this);
+    zlc::registerServiceHandler(
+        fmt::format("{}/stop_gripper_control", config_.name),
+        &PandaGripper::stopControl, this);
 }
 
 PandaGripper::~PandaGripper()
@@ -75,6 +73,28 @@ void PandaGripper::statePubThread()
         );
     }
 }
+
+zlc::Empty PandaGripper::startControl(const zlc::Empty&)
+{
+    if (control_thread_.joinable()) {
+        zlc::warn("PandaGripper control loop thread is already running.");
+        return zlc::Empty{};
+    }
+    is_running_ = true;
+    control_thread_ = std::thread(&PandaGripper::controlLoopThread, this);
+    zlc::info("PandaGripper control loop thread started.");
+    return zlc::Empty{};
+}
+
+zlc::Empty PandaGripper::stopControl(const zlc::Empty&)
+{
+    if (control_thread_.joinable()) {
+        control_thread_.join();
+        zlc::info("PandaGripper control loop thread stopped.");
+    }
+    return zlc::Empty{};
+}
+
 
 void PandaGripper::updateCommand(const GraspCommand& cmd)
 {

@@ -14,9 +14,11 @@ void HybridJointImpedanceControl::initController(
     std::array<double, 7> current_pos = state_buffer.read().q;
     desired_positions_.write(JointPosition::Map(current_pos.data()));
     auto pose = desired_positions_.read();
-    std::cout << pose[0] << "," << pose[1] << "," << pose[2] << "," << pose[3] << ","
-              << pose[4] << "," << pose[5] << "," << pose[6] << std::endl;
-    zlc::registerSubscriberHandler(config_.command_topic,
+    // std::cout << pose[0] << "," << pose[1] << "," << pose[2] << "," << pose[3] << ","
+    //           << pose[4] << "," << pose[5] << "," << pose[6] << std::endl;
+    const std::string topic_name = robot_name_ + "/" + config_.command_topic;
+    zlc::info("[{}] Subscribing to topic: {}", getModeName(), topic_name);
+    zlc::registerSubscriberHandler(topic_name,
                                    &HybridJointImpedanceControl::writeCommand, this);
 }
 
@@ -55,6 +57,7 @@ franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotStat
     franka::Torques tau_command = franka::Torques{tau_cmd};
     if (!is_running_)
     {
+        tau_command = franka::Torques{};
         tau_command.motion_finished = true;
     }
     return tau_command;
