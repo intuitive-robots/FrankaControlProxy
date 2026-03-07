@@ -1,5 +1,5 @@
 # Franka Arm Configuration (follower)
-name: Panda202
+name: FrankaFollower
 robot_ip: 10.10.10.202
 
 # Arm default state

@@ -1,7 +1,7 @@
 node_name: Rollout202
 proxy_ip: 141.3.53.63
 group: 224.0.0.1
-group_port: 7730
+group_port: 7731
 group_name: realrobot_rollout
 
 robot:
