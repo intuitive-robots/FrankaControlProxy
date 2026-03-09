@@ -47,8 +47,9 @@ void AbstractControlMode::initController(FrankaPanda& robot, PandaPinocchioModel
     robot_ = &robot;
     pinocchio_model_ = &pinocchio_model;
     state_buffer_ = &state_buffer;
-    model_ = std::make_unique<franka::Model>(robot_->loadModel());
+    zlc::info("[{}] {} controller initialized.", robot_name_, getModeName());
 }
+
 
 void AbstractControlMode::startControl()
 {

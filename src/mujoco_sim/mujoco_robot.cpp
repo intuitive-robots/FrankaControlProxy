@@ -131,6 +131,16 @@ void MujocoRobot::setCollisionBehavior(const std::array<double, 7>& /*lower_torq
     // No-op: collision behavior is not modeled in this MuJoCo wrapper.
 }
 
+void MujocoRobot::setJointImpedance(const std::array<double, 7>& /*K_theta*/)
+{
+    // No-op: joint impedance is a robot firmware setting, not applicable in MuJoCo simulation.
+}
+
+void MujocoRobot::setCartesianImpedance(const std::array<double, 6>& /*K_x*/)
+{
+    // No-op: Cartesian impedance is a robot firmware setting, not applicable in MuJoCo simulation.
+}
+
 void MujocoRobot::automaticErrorRecovery()
 {
     // No-op for simulation.

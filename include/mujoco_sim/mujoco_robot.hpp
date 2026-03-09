@@ -87,6 +87,10 @@ class MujocoRobot
                               const std::array<double, 6>& lower_force_thresholds,
                               const std::array<double, 6>& upper_force_thresholds);
 
+    void setJointImpedance(const std::array<double, 7>& K_theta);
+
+    void setCartesianImpedance(const std::array<double, 6>& K_x);
+
     void automaticErrorRecovery();
 
     void stop();

@@ -16,15 +16,6 @@ void OSCController::initController(FrankaPanda& robot, PandaPinocchioModel& pino
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
-
-    // from bench mark
-    // ([150.0, 150.0, 60.0], 250.0), // kp_translation, kp_rotation
-    // ([60.0, 150.0, 150.0], 250.0), // kd_translation, kd_rotation
-
-    // from config file
-    // Kp:
-    // translation: [150.0, 150.0, 150.0]
-    // rotation: 250.0
     zlc::info("[OSC] Initialized (spring + damping, no gravity compensation).");
 }
 
@@ -62,24 +53,15 @@ franka::Torques OSCController::controlLoop(const franka::RobotState& robot_state
                                         desired_quat_EE_in_base_frame);
       Eigen::Matrix<double, 7, 1> tau_d;
 
-      std::array<double, 49> mass_array = model_->mass(robot_state);
-      Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
+      // Extract joint position for pinocchio model
+      JointPosition q_pin = Eigen::Map<const JointPosition>(robot_state.q.data());
 
+      // Mass matrix from Pinocchio
+      Eigen::Matrix<double, 7, 7> M = pinocchio_model_->mass(q_pin);
       M = M + Eigen::Matrix<double, 7, 7>(config_.residual_mass_vec.asDiagonal());
 
-      // coriolis and gravity
-      std::array<double, 7> coriolis_array = model_->coriolis(robot_state);
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(
-          coriolis_array.data());
-
-      std::array<double, 7> gravity_array = model_->gravity(robot_state);
-      Eigen::Map<const Eigen::Matrix<double, 7, 1>> gravity(
-          gravity_array.data());
-
-      std::array<double, 42> jacobian_array =
-          model_->zeroJacobian(franka::Frame::kEndEffector, robot_state);
-      Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(
-          jacobian_array.data());
+      // Jacobian from Pinocchio
+      JocobianMatrix jacobian = pinocchio_model_->computeJacobian(q_pin);
 
       Eigen::MatrixXd jacobian_pos(3, 7);
       Eigen::MatrixXd jacobian_ori(3, 7);

@@ -10,7 +10,7 @@ PandaGripper::PandaGripper(const std::string& config_path)
     // Initialize the command to the current width so the gripper doesn't immediately
     // try to close by default on startup.
     const franka::GripperState gs0 = gripper_->readOnce();
-    command_.write(GraspCommand{static_cast<double>(gs0.width), 0.1});
+    command_.write(GraspCommand{static_cast<float>(gs0.width), 0.1});
     is_running_ = true;
     zlc::info("Gripper running flag set to {}", is_running_.load());
     state_pub_thread_ = std::thread(&PandaGripper::statePubThread, this);

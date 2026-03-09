@@ -31,6 +31,7 @@ class PandaPinocchioModel
     JocobianMatrix computeJacobian(JointPosition joint_position);
     JointTorque inverseDynamics(JointPosition joint_position, JointVelocity joint_velocity,
                                 JointAcceleration joint_acceleration);
+    Eigen::Matrix<double, 7, 7> mass(JointPosition joint_position);
     // JointPosition inverseKinematics(PoseQuat desired_pose, JointPosition initial_guess);
 
     // // Returns Coriolis + centrifugal torques for the given joint state.

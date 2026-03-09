@@ -2,10 +2,9 @@
 
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/jacobian.hpp>
-#include <pinocchio/algorithm/joint-configuration.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/algorithm/rnea.hpp>
-#include <pinocchio/parsers/sample-models.hpp>
+#include <pinocchio/algorithm/crba.hpp>
 #include <pinocchio/parsers/urdf.hpp>
 
 PandaPinocchioModel::PandaPinocchioModel(std::string urdf_filename, std::string ee_joint_name)
@@ -110,6 +109,15 @@ JointPosition PandaPinocchioModel::inverseDynamics(JointPosition joint_position,
                                                    JointAcceleration joint_acceleration)
 {
     return pinocchio::rnea(model_, model_data_, joint_position, joint_velocity, joint_acceleration);
+}
+
+Eigen::Matrix<double, 7, 7> PandaPinocchioModel::mass(JointPosition joint_position)
+{
+    pinocchio::crba(model_, model_data_, joint_position);
+    // CRBA only fills upper triangular part, symmetrize the matrix
+    model_data_.M.triangularView<Eigen::StrictlyLower>() =
+        model_data_.M.transpose().triangularView<Eigen::StrictlyLower>();
+    return model_data_.M.topLeftCorner<7, 7>();
 }
 
 // JointPosition PandaPinocchioModel::coriolis(JointPosition joint_position,

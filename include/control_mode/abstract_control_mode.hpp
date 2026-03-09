@@ -77,7 +77,6 @@ class AbstractControlMode
     AbstractControlMode(const SafetyLimitConfig& safety_config, const std::string& robot_name) : safety_config_(safety_config), robot_name_(robot_name) {}
     FrankaPanda* robot_;
     PandaPinocchioModel* pinocchio_model_;
-    std::unique_ptr<franka::Model> model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 
     bool is_running_ = false;
