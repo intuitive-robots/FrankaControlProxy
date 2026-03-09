@@ -13,7 +13,7 @@
 
 namespace
 {
-    constexpr std::chrono::milliseconds kControlPeriod{1}; // 1 kHz
+    constexpr std::chrono::milliseconds kControlPeriod{1000}; // 1 kHz
 
     franka::Duration toDuration(std::chrono::nanoseconds dt)
     {

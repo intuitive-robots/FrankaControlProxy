@@ -64,8 +64,8 @@ class AbstractControlMode
 
     virtual void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
                                 AtomicDoubleBuffer<franka::RobotState>& state_buffer);
-    void startControl();
-    void stopControl();
+    virtual void startControl();
+    virtual void stopControl();
     const std::string getModeName();
     virtual void controlTask();
     bool moveToJointPosition(const std::array<double, NUM_DOFS>& target_q,

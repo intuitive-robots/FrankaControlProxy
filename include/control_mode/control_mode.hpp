@@ -3,6 +3,7 @@
 #include <control_mode/hybrid_joint_impedance_control.hpp>
 #include <control_mode/idle_control_mode.hpp>
 #include <control_mode/gravity_comp_control.hpp>
+#include <control_mode/osc_control.hpp>
 
 class ControlModeFactory
 {
@@ -19,6 +20,7 @@ class ControlModeFactory
         registry["GravityComp"] = std::make_unique<GravityCompControl>(safety_config, robot_name);
         registry["HybridJointImpedance"] =
             std::make_unique<HybridJointImpedanceControl>(safety_config, robot_name);
+        registry["OSC"] = std::make_unique<OSCController>(safety_config, robot_name);
         for (const auto& pair : registry)
         {
             zlc::info("[ControlModeFactory] Registered mode: {}", pair.first);

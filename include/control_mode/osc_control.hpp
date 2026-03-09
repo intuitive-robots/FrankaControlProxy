@@ -79,7 +79,7 @@ public:
 private:
     void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
                         AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
-    
+    void startControl() override;
     franka::Torques controlLoop(const franka::RobotState& robot_state,
                                 franka::Duration duration) override;
     void writeCommand(const CartesianPoseCommand& cmd);
@@ -89,31 +89,7 @@ private:
 };
 
 void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
-              double epsilon = 0.00025) {
-  Eigen::JacobiSVD<Eigen::MatrixXd> svd(
-      M, Eigen::ComputeFullU | Eigen::ComputeFullV);
-  Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType singular_vals =
-      svd.singularValues();
-
-  Eigen::MatrixXd S_inv = M;
-  S_inv.setZero();
-  for (int i = 0; i < singular_vals.size(); i++) {
-    if (singular_vals(i) < epsilon) {
-      S_inv(i, i) = 0.;
-    } else {
-      S_inv(i, i) = 1. / singular_vals(i);
-    }
-  }
-  M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
-}
+              double epsilon = 0.00025);
 
 void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array, double min_torque,
-                         double max_torque) {
-  for (size_t i = 0; i < tau_d_array.size(); i++) {
-    if (tau_d_array[i] < min_torque) {
-      tau_d_array[i] = min_torque;
-    } else if (tau_d_array[i] > max_torque) {
-      tau_d_array[i] = max_torque;
-    }
-  }
-}
+                         double max_torque);

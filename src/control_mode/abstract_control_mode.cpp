@@ -54,10 +54,10 @@ void AbstractControlMode::initController(FrankaPanda& robot, PandaPinocchioModel
 void AbstractControlMode::startControl()
 {
     robot_->automaticErrorRecovery();
-    zlc::info("[{}] {} control started.", robot_name_, getModeName());
+    zlc::debug("[{}] {} control started.", robot_name_, getModeName());
     is_running_ = true;
     control_thread_ = std::thread(&AbstractControlMode::controlTask, this);
-    zlc::info("[{}] {} control thread launched.", robot_name_, getModeName());
+    zlc::debug("[{}] {} control thread launched.", robot_name_, getModeName());
 }
 
 void AbstractControlMode::stopControl()
@@ -65,7 +65,7 @@ void AbstractControlMode::stopControl()
     is_running_ = false;
     if (control_thread_.joinable())
     {
-        zlc::info("[{}] Stopping {} control thread...", robot_name_, getModeName());
+        zlc::debug("[{}] Stopping {} control thread...", robot_name_, getModeName());
         control_thread_.join();
     }
     zlc::info("[{}] {} Mode Stopped.", robot_name_, getModeName());

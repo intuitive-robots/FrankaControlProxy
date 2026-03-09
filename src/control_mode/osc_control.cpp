@@ -3,6 +3,36 @@
 #include <Eigen/Dense>
 #include "utils/Pose.h"
 
+void PInverse(const Eigen::MatrixXd& M, Eigen::MatrixXd& M_inv,
+              double epsilon) {
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(
+      M, Eigen::ComputeFullU | Eigen::ComputeFullV);
+  Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType singular_vals =
+      svd.singularValues();
+
+  Eigen::MatrixXd S_inv = M;
+  S_inv.setZero();
+  for (int i = 0; i < singular_vals.size(); i++) {
+    if (singular_vals(i) < epsilon) {
+      S_inv(i, i) = 0.;
+    } else {
+      S_inv(i, i) = 1. / singular_vals(i);
+    }
+  }
+  M_inv = Eigen::MatrixXd(svd.matrixV() * S_inv * svd.matrixU().transpose());
+}
+
+void TorqueSafetyGuardFn(std::array<double, 7>& tau_d_array, double min_torque,
+                         double max_torque) {
+  for (size_t i = 0; i < tau_d_array.size(); i++) {
+    if (tau_d_array[i] < min_torque) {
+      tau_d_array[i] = min_torque;
+    } else if (tau_d_array[i] > max_torque) {
+      tau_d_array[i] = max_torque;
+    }
+  }
+}
+
 void OSCController::initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
                                         AtomicDoubleBuffer<franka::RobotState>& state_buffer)
 {
@@ -16,6 +46,14 @@ void OSCController::initController(FrankaPanda& robot, PandaPinocchioModel& pino
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
         {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+    franka::RobotState curr_state = state_buffer_->read();
+    // use current pose as initial pose for interpolation
+    Eigen::Affine3d T_EE_in_base_frame(
+        Eigen::Matrix4d::Map(curr_state.O_T_EE.data()));
+    Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
+    std::cout << "Initial EE position: " << pos_EE_in_base_frame.transpose() << std::endl;
+    Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
+    traj_interpolator.reset(0., pos_EE_in_base_frame, quat_EE_in_base_frame, pos_EE_in_base_frame, quat_EE_in_base_frame, 20, 500, 1.0);
     zlc::info("[OSC] Initialized (spring + damping, no gravity compensation).");
 }
 
@@ -88,6 +126,7 @@ franka::Torques OSCController::controlLoop(const franka::RobotState& robot_state
       Eigen::Vector3d pos_error;
 
       pos_error << desired_pos_EE_in_base_frame - pos_EE_in_base_frame;
+      std::cout << "Position error: " << pos_error.transpose() << std::endl;
       Eigen::Quaterniond quat_error(desired_quat_EE_in_base_frame.inverse() *
                                     quat_EE_in_base_frame);
       Eigen::Vector3d ori_error;
@@ -172,4 +211,15 @@ franka::Torques OSCController::controlLoop(const franka::RobotState& robot_state
       TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);
 
       return tau_d_rate_limited;
+}
+
+void OSCController::startControl() {
+    franka::RobotState curr_state = state_buffer_->read();
+    Eigen::Affine3d T_EE_in_base_frame(
+        Eigen::Matrix4d::Map(curr_state.O_T_EE.data()));
+    Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
+    Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
+    traj_interpolator.reset(0., pos_EE_in_base_frame, quat_EE_in_base_frame, pos_EE_in_base_frame, quat_EE_in_base_frame, 20, 500, 1.0);
+    AbstractControlMode::startControl();
+    std::cout << "[OSC] Control started with initial pose as setpoint." << pos_EE_in_base_frame.transpose() << std::endl;
 }
