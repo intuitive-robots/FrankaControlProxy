@@ -227,10 +227,9 @@ std::array<double, 7> MujocoRobot::cartesianPoseToJointPosition(
     for (int iter = 0; iter < kIKMaxIterations; iter++)
     {
         // Compute current FK
-        PoseQuat current_pose = model_->forwardKinematics(q);
-        Eigen::Vector3d current_pos(current_pose[0], current_pose[1], current_pose[2]);
-        Eigen::Quaterniond current_quat(current_pose[6], current_pose[3], current_pose[4],
-                                        current_pose[5]);
+        const transform::Pose current_pose = model_->forwardKinematics(q);
+        const Eigen::Vector3d current_pos = current_pose.translation();
+        const Eigen::Quaterniond current_quat = current_pose.quaternion();
 
         // Compute position error
         Eigen::Vector3d pos_error = target_pos - current_pos;

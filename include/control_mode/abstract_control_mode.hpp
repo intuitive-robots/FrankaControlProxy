@@ -22,7 +22,6 @@ struct ControllerConfig : public AbstractConfig
 {
     // communication
     std::string controller_name;
-    std::string command_topic;
 
     ControllerConfig() = default;
 

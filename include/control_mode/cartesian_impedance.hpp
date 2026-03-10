@@ -8,7 +8,6 @@
 
 struct CartesianImpedanceConfig : public ControllerConfig
 {
-    std::string command_topic{"FRANKA_CARTESIAN_IMPEDANCE_CMD"};
     Eigen::Matrix<double, 3, 3> Kp_p{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kp_r{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_p{Eigen::Matrix<double, 3, 3>::Zero()};
@@ -20,7 +19,6 @@ struct CartesianImpedanceConfig : public ControllerConfig
     {
         ConfigFileReader reader(controller_config_path);
         readBaseConfig(reader);
-        command_topic = reader.getValue<std::string>("command_topic");
 
         // Read Kp_p and Kp_r diagonal values
         const std::array<double, 3> Kp_p_vals = reader.getArray<double, 3>("Kp_p");
@@ -39,18 +37,17 @@ struct CartesianImpedanceConfig : public ControllerConfig
 class CartesianImpedanceController : public AbstractControlMode
 {
   public:
-    explicit CartesianImpedanceController()
+    CartesianImpedanceController(AtomicDoubleBuffer<transform::Pose>& desired_cartesian_pose)
+        : desired_cartesian_pose_(&desired_cartesian_pose)
     {
         controller_name = "CartesianImpedance";
-        traj_interpolator = LinearPoseTrajInterpolator();
     }
     ~CartesianImpedanceController() override = default;
 
   private:
     franka::Torques controlLoop(const franka::RobotState& robot_state,
                                 franka::Duration duration) override;
-    LinearPoseTrajInterpolator traj_interpolator;
-    double controller_time{0.};
+    void startControl() override;
     CartesianImpedanceConfig config_;
-    AtomicDoubleBuffer<PoseQuat>* desired_cartesian_pose_ = nullptr;
+    AtomicDoubleBuffer<transform::Pose>* desired_cartesian_pose_ = nullptr;
 };

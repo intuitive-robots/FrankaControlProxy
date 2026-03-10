@@ -10,7 +10,6 @@
 
 struct HybridJointImpedanceConfig : public ControllerConfig
 {
-    std::string command_topic{"FRANKA_HYBRID_JOINT_IMPEDANCE_CMD"};
     Eigen::Matrix<double, 7, 7> kq;
     Eigen::Matrix<double, 7, 7> kqd;
     Eigen::Matrix<double, 6, 6> kx;
@@ -22,7 +21,6 @@ struct HybridJointImpedanceConfig : public ControllerConfig
     {
         ConfigFileReader reader(controller_config_path);
         readBaseConfig(reader);
-        command_topic = reader.getValue<std::string>("command_topic");
         const std::array<double, 7> kq_gains = reader.getArray<double, 7>("kq_gains");
         kq = JointPosition::Map(kq_gains.data()).asDiagonal();
         const std::array<double, 7> kqd_gains = reader.getArray<double, 7>("kqd_gains");

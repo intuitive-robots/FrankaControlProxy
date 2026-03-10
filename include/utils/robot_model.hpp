@@ -15,8 +15,6 @@ using JointVelocity = Eigen::Matrix<double, 7, 1>;
 using JointAcceleration = Eigen::Matrix<double, 7, 1>;
 using JointTorque = Eigen::Matrix<double, 7, 1>;
 using JocobianMatrix = Eigen::Matrix<double, 6, 7>;
-// using PoseQuat = Eigen::Matrix<double, 7, 1>;
-
 constexpr int NUM_DOFS = 7;
 
 class PandaPinocchioModel
@@ -26,16 +24,17 @@ class PandaPinocchioModel
     JointPosition getJointAngleLowerLimits();
     JointPosition getJointAngleUpperLimits();
     JointVelocity getJointVelocityLimits();
-    PoseQuat forwardKinematics(JointPosition joint_position, int64_t link_idx);
-    PoseQuat forwardKinematics(JointPosition joint_position, const std::string& link_name);
-    PoseQuat forwardKinematics(JointPosition joint_position);
+    transform::Pose forwardKinematics(JointPosition joint_position, int64_t link_idx);
+    transform::Pose forwardKinematics(JointPosition joint_position,
+                                           const std::string& link_name);
+    transform::Pose forwardKinematics(JointPosition joint_position);
     JocobianMatrix computeJacobian(JointPosition joint_position, int64_t link_idx);
     JocobianMatrix computeJacobian(JointPosition joint_position, const std::string& link_name);
     JocobianMatrix computeJacobian(JointPosition joint_position);
     JointTorque inverseDynamics(JointPosition joint_position, JointVelocity joint_velocity,
                                 JointAcceleration joint_acceleration);
     Eigen::Matrix<double, 7, 7> mass(JointPosition joint_position);
-    // JointPosition inverseKinematics(PoseQuat desired_pose, JointPosition initial_guess);
+    // JointPosition inverseKinematics(transform::Pose desired_pose, JointPosition initial_guess);
 
     // // Returns Coriolis + centrifugal torques for the given joint state.
     // JointTorque coriolis(JointPosition joint_position, JointVelocity joint_velocity);

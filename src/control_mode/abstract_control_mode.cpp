@@ -15,7 +15,6 @@
 void ControllerConfig::readBaseConfig(const ConfigFileReader& reader)
 {
     controller_name = reader.getValue<std::string>("name");
-    command_topic = reader.getValue<std::string>("command_topic");
 }
 
 void SafetyLimitConfig::fromFile(const std::string& controller_config_path)
@@ -83,7 +82,15 @@ void AbstractControlMode::controlTask()
     zlc::info("[{}] Control thread started.", getModeName());
     auto control_callback = [this](const franka::RobotState& state,
                                    franka::Duration duration) -> franka::Torques
-    { return this->controlLoop(state, duration); };
+    {   
+        franka::Torques tau = this->controlLoop(state, duration);
+        if (!is_running_)
+        {
+            return franka::MotionFinished(tau);
+        }
+        return tau;
+    };
+    
     while (is_running_)
     {
         try

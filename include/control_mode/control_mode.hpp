@@ -6,6 +6,7 @@
 #include <control_mode/idle_control_mode.hpp>
 #include <control_mode/osc_control.hpp>
 #include "protocol/control_command.hpp"
+#include "utils/Pose.h"
 
 class ControlModeFactory
 {
@@ -32,7 +33,7 @@ class ControlModeFactory
             std::make_unique<HybridJointImpedanceControl>();
         // registry["OSC"] = std::make_unique<OSCController>(safety_config_, robot_name);
         registry["CartesianImpedance"] =
-            std::make_unique<CartesianImpedanceController>();
+            std::make_unique<CartesianImpedanceController>(desired_cartesian_pose_);
         for (const auto& pair : registry)
         {
             zlc::info("[ControlModeFactory] Registered mode: {}", pair.first);
@@ -55,7 +56,8 @@ private:
     std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>> registry;
     SafetyLimitConfig safety_config_;
     AtomicDoubleBuffer<JointPosition> desired_positions_{JointPosition::Zero()};
-    AtomicDoubleBuffer<PoseQuat> desired_cartesian_pose_{PoseQuat::Zero()};
+    AtomicDoubleBuffer<transform::Pose> desired_cartesian_pose_{
+        transform::Pose::Identity()};
 
     void writeJointCommand(const JointCommand& cmd)
     {
@@ -64,7 +66,10 @@ private:
 
     void writeCartesianCommand(const CartesianPoseCommand& cmd)
     {
-        desired_cartesian_pose_.write(PoseQuat::Map(cmd.pos.data()));
+        const Eigen::Vector3d translation = Eigen::Vector3d::Map(cmd.pos.data());
+        // Command quaternion convention is [x, y, z, w].
+        const Eigen::Quaterniond quaternion(cmd.rot[3], cmd.rot[0], cmd.rot[1], cmd.rot[2]);
+        desired_cartesian_pose_.write(transform::Pose(quaternion, translation));
     }
 
 };

@@ -30,15 +30,25 @@
 //     zlc::info("[CartesianImpedance] Initialized.");
 // }
 
+void CartesianImpedanceController::startControl()
+{
+    config_.fromFile("config/controller/cartesian_impedance_controller.cfg");
+    franka::RobotState curr_state = state_buffer_->read();
+    Eigen::Affine3d T_EE_in_base_frame(Eigen::Matrix4d::Map(curr_state.O_T_EE.data()));
+    desired_cartesian_pose_->write(transform::Pose(T_EE_in_base_frame));
+    AbstractControlMode::startControl();
+    zlc::info("[CartesianImpedance] Control started.");
+}
+
 franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotState& robot_state,
                                                           franka::Duration period)
 {
-    controller_time += period.toSec();
-
     // Get desired pose from trajectory interpolator
     Eigen::Vector3d desired_pos_EE;
     Eigen::Quaterniond desired_quat_EE;
-    traj_interpolator.next_step(controller_time, desired_pos_EE, desired_quat_EE);
+    transform::Pose desired_pose = desired_cartesian_pose_->read();
+    desired_pos_EE = desired_pose.translation();
+    desired_quat_EE = desired_pose.quaternion();
 
     // Extract current joint state
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());

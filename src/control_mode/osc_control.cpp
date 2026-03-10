@@ -70,8 +70,8 @@
 //     franka::RobotState curr_state = state_buffer_->read();
 //     Eigen::Vector3d desired_EE_pos(cmd.pos.data());
 //     Eigen::Quaterniond desired_EE_quat(cmd.quat.data());
-//     rcs::common::Pose desired_pose_EE_in_base_frame(desired_EE_quat, desired_EE_pos);
-//     rcs::common::Pose curr_pose(curr_state.O_T_EE);
+//     common::Pose desired_pose_EE_in_base_frame(desired_EE_quat, desired_EE_pos);
+//     common::Pose curr_pose(curr_state.O_T_EE);
 //     traj_interpolator.reset(controller_time, curr_pose.translation(), curr_pose.quaternion(),
 //                             desired_pose_EE_in_base_frame.translation(),
 //                             desired_pose_EE_in_base_frame.quaternion(), 20, 500, 1.0);

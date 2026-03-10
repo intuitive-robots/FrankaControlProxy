@@ -22,7 +22,7 @@ struct RobotiqGripperStateMsg
     uint8_t raw_position;
 
     MSGPACK_DEFINE_MAP(commanded_position, commanded_speed, commanded_force, position, current,
-                       raw_commanded_position, raw_position);
+                       raw_commanded_position, raw_position)
 };
 
 struct RobotiqGraspCommand
