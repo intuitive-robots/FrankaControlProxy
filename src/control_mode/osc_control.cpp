@@ -205,7 +205,6 @@ franka::Torques OSCController::controlLoop(const franka::RobotState& robot_state
       std::array<double, 7> tau_d_rate_limited = franka::limitRate(
           franka::kMaxTorqueRate, tau_d_array, robot_state.tau_J_d);
 
-    //   deoxys/config/control_config.yml
       double min_torque = -5;
       double max_torque = 5;
       TorqueSafetyGuardFn(tau_d_rate_limited, min_torque, max_torque);

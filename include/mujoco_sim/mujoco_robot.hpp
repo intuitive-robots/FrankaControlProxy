@@ -41,7 +41,8 @@ class MujocoModel
 class MujocoRobot
 {
   public:
-    explicit MujocoRobot(const std::string& franka_address);
+    explicit MujocoRobot(const std::string& franka_address,
+                         const std::string& env_config_path = "./config/mujoco/mujoco_env.cfg");
 
     MujocoRobot(MujocoRobot&& other) noexcept;
 
@@ -121,6 +122,8 @@ class MujocoRobot
     static constexpr double kIKStepSize = 0.5;
 
     bool running_{false};
+    MujocoEnvConfig config_;
+    std::chrono::microseconds control_period_;
 
     std::unique_ptr<MujocoPandaEnv> env_;
     std::unique_ptr<MujocoViewer> viewer_;

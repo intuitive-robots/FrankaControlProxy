@@ -8,7 +8,8 @@
 
 #include <zerolancom/zerolancom.hpp>
 
-MujocoPandaEnv::MujocoPandaEnv(const std::string& model_path) : model_path_(model_path) {}
+MujocoPandaEnv::MujocoPandaEnv(const std::string& model_path, const MujocoEnvConfig& config)
+    : model_path_(model_path), config_(config) {}
 
 MujocoPandaEnv::~MujocoPandaEnv()
 {
@@ -62,6 +63,13 @@ void MujocoPandaEnv::loadModel()
     {
         zlc::warn("Keyframe 'home' not found in the model");
     }
+
+    // Cache end-effector body ID
+    ee_body_id_ = mj_name2id(model_.get(), mjOBJ_BODY, config_.ee_body_name.c_str());
+    if (ee_body_id_ < 0)
+    {
+        zlc::warn("End-effector body '{}' not found in the model", config_.ee_body_name);
+    }
 }
 
 void MujocoPandaEnv::nextStep(const franka::Torques& torques, franka::RobotState& robot_state)
@@ -100,13 +108,12 @@ void MujocoPandaEnv::_refreshRobotState(franka::RobotState& robot_state)
     }
 
     // Compute O_T_EE (end-effector pose in base frame)
-    int hand_body_id = mj_name2id(model_.get(), mjOBJ_BODY, "hand");
-    if (hand_body_id >= 0)
+    if (ee_body_id_ >= 0)
     {
         // Get position (xpos is body_id * 3)
-        const double* pos = &data_->xpos[hand_body_id * 3];
+        const double* pos = &data_->xpos[ee_body_id_ * 3];
         // Get rotation matrix (xmat is body_id * 9, row-major 3x3)
-        const double* rot = &data_->xmat[hand_body_id * 9];
+        const double* rot = &data_->xmat[ee_body_id_ * 9];
 
         // O_T_EE is column-major 4x4: [R11,R21,R31,0, R12,R22,R32,0, R13,R23,R33,0, tx,ty,tz,1]
         // MuJoCo xmat is row-major: [R11,R12,R13, R21,R22,R23, R31,R32,R33]
@@ -130,7 +137,7 @@ void MujocoPandaEnv::_refreshRobotState(franka::RobotState& robot_state)
         // Compute Cartesian velocities using Jacobian
         std::vector<double> jacp(3 * model_->nv, 0.0);
         std::vector<double> jacr(3 * model_->nv, 0.0);
-        mj_jacBody(model_.get(), data_.get(), jacp.data(), jacr.data(), hand_body_id);
+        mj_jacBody(model_.get(), data_.get(), jacp.data(), jacr.data(), ee_body_id_);
 
         // Compute Cartesian velocity: v = J * dq
         // O_dP_EE_c and O_dP_EE_d are 6-element arrays: [vx, vy, vz, wx, wy, wz]

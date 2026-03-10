@@ -13,22 +13,28 @@
 
 namespace
 {
-    constexpr std::chrono::milliseconds kControlPeriod{1000}; // 1 kHz
-
     franka::Duration toDuration(std::chrono::nanoseconds dt)
     {
         return franka::Duration(static_cast<uint64_t>(dt.count()));
     }
 } // namespace
 
-MujocoRobot::MujocoRobot(const std::string&)
-    : env_(std::make_unique<MujocoPandaEnv>("./models/franka_emika_panda/scene.xml")),
-      viewer_(std::make_unique<MujocoViewer>(env_.get())),
-      model_(std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf", "panda_link8"))
+MujocoRobot::MujocoRobot(const std::string&, const std::string& env_config_path)
 {
+    // Load configuration
+    config_.fromFile(env_config_path);
+    control_period_ = std::chrono::microseconds(1000000 / config_.control_rate);
+
+    env_ = std::make_unique<MujocoPandaEnv>("./models/franka_emika_panda/scene.xml", config_);
+    model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf", "panda_link8");
     env_->start();
     env_->refreshRobotState(current_state_);
-    viewer_->start();
+
+    if (config_.enable_viewer)
+    {
+        viewer_ = std::make_unique<MujocoViewer>(env_.get());
+        viewer_->start();
+    }
 }
 
 MujocoRobot::~MujocoRobot() noexcept
@@ -69,7 +75,7 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
@@ -95,7 +101,7 @@ void MujocoRobot::read(std::function<bool(const franka::RobotState&)> read_callb
             running_ = false;
             break;
         }
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
@@ -344,7 +350,7 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
@@ -386,7 +392,7 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
@@ -434,7 +440,7 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
@@ -482,7 +488,7 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }

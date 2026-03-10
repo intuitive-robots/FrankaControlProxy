@@ -7,4 +7,4 @@ group_name: MujocoRobotGroup
 
 robot:
   - type: panda
-    config_path: config/robot/mujoco_robot.yaml
+    config_path: config/robot/mujoco_panda.yaml
