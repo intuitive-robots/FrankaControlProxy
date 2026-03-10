@@ -7,7 +7,6 @@
 #include "robots/panda_gripper.hpp"
 #include "robots/robotiq_gripper.hpp"
 
-
 int main(int argc, char** argv)
 {
     // check configpath arguments
@@ -28,10 +27,12 @@ int main(int argc, char** argv)
     zlc::init(node_name, proxy_ip, group, group_port, group_name);
     YAML::Node robot_node = proxy_reader.getSubNode("robot");
     std::vector<std::unique_ptr<PandaArm>> arms;
-    if (robot_node && robot_node.IsSequence()) {
-        for (size_t i = 0; i < robot_node.size(); ++i) {
+    if (robot_node && robot_node.IsSequence())
+    {
+        for (size_t i = 0; i < robot_node.size(); ++i)
+        {
             std::string type = robot_node[i]["type"].as<std::string>();
-            std::string cfg  = robot_node[i]["config_path"].as<std::string>();
+            std::string cfg = robot_node[i]["config_path"].as<std::string>();
             zlc::info("Robot [{}]: type={}, path={}", i, type, cfg);
             try
             {
@@ -44,22 +45,23 @@ int main(int argc, char** argv)
                     zlc::warn("Unknown robot type: {}", type);
                 }
             }
-            catch(const std::exception& e)
+            catch (const std::exception& e)
             {
                 std::cerr << e.what() << '\n';
                 return 1;
             }
-            
         }
     }
 
     YAML::Node gripper_node = proxy_reader.getSubNode("grippers");
     std::vector<std::unique_ptr<PandaGripper>> franka_grippers;
     std::vector<std::unique_ptr<RobotiqGripper>> robotiq_grippers;
-    if (gripper_node && gripper_node.IsSequence()) {
-        for (const auto& item : gripper_node) {
+    if (gripper_node && gripper_node.IsSequence())
+    {
+        for (const auto& item : gripper_node)
+        {
             std::string type = item["type"].as<std::string>();
-            std::string cfg  = item["config_path"].as<std::string>();
+            std::string cfg = item["config_path"].as<std::string>();
             zlc::info("Gripper: type={}, path={}", type, cfg);
             try
             {
@@ -76,12 +78,11 @@ int main(int argc, char** argv)
                     zlc::warn("Unknown gripper type: {}", type);
                 }
             }
-            catch(const std::exception& e)
+            catch (const std::exception& e)
             {
                 std::cerr << e.what() << '\n';
                 return 1;
             }
-            
         }
     }
     zlc::spin();

@@ -1,17 +1,19 @@
 #pragma once
-#include <thread>
-#include <atomic>
-#include <mutex>
-#include <string>
-#include <memory>
-
 #include <franka/gripper.h>
 #include <franka/robot_state.h>
+
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
 #include <zerolancom/zerolancom.hpp>
+
 #include "control_mode/abstract_control_mode.hpp"
 #include "utils/atomic_double_buffer.hpp"
 
-struct GripperStateMsg {
+struct GripperStateMsg
+{
     double width;
     double max_width;
     bool is_grasped;
@@ -58,15 +60,16 @@ struct PandaGripperConfig
     }
 };
 
-class PandaGripper {
-public:
+class PandaGripper
+{
+  public:
     // Constructor & Destructor
     explicit PandaGripper(const std::string& config_path);
     ~PandaGripper();
 
     void stop();
 
-private:
+  private:
     // Franka gripper
     std::shared_ptr<franka::Gripper> gripper_;
 

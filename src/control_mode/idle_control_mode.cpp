@@ -2,14 +2,6 @@
 
 #include <franka/exception.h>
 
-void IdleControlMode::initController(FrankaPanda& robot, PandaPinocchioModel& model,
-                                     AtomicDoubleBuffer<franka::RobotState>& state_buffer)
-{
-    AbstractControlMode::initController(robot, model, state_buffer);
-    zlc::info("[IdleControlMode] Initialized.");
-    controller_name = "Idle";
-}
-
 void IdleControlMode::controlTask()
 {
     while (is_running_)
@@ -20,4 +12,3 @@ void IdleControlMode::controlTask()
     }
     zlc::info("[{}] Control thread ended.", getModeName());
 }
-

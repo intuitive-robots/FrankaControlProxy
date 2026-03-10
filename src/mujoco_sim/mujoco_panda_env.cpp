@@ -5,11 +5,12 @@
 #include <iostream>
 #include <utility>
 #include <vector>
-
 #include <zerolancom/zerolancom.hpp>
 
 MujocoPandaEnv::MujocoPandaEnv(const std::string& model_path, const MujocoEnvConfig& config)
-    : model_path_(model_path), config_(config) {}
+    : model_path_(model_path), config_(config)
+{
+}
 
 MujocoPandaEnv::~MujocoPandaEnv()
 {
@@ -117,13 +118,13 @@ void MujocoPandaEnv::_refreshRobotState(franka::RobotState& robot_state)
 
         // O_T_EE is column-major 4x4: [R11,R21,R31,0, R12,R22,R32,0, R13,R23,R33,0, tx,ty,tz,1]
         // MuJoCo xmat is row-major: [R11,R12,R13, R21,R22,R23, R31,R32,R33]
-        robot_state.O_T_EE[0] = rot[0];  // R11
-        robot_state.O_T_EE[1] = rot[3];  // R21
-        robot_state.O_T_EE[2] = rot[6];  // R31
+        robot_state.O_T_EE[0] = rot[0]; // R11
+        robot_state.O_T_EE[1] = rot[3]; // R21
+        robot_state.O_T_EE[2] = rot[6]; // R31
         robot_state.O_T_EE[3] = 0.0;
-        robot_state.O_T_EE[4] = rot[1];  // R12
-        robot_state.O_T_EE[5] = rot[4];  // R22
-        robot_state.O_T_EE[6] = rot[7];  // R32
+        robot_state.O_T_EE[4] = rot[1]; // R12
+        robot_state.O_T_EE[5] = rot[4]; // R22
+        robot_state.O_T_EE[6] = rot[7]; // R32
         robot_state.O_T_EE[7] = 0.0;
         robot_state.O_T_EE[8] = rot[2];  // R13
         robot_state.O_T_EE[9] = rot[5];  // R23

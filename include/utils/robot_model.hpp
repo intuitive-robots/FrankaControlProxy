@@ -6,13 +6,16 @@
 #include <string>
 #include <vector>
 
+#include "utils/Pose.h"
+
+// #include "utils/robot_utils.hpp"
+
 using JointPosition = Eigen::Matrix<double, 7, 1>;
 using JointVelocity = Eigen::Matrix<double, 7, 1>;
 using JointAcceleration = Eigen::Matrix<double, 7, 1>;
 using JointTorque = Eigen::Matrix<double, 7, 1>;
 using JocobianMatrix = Eigen::Matrix<double, 6, 7>;
-using PoseRPY = Eigen::Matrix<double, 6, 1>;
-using PoseQuat = Eigen::Matrix<double, 7, 1>;
+// using PoseQuat = Eigen::Matrix<double, 7, 1>;
 
 constexpr int NUM_DOFS = 7;
 

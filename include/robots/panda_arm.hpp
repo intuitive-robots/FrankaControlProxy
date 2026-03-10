@@ -9,12 +9,14 @@
 #include <string>
 #include <zerolancom/zerolancom.hpp>
 
-#include "control_mode/control_mode.hpp"
-#include "protocol/msg.hpp"
+#include "protocol/control_command.hpp"
 #include "protocol/request_result.hpp"
+#include "protocol/state.hpp"
 #include "utils/atomic_double_buffer.hpp"
 #include "utils/config_file_reader.hpp"
 #include "utils/robot_model.hpp"
+#include "utils/robot_utils.hpp"
+#include "control_mode/control_mode.hpp"
 
 struct FrankaArmConfig
 {
@@ -87,7 +89,7 @@ class PandaArm
     explicit PandaArm(
         const std::string&
             config_path); // Constructor that initializes the proxy with a configuration file
-    ~PandaArm();    // Destructor to clean up resources
+    ~PandaArm();          // Destructor to clean up resources
 
     // Core server operations
     void stop(); // Stops the server, cleaning up resources and shutting down communication
@@ -101,7 +103,7 @@ class PandaArm
   private:
     // Initialization
     void initRobot();
-    SafetyLimitConfig safety_config_;
+    
     // Franka robot
     std::unique_ptr<FrankaPanda> robot_;
     std::unique_ptr<PandaPinocchioModel> model_;
@@ -109,13 +111,11 @@ class PandaArm
     // Threading
     std::thread state_pub_thread;
 
-    // Control modes registry
-    std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>> control_modes_;
-
     // Synchronization
     std::atomic<bool> is_running; // for threads
 
     //Control mode
+    std::unique_ptr<ControlModeFactory> control_mode_factory_;
     AbstractControlMode* current_control_mode_ = nullptr;
 
     // Current robot state

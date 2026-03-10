@@ -39,7 +39,8 @@ struct MujocoEnvConfig
 class MujocoPandaEnv
 {
   public:
-    explicit MujocoPandaEnv(const std::string& model_path, const MujocoEnvConfig& config = MujocoEnvConfig{});
+    explicit MujocoPandaEnv(const std::string& model_path,
+                            const MujocoEnvConfig& config = MujocoEnvConfig{});
     ~MujocoPandaEnv();
 
     // Loads the model/data. Optionally launches a viewer window.
@@ -71,7 +72,7 @@ class MujocoPandaEnv
     std::unique_ptr<mjModel, decltype(&mj_deleteModel)> model_{nullptr, mj_deleteModel};
     std::unique_ptr<mjData, decltype(&mj_deleteData)> data_{nullptr, mj_deleteData};
     bool initialized_{false};
-    int ee_body_id_{-1};  // Cached body ID for end-effector
+    int ee_body_id_{-1}; // Cached body ID for end-effector
     void _refreshRobotState(franka::RobotState& robot_state);
     mutable std::mutex data_mutex_;
 };

@@ -5,12 +5,8 @@
 #include <msgpack.hpp>
 
 #include "control_mode/abstract_control_mode.hpp"
-
-struct HybridJointImpedanceCommand
-{
-    std::array<double, 7> pos;
-    MSGPACK_DEFINE_MAP(pos);
-};
+#include "protocol/control_command.hpp"
+#include "utils/Pose.h"
 
 struct HybridJointImpedanceConfig : public ControllerConfig
 {
@@ -32,9 +28,9 @@ struct HybridJointImpedanceConfig : public ControllerConfig
         const std::array<double, 7> kqd_gains = reader.getArray<double, 7>("kqd_gains");
         kqd = JointVelocity::Map(kqd_gains.data()).asDiagonal();
         const std::array<double, 6> kx_gains = reader.getArray<double, 6>("kx_gains");
-        kx = PoseRPY::Map(kx_gains.data()).asDiagonal();
+        kx = transform::Vector6d::Map(kx_gains.data()).asDiagonal();
         const std::array<double, 6> kxd_gains = reader.getArray<double, 6>("kxd_gains");
-        kxd = PoseRPY::Map(kxd_gains.data()).asDiagonal();
+        kxd = transform::Vector6d::Map(kxd_gains.data()).asDiagonal();
         ignore_gravity = reader.getValue<bool>("ignore_gravity");
     }
 };
@@ -42,20 +38,15 @@ struct HybridJointImpedanceConfig : public ControllerConfig
 class HybridJointImpedanceControl : public AbstractControlMode
 {
   public:
-    HybridJointImpedanceControl(const SafetyLimitConfig& safety_config, const std::string& robot_name)
-        : AbstractControlMode(safety_config, robot_name)
+    HybridJointImpedanceControl()
     {
         controller_name = "HybridJointImpedanceControl";
     };
     ~HybridJointImpedanceControl() override;
 
   private:
-    void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
-                        AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
     franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                franka::Duration duration) override;
-    void writeCommand(const HybridJointImpedanceCommand& cmd);
-
-    AtomicDoubleBuffer<JointPosition> desired_positions_{JointPosition::Zero()};
+                                franka::Duration duration) override;    
     HybridJointImpedanceConfig config_;
+    AtomicDoubleBuffer<JointPosition>* desired_positions_;
 };

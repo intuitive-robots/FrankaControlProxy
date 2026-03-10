@@ -1,17 +1,18 @@
 #pragma once
-#include <thread>
 #include <atomic>
+#include <chrono>
+#include <memory>
 #include <mutex>
 #include <string>
-#include <memory>
-#include <chrono>
-
+#include <thread>
 #include <zerolancom/zerolancom.hpp>
-#include "control_mode/abstract_control_mode.hpp"
-#include "utils/atomic_double_buffer.hpp"
-#include "robotiq/robotiq_gripper_interface.h"
 
-struct RobotiqGripperStateMsg {
+#include "control_mode/abstract_control_mode.hpp"
+#include "robotiq/robotiq_gripper_interface.h"
+#include "utils/atomic_double_buffer.hpp"
+
+struct RobotiqGripperStateMsg
+{
     float commanded_position;
     float commanded_speed;
     float commanded_force;
@@ -33,7 +34,9 @@ struct RobotiqGraspCommand
 
     RobotiqGraspCommand() : position(0.0f), speed(0.1f), force(0.1f), blocking(false) {}
     RobotiqGraspCommand(float p, float s, float f, bool b = false)
-        : position(p), speed(s), force(f), blocking(b) {}
+        : position(p), speed(s), force(f), blocking(b)
+    {
+    }
 
     MSGPACK_DEFINE_MAP(position, speed, force, blocking)
 };
@@ -73,15 +76,16 @@ struct RobotiqGripperConfig
     }
 };
 
-class RobotiqGripper {
-public:
+class RobotiqGripper
+{
+  public:
     // Constructor & Destructor
     explicit RobotiqGripper(const std::string& config_path);
     ~RobotiqGripper();
 
     void stop();
 
-private:
+  private:
     bool commandChanged(const RobotiqGraspCommand& a, const RobotiqGraspCommand& b) const;
 
     // Robotiq gripper

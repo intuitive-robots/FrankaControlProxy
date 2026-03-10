@@ -1,14 +1,15 @@
 #pragma once
 
-#include <array>
-#include <Eigen/Dense>
-#include <franka/robot_state.h>
-#include <franka/duration.h>
 #include <franka/control_types.h>
+#include <franka/duration.h>
+#include <franka/robot_state.h>
+
+#include <Eigen/Dense>
+#include <array>
 
 #include "utils/atomic_double_buffer.hpp"
 
-class CartesianPoseMotionGenerator 
+class CartesianPoseMotionGenerator
 {
   public:
     /**
@@ -26,17 +27,13 @@ class CartesianPoseMotionGenerator
      * @param[in] domega_max_start Maximum rotational acceleration at start in rad/s² (default: 1.0).
      * @param[in] domega_max_goal Maximum rotational acceleration at goal in rad/s² (default: 1.0).
      */
-    CartesianPoseMotionGenerator(double speed_factor,
-                                  const Eigen::Vector3d& goal_position,
-                                  const Eigen::Quaterniond& goal_orientation,
-                                  AtomicDoubleBuffer<franka::RobotState>& state_buffer,
-                                  double tolerance = 1e-3,
-                                  double dx_max = 0.3,
-                                  double ddx_max_start = 1.0,
-                                  double ddx_max_goal = 1.0,
-                                  double omega_max = 0.5,
-                                  double domega_max_start = 1.0,
-                                  double domega_max_goal = 1.0);
+    CartesianPoseMotionGenerator(double speed_factor, const Eigen::Vector3d& goal_position,
+                                 const Eigen::Quaterniond& goal_orientation,
+                                 AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                                 double tolerance = 1e-3, double dx_max = 0.3,
+                                 double ddx_max_start = 1.0, double ddx_max_goal = 1.0,
+                                 double omega_max = 0.5, double domega_max_start = 1.0,
+                                 double domega_max_goal = 1.0);
 
     /**
      * Sends Cartesian pose calculations
@@ -46,17 +43,19 @@ class CartesianPoseMotionGenerator
      *
      * @return Cartesian pose for use inside a control loop.
      */
-    franka::CartesianPose operator()(const franka::RobotState& robot_state, franka::Duration period);
+    franka::CartesianPose operator()(const franka::RobotState& robot_state,
+                                     franka::Duration period);
 
   private:
     using Vector3d = Eigen::Vector3d;
 
     bool calculateDesiredValues(double time, Vector3d* delta_pos_d, double* alpha) const;
     void calculateSynchronizedValues();
-    std::array<double, 16> poseToMatrix(const Vector3d& position, const Eigen::Quaterniond& orientation) const;
+    std::array<double, 16> poseToMatrix(const Vector3d& position,
+                                        const Eigen::Quaterniond& orientation) const;
 
-    static constexpr double kDeltaPosMotionFinished = 1e-6;  // meters
-    static constexpr double kDeltaRotMotionFinished = 1e-6;  // radians
+    static constexpr double kDeltaPosMotionFinished = 1e-6; // meters
+    static constexpr double kDeltaRotMotionFinished = 1e-6; // radians
 
     // Goal pose
     Vector3d pos_goal_;
@@ -77,14 +76,14 @@ class CartesianPoseMotionGenerator
     Vector3d t_1_sync_pos_;
     Vector3d t_2_sync_pos_;
     Vector3d t_f_sync_pos_;
-    Vector3d pos_1_;  // position at end of acceleration phase
+    Vector3d pos_1_; // position at end of acceleration phase
 
     // Rotation timing
     double omega_max_sync_;
     double t_1_sync_rot_;
     double t_2_sync_rot_;
     double t_f_sync_rot_;
-    double rot_1_;  // rotation at end of acceleration phase
+    double rot_1_; // rotation at end of acceleration phase
 
     // Global synchronized finish time
     double t_f_sync_;

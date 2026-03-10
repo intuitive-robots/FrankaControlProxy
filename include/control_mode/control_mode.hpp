@@ -1,30 +1,70 @@
 #pragma once
 #include <control_mode/abstract_control_mode.hpp>
+#include <control_mode/cartesian_impedance.hpp>
+#include <control_mode/gravity_comp_control.hpp>
 #include <control_mode/hybrid_joint_impedance_control.hpp>
 #include <control_mode/idle_control_mode.hpp>
-#include <control_mode/gravity_comp_control.hpp>
 #include <control_mode/osc_control.hpp>
+#include "protocol/control_command.hpp"
 
 class ControlModeFactory
 {
   public:
-    // Register control modes
-    static void registerControlModes(
-        std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>>& registry,
+    
+    ControlModeFactory(const std::string& robot_name)
+    {
+        safety_config_.fromFile("./config/SafetyLimitConfig.cfg");
+        registry = std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>>();
+        const std::string joint_topic_name = fmt::format("{}/{}", robot_name, "joint_command");
+        zlc::registerSubscriberHandler(joint_topic_name, &ControlModeFactory::writeJointCommand, this);
+        const std::string cartesian_topic_name = fmt::format("{}/{}", robot_name, "cartesian_pose_command");
+        zlc::registerSubscriberHandler(cartesian_topic_name, &ControlModeFactory::writeCartesianCommand, this);
+    }
+
+    void registerControlModes(
         FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
         AtomicDoubleBuffer<franka::RobotState>& state_buffer,
-        const SafetyLimitConfig& safety_config,
         const std::string& robot_name)
     {
-        registry["Idle"] = std::make_unique<IdleControlMode>(safety_config, robot_name);
-        registry["GravityComp"] = std::make_unique<GravityCompControl>(safety_config, robot_name);
+        registry["Idle"] = std::make_unique<IdleControlMode>();
+        // registry["GravityComp"] = std::make_unique<GravityCompControl>(safety_config_, robot_name);
         registry["HybridJointImpedance"] =
-            std::make_unique<HybridJointImpedanceControl>(safety_config, robot_name);
-        registry["OSC"] = std::make_unique<OSCController>(safety_config, robot_name);
+            std::make_unique<HybridJointImpedanceControl>();
+        // registry["OSC"] = std::make_unique<OSCController>(safety_config_, robot_name);
+        registry["CartesianImpedance"] =
+            std::make_unique<CartesianImpedanceController>();
         for (const auto& pair : registry)
         {
             zlc::info("[ControlModeFactory] Registered mode: {}", pair.first);
-            pair.second->initController(robot, pinocchio_model, state_buffer);
+            pair.second->initController(robot, pinocchio_model, state_buffer, safety_config_);
         }
     }
+
+    AbstractControlMode* getController(const std::string& mode_name)
+    {
+        auto it = registry.find(mode_name);
+        if (it != registry.end())
+        {
+            return it->second.get();
+        }
+        return nullptr;
+    }
+
+
+private:
+    std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>> registry;
+    SafetyLimitConfig safety_config_;
+    AtomicDoubleBuffer<JointPosition> desired_positions_{JointPosition::Zero()};
+    AtomicDoubleBuffer<PoseQuat> desired_cartesian_pose_{PoseQuat::Zero()};
+
+    void writeJointCommand(const JointCommand& cmd)
+    {
+        desired_positions_.write(JointPosition::Map(cmd.pos.data()));
+    }
+
+    void writeCartesianCommand(const CartesianPoseCommand& cmd)
+    {
+        desired_cartesian_pose_.write(PoseQuat::Map(cmd.pos.data()));
+    }
+
 };

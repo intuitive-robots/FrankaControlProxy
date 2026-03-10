@@ -62,8 +62,9 @@ class AbstractControlMode
   public:
     virtual ~AbstractControlMode() = default;
 
-    virtual void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
-                                AtomicDoubleBuffer<franka::RobotState>& state_buffer);
+    void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
+                                AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                                const SafetyLimitConfig& safety_config);
     virtual void startControl();
     virtual void stopControl();
     const std::string getModeName();
@@ -73,23 +74,26 @@ class AbstractControlMode
     bool moveToCartesianPose(const Eigen::Vector3d& target_position,
                              const Eigen::Quaterniond& target_orientation,
                              double max_velocity = 0.5, double tolerance = 1e-3);
+
   protected:
-    AbstractControlMode(const SafetyLimitConfig& safety_config, const std::string& robot_name) : safety_config_(safety_config), robot_name_(robot_name) {}
+    AbstractControlMode() { controller_name = "AbstractControlMode"; };
     FrankaPanda* robot_;
     PandaPinocchioModel* pinocchio_model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 
     bool is_running_ = false;
-    std::string controller_name{"AbstractControlMode"};
+    std::string controller_name;
     bool tryRecovery(int max_attempts = 3);
 
     virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                        franka::Duration duration) { return franka::Torques{}; }
+                                        franka::Duration duration)
+    {
+        return franka::Torques{};
+    }
     std::thread control_thread_;
-    const SafetyLimitConfig& safety_config_;
-    std::string robot_name_;
 
   private:
+    const SafetyLimitConfig* safety_config_;
     void checkStateLimits(const franka::RobotState& robot_state, franka::Torques& torque_out,
                           const SafetyLimitConfig& safety_config_);
     void postprocessTorques(franka::Torques& torque_applied,

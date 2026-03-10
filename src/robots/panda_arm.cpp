@@ -16,7 +16,7 @@ PandaArm::PandaArm(const std::string& config_path)
 {
     // Register service handlers
     initRobot();
-    
+
     // Check if robot and model initialization was successful
     if (!robot_ || !model_)
     {
@@ -24,15 +24,8 @@ PandaArm::PandaArm(const std::string& config_path)
         is_running = false;
         return;
     }
-    
-    safety_config_.fromFile("./config/SafetyLimitConfig.cfg");
-    ControlModeFactory::registerControlModes(control_modes_, *robot_, *model_, current_state,
-                                             safety_config_, config_.name);
-    // Safety: don't start any control loop by default. If we start "Idle" here (0 torque),
-    // the arm can sag under gravity before a client switches to an active mode.
-    // current_control_mode_ = control_modes_.at("GravityComp").get();
-    // zlc::info("Default control mode set to 'GravityComp' (not started). Waiting for client service call: {}/set_franka_arm_control_mode",
-    //         config_.name);
+    control_mode_factory_ = std::make_unique<ControlModeFactory>(config_.name);
+    control_mode_factory_->registerControlModes(*robot_, *model_, current_state, config_.name);
     setControlMode("Idle");
     initializeService();
 }
@@ -45,14 +38,9 @@ void PandaArm::initializeService()
     zlc::registerServiceHandler(service_namespace, &PandaArm::getFrankaArmState, this);
     service_namespace = fmt::format("{}/get_franka_arm_control_mode", config_.name);
     zlc::registerServiceHandler(service_namespace, &PandaArm::getFrankaArmControlMode, this);
-    service_namespace =
-        fmt::format("{}/move_franka_arm_to_joint_position", config_.name);
-    zlc::registerServiceHandler(service_namespace, &PandaArm::moveFrankaArmToJointPosition,
-                                this);
-    service_namespace =
-        fmt::format("{}/move_franka_arm_to_cartesian_position", config_.name);
-    // zlc::registerServiceHandler(service_namespace,
-    //                             &PandaArm::moveFrankaArmToCartesianPosition, this);
+    service_namespace = fmt::format("{}/move_franka_arm_to_joint_position", config_.name);
+    zlc::registerServiceHandler(service_namespace, &PandaArm::moveFrankaArmToJointPosition, this);
+    service_namespace = fmt::format("{}/move_franka_arm_to_cartesian_position", config_.name);
 }
 
 PandaArm::~PandaArm()
@@ -139,7 +127,7 @@ void PandaArm::statePublishThread()
 
 zlc::Empty PandaArm::setControlMode(const std::string& mode)
 {
-    if (control_modes_.find(mode) == control_modes_.end())
+    if (control_mode_factory_->getController(mode) == nullptr)
     {
         zlc::warn("Control mode '{}' not found!", mode);
         return zlc::empty;
@@ -150,7 +138,7 @@ zlc::Empty PandaArm::setControlMode(const std::string& mode)
         current_control_mode_->stopControl();
     }
     zlc::info("Switching to control mode: {}", mode);
-    current_control_mode_ = control_modes_.at(mode).get();
+    current_control_mode_ = control_mode_factory_->getController(mode);
     current_control_mode_->startControl();
     return zlc::empty;
 }
