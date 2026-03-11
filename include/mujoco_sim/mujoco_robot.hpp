@@ -42,7 +42,7 @@ class MujocoRobot
 {
   public:
     explicit MujocoRobot(const std::string& franka_address,
-                         const std::string& env_config_path = "./config/mujoco/mujoco_env.cfg");
+                         const std::string& env_config_path = "./config/mujoco/mujoco_env.yaml");
 
     MujocoRobot(MujocoRobot&& other) noexcept;
 

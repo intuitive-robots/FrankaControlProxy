@@ -50,7 +50,7 @@ JointVelocity PandaPinocchioModel::getJointVelocityLimits()
 }
 
 transform::Pose PandaPinocchioModel::forwardKinematics(JointPosition joint_positions,
-                                                            int64_t link_idx)
+                                                       int64_t link_idx)
 {
     pinocchio::FrameIndex frame_idx = static_cast<pinocchio::FrameIndex>(link_idx);
 
@@ -62,8 +62,8 @@ transform::Pose PandaPinocchioModel::forwardKinematics(JointPosition joint_posit
     return transform::Pose(quat_data, pos_data);
 }
 
-transform::Pose PandaPinocchioModel::forwardKinematics(
-    JointPosition joint_positions, const std::string& link_name)
+transform::Pose PandaPinocchioModel::forwardKinematics(JointPosition joint_positions,
+                                                       const std::string& link_name)
 {
     pinocchio::FrameIndex frame_idx = model_.getFrameId(link_name);
     return forwardKinematics(joint_positions, frame_idx);

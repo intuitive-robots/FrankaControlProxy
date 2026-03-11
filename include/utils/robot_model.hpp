@@ -25,8 +25,7 @@ class PandaPinocchioModel
     JointPosition getJointAngleUpperLimits();
     JointVelocity getJointVelocityLimits();
     transform::Pose forwardKinematics(JointPosition joint_position, int64_t link_idx);
-    transform::Pose forwardKinematics(JointPosition joint_position,
-                                           const std::string& link_name);
+    transform::Pose forwardKinematics(JointPosition joint_position, const std::string& link_name);
     transform::Pose forwardKinematics(JointPosition joint_position);
     JocobianMatrix computeJacobian(JointPosition joint_position, int64_t link_idx);
     JocobianMatrix computeJacobian(JointPosition joint_position, const std::string& link_name);

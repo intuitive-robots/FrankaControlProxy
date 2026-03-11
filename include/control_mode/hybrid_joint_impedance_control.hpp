@@ -36,7 +36,8 @@ struct HybridJointImpedanceConfig : public ControllerConfig
 class HybridJointImpedanceControl : public AbstractControlMode
 {
   public:
-    HybridJointImpedanceControl()
+    HybridJointImpedanceControl(AtomicDoubleBuffer<JointPosition>& desired_joint_command_)
+        : desired_joint_command_(&desired_joint_command_)
     {
         controller_name = "HybridJointImpedanceControl";
     };
@@ -44,7 +45,8 @@ class HybridJointImpedanceControl : public AbstractControlMode
 
   private:
     franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                franka::Duration duration) override;    
+                                franka::Duration duration) override;
+    void startControl() override;
     HybridJointImpedanceConfig config_;
-    AtomicDoubleBuffer<JointPosition>* desired_positions_;
+    AtomicDoubleBuffer<JointPosition>* desired_joint_command_;
 };

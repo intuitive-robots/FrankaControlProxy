@@ -22,8 +22,8 @@ namespace transform
 
     Eigen::Matrix4d FrankaHandTCPOffset()
     {
-        return (Eigen::Matrix4d() << 0.707, 0.707, 0, 0, -0.707, 0.707, 0, 0, 0, 0, 1, 0.1034,
-                0, 0, 0, 1)
+        return (Eigen::Matrix4d() << 0.707, 0.707, 0, 0, -0.707, 0.707, 0, 0, 0, 0, 1, 0.1034, 0, 0,
+                0, 1)
             .finished();
     }
 
@@ -258,7 +258,7 @@ namespace transform
     bool Pose::is_close(const Pose& other, double eps_r, double eps_t) const
     {
         return (this->translation() - other.translation()).lpNorm<1>() < eps_t &&
-                this->quaternion().angularDistance(other.quaternion()) < eps_r;
+               this->quaternion().angularDistance(other.quaternion()) < eps_r;
     }
 
 } // namespace transform

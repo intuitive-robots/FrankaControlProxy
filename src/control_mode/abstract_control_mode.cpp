@@ -82,7 +82,7 @@ void AbstractControlMode::controlTask()
     zlc::info("[{}] Control thread started.", getModeName());
     auto control_callback = [this](const franka::RobotState& state,
                                    franka::Duration duration) -> franka::Torques
-    {   
+    {
         franka::Torques tau = this->controlLoop(state, duration);
         if (!is_running_)
         {
@@ -90,7 +90,7 @@ void AbstractControlMode::controlTask()
         }
         return tau;
     };
-    
+
     while (is_running_)
     {
         try
@@ -213,8 +213,7 @@ void AbstractControlMode::checkStateLimits(const franka::RobotState& robot_state
     /*
    * Compute robot state limit violations and apply safety mechanisms.
    */
-    std::array<double, 3> ee_pos_buf, force_buf;
-    std::array<double, 1> elbow_vel_buf, elbow_lim_buf, dummy;
+    std::array<double, 3> force_buf;
 
     // Reset reflex torques
     for (int i = 0; i < 7; i++)

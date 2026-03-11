@@ -9,6 +9,7 @@
 #include <string>
 #include <zerolancom/zerolancom.hpp>
 
+#include "control_mode/control_mode.hpp"
 #include "protocol/control_command.hpp"
 #include "protocol/request_result.hpp"
 #include "protocol/state.hpp"
@@ -16,7 +17,6 @@
 #include "utils/config_file_reader.hpp"
 #include "utils/robot_model.hpp"
 #include "utils/robot_utils.hpp"
-#include "control_mode/control_mode.hpp"
 
 struct FrankaArmConfig
 {
@@ -48,11 +48,6 @@ struct FrankaArmConfig
     void fromFile(const std::string& arm_config_path)
     {
         ConfigFileReader reader(arm_config_path);
-        // defaults for arrays
-        const std::array<double, 16> default_O_T_EE{
-            {1.0, 0.0, 0.0, 0.3, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0}};
-
-        // communication
         name = reader.getValue<std::string>("name");
         robot_ip = reader.getValue<std::string>("robot_ip");
         // arm
@@ -103,7 +98,7 @@ class PandaArm
   private:
     // Initialization
     void initRobot();
-    
+
     // Franka robot
     std::unique_ptr<FrankaPanda> robot_;
     std::unique_ptr<PandaPinocchioModel> model_;

@@ -62,8 +62,8 @@ class AbstractControlMode
     virtual ~AbstractControlMode() = default;
 
     void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
-                                AtomicDoubleBuffer<franka::RobotState>& state_buffer,
-                                const SafetyLimitConfig& safety_config);
+                        AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                        const SafetyLimitConfig& safety_config);
     virtual void startControl();
     virtual void stopControl();
     const std::string getModeName();
@@ -75,7 +75,10 @@ class AbstractControlMode
                              double max_velocity = 0.5, double tolerance = 1e-3);
 
   protected:
-    AbstractControlMode() { controller_name = "AbstractControlMode"; };
+    AbstractControlMode()
+    {
+        controller_name = "AbstractControlMode";
+    };
     FrankaPanda* robot_;
     PandaPinocchioModel* pinocchio_model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
@@ -84,11 +87,7 @@ class AbstractControlMode
     std::string controller_name;
     bool tryRecovery(int max_attempts = 3);
 
-    virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                        franka::Duration duration)
-    {
-        return franka::Torques{};
-    }
+    virtual franka::Torques controlLoop(const franka::RobotState&, franka::Duration) {  return franka::Torques({}); };
     std::thread control_thread_;
 
   private:

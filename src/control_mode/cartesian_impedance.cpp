@@ -1,38 +1,9 @@
 #include "control_mode/cartesian_impedance.hpp"
 
-#include <franka/rate_limiting.h>
-
-#include <Eigen/Dense>
-
-#include "utils/Pose.h"
-
-// void CartesianImpedanceController::initController(
-//     FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
-//     AtomicDoubleBuffer<franka::RobotState>& state_buffer)
-// {
-//     AbstractControlMode::initController(robot, pinocchio_model, state_buffer);
-//     robot_->setJointImpedance({{3000, 3000, 3000, 2500, 2500, 2000, 2000}});
-//     robot_->setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
-
-//     robot_->setCollisionBehavior({{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-//                                  {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-//                                  {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-//                                  {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
-//     config_.fromFile("config/controller/cartesian_impedance_controller.cfg");
-//     franka::RobotState curr_state = state_buffer_->read();
-//     Eigen::Affine3d T_EE_in_base_frame(Eigen::Matrix4d::Map(curr_state.O_T_EE.data()));
-//     Eigen::Vector3d pos_EE_in_base_frame(T_EE_in_base_frame.translation());
-//     Eigen::Quaterniond quat_EE_in_base_frame(T_EE_in_base_frame.linear());
-//     pos_EE_in_base_frame =
-//         pos_EE_in_base_frame + Eigen::Vector3d(0.0, 0.2, 0.1); // Add offset to avoid singularity
-//     traj_interpolator.reset(0., pos_EE_in_base_frame, quat_EE_in_base_frame, pos_EE_in_base_frame,
-//                             quat_EE_in_base_frame, 20, 500, 1.0);
-//     zlc::info("[CartesianImpedance] Initialized.");
-// }
 
 void CartesianImpedanceController::startControl()
 {
-    config_.fromFile("config/controller/cartesian_impedance_controller.cfg");
+    config_.fromFile("config/controller/cartesian_impedance_controller.yaml");
     franka::RobotState curr_state = state_buffer_->read();
     Eigen::Affine3d T_EE_in_base_frame(Eigen::Matrix4d::Map(curr_state.O_T_EE.data()));
     desired_cartesian_pose_->write(transform::Pose(T_EE_in_base_frame));
@@ -102,26 +73,7 @@ franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotSta
     Eigen::Matrix<double, 6, 1> wrench_feedback = Kp * pose_err + Kd * twist_err;
 
     // ========== Project wrench to joint torques ==========
-    // torque_feedback = J^T * wrench
-    Eigen::Matrix<double, 7, 1> tau_feedback = jacobian.transpose() * wrench_feedback;
-
-    // ========== Compute feedforward (Coriolis compensation) ==========
-    Eigen::Matrix<double, 7, 1> tau_coriolis;
-    if (!config_.ignore_gravity)
-    {
-        // Full inverse dynamics (gravity + coriolis)
-        tau_coriolis =
-            pinocchio_model_->inverseDynamics(q_pin, dq, Eigen::Matrix<double, 7, 1>::Zero());
-    }
-    else
-    {
-        // Only coriolis (robot already compensates gravity internally)
-        tau_coriolis =
-            pinocchio_model_->inverseDynamics(q_pin, dq, Eigen::Matrix<double, 7, 1>::Zero());
-    }
-
-    // ========== Total torque ==========
-    Eigen::Matrix<double, 7, 1> tau_d = tau_feedback;
+    Eigen::Matrix<double, 7, 1> tau_d = jacobian.transpose() * wrench_feedback;
 
     // Convert to std::array
     std::array<double, 7> tau_d_array{};
@@ -131,8 +83,8 @@ franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotSta
     std::array<double, 7> tau_d_limited = tau_d_array;
 
     // Safety clamp
-    double min_torque = -50.0;
-    double max_torque = 50.0;
+    double min_torque = -5.0;
+    double max_torque = 5.0;
     for (size_t i = 0; i < 7; i++)
     {
         tau_d_limited[i] = std::clamp(tau_d_limited[i], min_torque, max_torque);

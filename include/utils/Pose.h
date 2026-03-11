@@ -51,14 +51,13 @@ namespace transform
         double roll = 0;
         double pitch = 0;
         double yaw = 0;
-        RPY(double roll = 0, double pitch = 0, double yaw = 0)
-            : roll(roll), pitch(pitch), yaw(yaw)
+        RPY(double roll = 0, double pitch = 0, double yaw = 0) : roll(roll), pitch(pitch), yaw(yaw)
         {
         }
         std::string str() const
         {
             return "RPY(" + std::to_string(roll) + ", " + std::to_string(pitch) + ", " +
-                    std::to_string(yaw) + ")";
+                   std::to_string(yaw) + ")";
         }
         RPY(Eigen::Vector3d rpy) : roll(rpy[0]), pitch(rpy[1]), yaw(rpy[2]) {}
         RPY operator+(const RPY& rpy_b) const
@@ -69,16 +68,16 @@ namespace transform
         {
             Eigen::Matrix3d rotation;
             rotation = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
-                        Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-                        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX());
+                       Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+                       Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX());
             return rotation;
         }
 
         Eigen::Quaterniond as_quaternion() const
         {
             return Eigen::Quaterniond(Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
-                                        Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-                                        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()));
+                                      Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+                                      Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()));
         }
 
         Eigen::Vector4d as_quaternion_vector() const
@@ -110,7 +109,7 @@ namespace transform
             double y = this->as_vector()[1];
             double z = this->as_vector()[2];
             return "RotVec(" + std::to_string(x) + ", " + std::to_string(y) + ", " +
-                    std::to_string(z) + ")";
+                   std::to_string(z) + ")";
         }
 
         Eigen::Matrix3d rotation_matrix() const
@@ -146,11 +145,11 @@ namespace transform
  */
     class Pose
     {
-        private:
+      private:
         Eigen::Vector3d m_translation;
         Eigen::Quaterniond m_rotation;
 
-        public:
+      public:
         // STATIC FUNCTIONS
 
         /**

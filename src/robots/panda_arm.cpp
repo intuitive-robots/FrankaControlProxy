@@ -25,7 +25,7 @@ PandaArm::PandaArm(const std::string& config_path)
         return;
     }
     control_mode_factory_ = std::make_unique<ControlModeFactory>(config_.name);
-    control_mode_factory_->registerControlModes(*robot_, *model_, current_state, config_.name);
+    control_mode_factory_->registerControlModes(*robot_, *model_, current_state);
     setControlMode("Idle");
     initializeService();
 }

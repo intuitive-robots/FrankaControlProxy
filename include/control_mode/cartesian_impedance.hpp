@@ -4,7 +4,6 @@
 
 #include "control_mode/abstract_control_mode.hpp"
 #include "protocol/control_command.hpp"
-#include "utils/linear_trajInterpolator.hpp"
 
 struct CartesianImpedanceConfig : public ControllerConfig
 {
@@ -12,7 +11,6 @@ struct CartesianImpedanceConfig : public ControllerConfig
     Eigen::Matrix<double, 3, 3> Kp_r{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_p{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_r{Eigen::Matrix<double, 3, 3>::Zero()};
-    bool ignore_gravity{true};
     CartesianImpedanceConfig() = default;
 
     void fromFile(const std::string& controller_config_path) override
@@ -29,8 +27,6 @@ struct CartesianImpedanceConfig : public ControllerConfig
         // Compute Kd from Kp (critically damped)
         Kd_p = Kp_p.cwiseSqrt() * 2.0;
         Kd_r = Kp_r.cwiseSqrt() * 2.0;
-
-        ignore_gravity = reader.getValue<bool>("ignore_gravity");
     }
 };
 
