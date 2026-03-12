@@ -11,6 +11,7 @@ struct CartesianImpedanceConfig : public ControllerConfig
     Eigen::Matrix<double, 3, 3> Kp_r{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_p{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_r{Eigen::Matrix<double, 3, 3>::Zero()};
+    double max_torque{5.0};
     CartesianImpedanceConfig() = default;
 
     void fromFile(const std::string& controller_config_path) override
@@ -27,6 +28,7 @@ struct CartesianImpedanceConfig : public ControllerConfig
         // Compute Kd from Kp (critically damped)
         Kd_p = Kp_p.cwiseSqrt() * 2.0;
         Kd_r = Kp_r.cwiseSqrt() * 2.0;
+        max_torque = reader.getValue<double>("max_torque");
     }
 };
 
@@ -42,7 +44,7 @@ class CartesianImpedanceController : public AbstractControlMode
 
   private:
     franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                franka::Duration duration) override;
+                                franka::Duration /*duration*/) override;
     void startControl() override;
     CartesianImpedanceConfig config_;
     AtomicDoubleBuffer<transform::Pose>* desired_cartesian_pose_ = nullptr;

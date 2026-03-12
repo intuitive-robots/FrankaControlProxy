@@ -12,7 +12,7 @@ void CartesianImpedanceController::startControl()
 }
 
 franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotState& robot_state,
-                                                          franka::Duration period)
+                                                          franka::Duration /*duration*/)
 {
     // Get desired pose from trajectory interpolator
     Eigen::Vector3d desired_pos_EE;
@@ -83,11 +83,9 @@ franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotSta
     std::array<double, 7> tau_d_limited = tau_d_array;
 
     // Safety clamp
-    double min_torque = -5.0;
-    double max_torque = 5.0;
     for (size_t i = 0; i < 7; i++)
     {
-        tau_d_limited[i] = std::clamp(tau_d_limited[i], min_torque, max_torque);
+        tau_d_limited[i] = std::clamp(tau_d_limited[i], -config_.max_torque, config_.max_torque);
     }
 
     return tau_d_limited;

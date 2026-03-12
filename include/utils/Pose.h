@@ -275,6 +275,9 @@ namespace transform
  * For python bindings.
  */
         Pose(const Pose& pose);
+        Pose& operator=(const Pose& pose) = default;
+        Pose(Pose&& pose) = default;
+        Pose& operator=(Pose&& pose) = default;
 
         // GETTERS
 

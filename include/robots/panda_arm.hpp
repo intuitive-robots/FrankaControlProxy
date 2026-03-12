@@ -119,7 +119,6 @@ class PandaArm
     FrankaArmConfig config_;
 
     // initialize
-    void initializeControlMode();
     void initializeService();
 
     // Service callbacks

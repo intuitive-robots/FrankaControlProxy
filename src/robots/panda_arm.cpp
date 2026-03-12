@@ -11,8 +11,8 @@ static void signalHandler(int signum)
 
 PandaArm::PandaArm(const std::string& config_path)
     : is_running(false),
-      config_(config_path),
-      current_state(AtomicDoubleBuffer<franka::RobotState>(franka::RobotState{}))
+      current_state(AtomicDoubleBuffer<franka::RobotState>(franka::RobotState{})),
+      config_(config_path)
 {
     // Register service handlers
     initRobot();

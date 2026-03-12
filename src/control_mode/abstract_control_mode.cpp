@@ -131,6 +131,7 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
     {
         try
         {
+            robot_->automaticErrorRecovery();
             JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_,
                                                           tolerance);
             robot_->control(motion_generator);
@@ -168,13 +169,7 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
     }
     try
     {
-        robot_->setCollisionBehavior(
-            {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-            {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-            {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-            {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-            {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-            {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
+        robot_->automaticErrorRecovery();
         CartesianPoseMotionGenerator motion_generator(
             max_velocity, target_position, target_orientation, *state_buffer_, tolerance);
         robot_->control(motion_generator);

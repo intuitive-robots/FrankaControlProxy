@@ -5,3 +5,5 @@ name: CartesianImpedance
 Kp_p: [750, 750, 750]
 # Orientation stiffness (Nm/rad)
 Kp_r: [15, 15, 15]
+
+max_torque: 5.0
