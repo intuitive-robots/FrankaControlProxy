@@ -184,7 +184,7 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
 
 bool AbstractControlMode::tryRecovery(int max_attempts)
 {
-    for (size_t i = 0; i < max_attempts; i++)
+    for (int i = 0; i < max_attempts; i++)
     {
         try
         {
@@ -255,7 +255,7 @@ void AbstractControlMode::computeSafetyReflex(std::array<double, N> values,
     double upper_violation, lower_violation;
 
     // Check limits & compute safety controller
-    for (int i = 0; i < N; i++)
+    for (std::size_t i = 0; i < N; i++)
     {
         upper_violation = values[i] - upper_limit[i];
         lower_violation = lower_limit[i] - values[i];

@@ -111,6 +111,7 @@ void MujocoPandaEnv::_refreshRobotState(franka::RobotState& robot_state)
     // Compute O_T_EE (end-effector pose in base frame)
     if (ee_body_id_ >= 0)
     {
+        // TODO: These data is not changed during simulation
         // Get position (xpos is body_id * 3)
         const double* pos = &data_->xpos[ee_body_id_ * 3];
         // Get rotation matrix (xmat is body_id * 9, row-major 3x3)
