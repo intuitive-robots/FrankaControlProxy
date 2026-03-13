@@ -5,16 +5,12 @@
 class IdleControlMode : public AbstractControlMode
 {
   public:
-    IdleControlMode(const SafetyLimitConfig& safety_config) : AbstractControlMode(safety_config)
+    IdleControlMode()
     {
         controller_name = "IdleControlMode";
     };
     ~IdleControlMode() override = default;
 
   private:
-    void initController(FrankaPanda& robot, PandaPinocchioModel& model,
-                        AtomicDoubleBuffer<franka::RobotState>& state_buffer) override;
     void controlTask() override;
-    franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                franka::Duration duration) override;
 };

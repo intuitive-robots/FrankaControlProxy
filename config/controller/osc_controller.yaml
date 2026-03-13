@@ -1,0 +1,20 @@
+name: OSC
+
+# Cartesian stiffness gains (diagonal)
+Kp_p: [150, 150, 150]
+Kp_r: [250, 250, 250]
+
+# Nullspace configuration
+static_q_task: [0.09017809387254755, -0.9824203501652151, 0.030509718397568178, -2.694229634937343, 0.057700675144720104, 1.860298714876101, 0.8713759453244422]
+
+# The manual residual mass matrix to add on the internal mass matrix
+residual_mass_vec: [0.0, 0.0, 0.0, 0.0, 0.1, 0.5, 0.5]
+
+# Joint limits
+joint_max: [2.8978, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973]
+joint_min: [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973]
+
+# Joint avoidance weights
+avoidance_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 10.0, 10.0]
+
+ignore_gravity: true

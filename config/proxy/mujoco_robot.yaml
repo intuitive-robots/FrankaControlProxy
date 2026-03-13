@@ -1,0 +1,10 @@
+# Franka Arm Configuration (leader)
+node_name: MujocoRobot
+proxy_ip: 127.0.0.1
+group: 224.0.0.1
+group_port: 7720
+group_name: MujocoRobotGroup
+
+robot:
+  - type: panda
+    config_path: config/robot/mujoco_panda.yaml

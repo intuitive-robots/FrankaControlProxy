@@ -41,7 +41,8 @@ class MujocoModel
 class MujocoRobot
 {
   public:
-    explicit MujocoRobot(const std::string& franka_address);
+    explicit MujocoRobot(const std::string& franka_address,
+                         const std::string& env_config_path = "./config/mujoco/mujoco_env.yaml");
 
     MujocoRobot(MujocoRobot&& other) noexcept;
 
@@ -65,9 +66,10 @@ class MujocoRobot
                      motion_generator_callback,
                  bool limit_rate = true, double cutoff_frequency = franka::kMaxCutoffFrequency);
 
-    void control(std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)>
-                     motion_generator_callback,
-                 bool limit_rate = true, double cutoff_frequency = franka::kMaxCutoffFrequency);
+    void control(
+        std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)>
+            motion_generator_callback,
+        bool limit_rate = true, double cutoff_frequency = franka::kMaxCutoffFrequency);
 
     void read(std::function<bool(const franka::RobotState&)> read_callback);
 
@@ -87,6 +89,10 @@ class MujocoRobot
                               const std::array<double, 6>& lower_force_thresholds,
                               const std::array<double, 6>& upper_force_thresholds);
 
+    void setJointImpedance(const std::array<double, 7>& K_theta);
+
+    void setCartesianImpedance(const std::array<double, 6>& K_x);
+
     void automaticErrorRecovery();
 
     void stop();
@@ -104,12 +110,14 @@ class MujocoRobot
                                           const franka::RobotState& state);
     std::array<double, 7> cartesianPoseToJointPosition(const franka::CartesianPose& desired_pose,
                                                        const franka::RobotState& state);
-    std::array<double, 7> cartesianVelocityToJointVelocity(const franka::CartesianVelocities& desired_velocities,
-                                                           const franka::RobotState& state);
+    std::array<double, 7> cartesianVelocityToJointVelocity(
+        const franka::CartesianVelocities& desired_velocities, const franka::RobotState& state);
 
     // Default PD gains (libfranka defaults)
-    static constexpr std::array<double, 7> kDefaultStiffness = {600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0};
-    static constexpr std::array<double, 7> kDefaultDamping = {50.0, 50.0, 50.0, 50.0, 30.0, 25.0, 15.0};
+    static constexpr std::array<double, 7> kDefaultStiffness = {600.0, 600.0, 600.0, 600.0,
+                                                                250.0, 150.0, 50.0};
+    static constexpr std::array<double, 7> kDefaultDamping = {50.0, 50.0, 50.0, 50.0,
+                                                              30.0, 25.0, 15.0};
 
     // IK parameters
     static constexpr double kIKErrorThreshold = 1e-4;
@@ -117,6 +125,8 @@ class MujocoRobot
     static constexpr double kIKStepSize = 0.5;
 
     bool running_{false};
+    MujocoEnvConfig config_;
+    std::chrono::microseconds control_period_;
 
     std::unique_ptr<MujocoPandaEnv> env_;
     std::unique_ptr<MujocoViewer> viewer_;

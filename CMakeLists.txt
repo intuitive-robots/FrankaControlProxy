@@ -15,7 +15,6 @@ endif()
 # -----------------------------
 # Build options
 # -----------------------------
-option(NO_ROBOT_TESTING "Enable local test mode (skip robot connection etc.)" OFF)
 
 if(NO_ROBOT_TESTING)
     message(STATUS "NO_ROBOT_TESTING mode is ON")
@@ -48,17 +47,25 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(Eigen3 3.3.9 REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem serialization system)
-find_package(MuJoCo REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(Franka REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(zerolancom REQUIRED)
+find_package(Franka REQUIRED)
+if(NO_ROBOT_TESTING)
+    find_package(MuJoCo REQUIRED)
+    find_package(glfw3 REQUIRED)
+endif()
 # -----------------------------
 # Source collection
 # -----------------------------
 file(GLOB_RECURSE SOURCES
     src/*.cpp
 )
+
+# Exclude mujoco_sim sources when NO_ROBOT_TESTING is OFF
+if(NOT NO_ROBOT_TESTING)
+    file(GLOB_RECURSE MUJOCO_SIM_SOURCES src/mujoco_sim/*.cpp)
+    list(REMOVE_ITEM SOURCES ${MUJOCO_SIM_SOURCES})
+endif()
 
 # -----------------------------
 # Executable
@@ -74,19 +81,23 @@ add_executable(proxy src/main.cpp ${SOURCES}
 target_include_directories(proxy PRIVATE
     include
     third_party/robotiq-gripper-interface/include
-    ${Franka_INCLUDE_DIRS}
     ${YAML_CPP_INCLUDE_DIR}
-    # ${pinocchio_INCLUDE_DIRS}
 )
 
 target_link_libraries(proxy
-    ${Franka_LIBRARIES}
     ${YAML_CPP_LIBRARIES}
     zerolancom::zerolancom
     pinocchio::pinocchio
     Eigen3::Eigen
-    MuJoCo::MuJoCo
-    glfw
-    GL
-    X11
+    Franka::Franka
 )
+
+if(NO_ROBOT_TESTING)
+    target_link_libraries(
+        proxy     
+        MuJoCo::MuJoCo
+        glfw
+        GL
+        X11
+    )
+endif()

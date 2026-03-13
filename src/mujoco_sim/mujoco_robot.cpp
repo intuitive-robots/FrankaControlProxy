@@ -1,34 +1,41 @@
 #include "mujoco_sim/mujoco_robot.hpp"
 
+#include <franka/exception.h>
+#include <mujoco/mujoco.h>
+
+#include <Eigen/Dense>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <thread>
 
-#include <Eigen/Dense>
-#include <franka/exception.h>
-#include <mujoco/mujoco.h>
-
 #include "mujoco_sim/mujoco_panda_env.hpp"
 
 namespace
 {
-    constexpr std::chrono::milliseconds kControlPeriod{1}; // 1 kHz
-
     franka::Duration toDuration(std::chrono::nanoseconds dt)
     {
         return franka::Duration(static_cast<uint64_t>(dt.count()));
     }
 } // namespace
 
-MujocoRobot::MujocoRobot(const std::string&)
-    : env_(std::make_unique<MujocoPandaEnv>("./models/franka_emika_panda/scene.xml")),
-      viewer_(std::make_unique<MujocoViewer>(env_.get())),
-      model_(std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf", "panda_link8"))
+MujocoRobot::MujocoRobot(const std::string&, const std::string& env_config_path)
 {
+    // Load configuration
+    config_.fromFile(env_config_path);
+    control_period_ = std::chrono::microseconds(1000000 / config_.control_rate);
+
+    env_ = std::make_unique<MujocoPandaEnv>("./models/franka_emika_panda/scene.xml", config_);
+    model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf",
+                                                   "panda_link8");
     env_->start();
     env_->refreshRobotState(current_state_);
-    viewer_->start();
+
+    if (config_.enable_viewer)
+    {
+        viewer_ = std::make_unique<MujocoViewer>(env_.get());
+        viewer_->start();
+    }
 }
 
 MujocoRobot::~MujocoRobot() noexcept
@@ -69,7 +76,7 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
@@ -95,7 +102,7 @@ void MujocoRobot::read(std::function<bool(const franka::RobotState&)> read_callb
             running_ = false;
             break;
         }
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
@@ -131,6 +138,16 @@ void MujocoRobot::setCollisionBehavior(const std::array<double, 7>& /*lower_torq
     // No-op: collision behavior is not modeled in this MuJoCo wrapper.
 }
 
+void MujocoRobot::setJointImpedance(const std::array<double, 7>& /*K_theta*/)
+{
+    // No-op: joint impedance is a robot firmware setting, not applicable in MuJoCo simulation.
+}
+
+void MujocoRobot::setCartesianImpedance(const std::array<double, 6>& /*K_x*/)
+{
+    // No-op: Cartesian impedance is a robot firmware setting, not applicable in MuJoCo simulation.
+}
+
 void MujocoRobot::automaticErrorRecovery()
 {
     // No-op for simulation.
@@ -148,7 +165,7 @@ void MujocoRobot::stop()
 // ============================================================================
 
 franka::Torques MujocoRobot::jointPositionToTorque(const franka::JointPositions& desired_positions,
-                                                    const franka::RobotState& state)
+                                                   const franka::RobotState& state)
 {
     std::array<double, 7> tau_J{};
     // Get gravity compensation from MuJoCo
@@ -157,7 +174,7 @@ franka::Torques MujocoRobot::jointPositionToTorque(const franka::JointPositions&
     for (size_t i = 0; i < 7; i++)
     {
         double pos_error = desired_positions.q[i] - state.q[i];
-        double vel_error = 0.0 - state.dq[i];  // Target velocity is zero for position control
+        double vel_error = 0.0 - state.dq[i]; // Target velocity is zero for position control
         tau_J[i] = kDefaultStiffness[i] * pos_error + kDefaultDamping[i] * vel_error;
         // Add gravity compensation
         tau_J[i] += data->qfrc_bias[i];
@@ -167,8 +184,8 @@ franka::Torques MujocoRobot::jointPositionToTorque(const franka::JointPositions&
     return torques;
 }
 
-franka::Torques MujocoRobot::jointVelocityToTorque(const franka::JointVelocities& desired_velocities,
-                                                    const franka::RobotState& state)
+franka::Torques MujocoRobot::jointVelocityToTorque(
+    const franka::JointVelocities& desired_velocities, const franka::RobotState& state)
 {
     std::array<double, 7> tau_J{};
     // Get gravity compensation from MuJoCo
@@ -187,15 +204,16 @@ franka::Torques MujocoRobot::jointVelocityToTorque(const franka::JointVelocities
     return torques;
 }
 
-std::array<double, 7> MujocoRobot::cartesianPoseToJointPosition(const franka::CartesianPose& desired_pose,
-                                                                 const franka::RobotState& state)
+std::array<double, 7> MujocoRobot::cartesianPoseToJointPosition(
+    const franka::CartesianPose& desired_pose, const franka::RobotState& state)
 {
     // Extract target position and orientation from 4x4 matrix (column-major)
-    Eigen::Vector3d target_pos(desired_pose.O_T_EE[12], desired_pose.O_T_EE[13], desired_pose.O_T_EE[14]);
+    Eigen::Vector3d target_pos(desired_pose.O_T_EE[12], desired_pose.O_T_EE[13],
+                               desired_pose.O_T_EE[14]);
     Eigen::Matrix3d target_rot;
     target_rot << desired_pose.O_T_EE[0], desired_pose.O_T_EE[4], desired_pose.O_T_EE[8],
-                  desired_pose.O_T_EE[1], desired_pose.O_T_EE[5], desired_pose.O_T_EE[9],
-                  desired_pose.O_T_EE[2], desired_pose.O_T_EE[6], desired_pose.O_T_EE[10];
+        desired_pose.O_T_EE[1], desired_pose.O_T_EE[5], desired_pose.O_T_EE[9],
+        desired_pose.O_T_EE[2], desired_pose.O_T_EE[6], desired_pose.O_T_EE[10];
     Eigen::Quaterniond target_quat(target_rot);
 
     // Start from current joint positions
@@ -209,9 +227,9 @@ std::array<double, 7> MujocoRobot::cartesianPoseToJointPosition(const franka::Ca
     for (int iter = 0; iter < kIKMaxIterations; iter++)
     {
         // Compute current FK
-        PoseQuat current_pose = model_->forwardKinematics(q);
-        Eigen::Vector3d current_pos(current_pose[0], current_pose[1], current_pose[2]);
-        Eigen::Quaterniond current_quat(current_pose[6], current_pose[3], current_pose[4], current_pose[5]);
+        const transform::Pose current_pose = model_->forwardKinematics(q);
+        const Eigen::Vector3d current_pos = current_pose.translation();
+        const Eigen::Quaterniond current_quat = current_pose.quaternion();
 
         // Compute position error
         Eigen::Vector3d pos_error = target_pos - current_pos;
@@ -220,9 +238,9 @@ std::array<double, 7> MujocoRobot::cartesianPoseToJointPosition(const franka::Ca
         Eigen::Quaterniond quat_error = target_quat * current_quat.inverse();
         if (quat_error.w() < 0.0)
         {
-            quat_error.coeffs() *= -1.0;  // Ensure shortest path
+            quat_error.coeffs() *= -1.0; // Ensure shortest path
         }
-        Eigen::Vector3d rot_error = 2.0 * quat_error.vec();  // Approximate axis-angle
+        Eigen::Vector3d rot_error = 2.0 * quat_error.vec(); // Approximate axis-angle
 
         // Check convergence
         double error_norm = std::sqrt(pos_error.squaredNorm() + rot_error.squaredNorm());
@@ -240,7 +258,8 @@ std::array<double, 7> MujocoRobot::cartesianPoseToJointPosition(const franka::Ca
 
         // Compute Jacobian pseudoinverse: J† = J^T (J J^T)^{-1}
         Eigen::Matrix<double, 6, 6> JJt = J * J.transpose();
-        Eigen::Matrix<double, 6, 6> JJt_damped = JJt + 1e-6 * Eigen::Matrix<double, 6, 6>::Identity();
+        Eigen::Matrix<double, 6, 6> JJt_damped =
+            JJt + 1e-6 * Eigen::Matrix<double, 6, 6>::Identity();
         Eigen::Matrix<double, 7, 6> J_pinv = J.transpose() * JJt_damped.inverse();
 
         // Compute joint delta
@@ -259,8 +278,7 @@ std::array<double, 7> MujocoRobot::cartesianPoseToJointPosition(const franka::Ca
 }
 
 std::array<double, 7> MujocoRobot::cartesianVelocityToJointVelocity(
-    const franka::CartesianVelocities& desired_velocities,
-    const franka::RobotState& state)
+    const franka::CartesianVelocities& desired_velocities, const franka::RobotState& state)
 {
     // Get current joint positions
     JointPosition q;
@@ -274,8 +292,9 @@ std::array<double, 7> MujocoRobot::cartesianVelocityToJointVelocity(
 
     // Compute 6D Cartesian velocity vector
     Eigen::Matrix<double, 6, 1> dx;
-    dx << desired_velocities.O_dP_EE[0], desired_velocities.O_dP_EE[1], desired_velocities.O_dP_EE[2],
-          desired_velocities.O_dP_EE[3], desired_velocities.O_dP_EE[4], desired_velocities.O_dP_EE[5];
+    dx << desired_velocities.O_dP_EE[0], desired_velocities.O_dP_EE[1],
+        desired_velocities.O_dP_EE[2], desired_velocities.O_dP_EE[3], desired_velocities.O_dP_EE[4],
+        desired_velocities.O_dP_EE[5];
 
     // Compute Jacobian pseudoinverse: J† = J^T (J J^T)^{-1}
     Eigen::Matrix<double, 6, 6> JJt = J * J.transpose();
@@ -298,7 +317,8 @@ std::array<double, 7> MujocoRobot::cartesianVelocityToJointVelocity(
 // ============================================================================
 
 void MujocoRobot::control(
-    std::function<franka::JointPositions(const franka::RobotState&, franka::Duration)> motion_generator_callback,
+    std::function<franka::JointPositions(const franka::RobotState&, franka::Duration)>
+        motion_generator_callback,
     bool /*limit_rate*/, double /*cutoff_frequency*/)
 {
     std::lock_guard<std::mutex> guard(control_mutex_);
@@ -319,7 +339,8 @@ void MujocoRobot::control(
         auto dt_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now - last_tick);
         last_tick = now;
 
-        franka::JointPositions desired_positions = motion_generator_callback(current_state_, toDuration(dt_ns));
+        franka::JointPositions desired_positions =
+            motion_generator_callback(current_state_, toDuration(dt_ns));
         franka::Torques torques = jointPositionToTorque(desired_positions, current_state_);
 
         {
@@ -334,13 +355,14 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
 
 void MujocoRobot::control(
-    std::function<franka::JointVelocities(const franka::RobotState&, franka::Duration)> motion_generator_callback,
+    std::function<franka::JointVelocities(const franka::RobotState&, franka::Duration)>
+        motion_generator_callback,
     bool /*limit_rate*/, double /*cutoff_frequency*/)
 {
     std::lock_guard<std::mutex> guard(control_mutex_);
@@ -361,7 +383,8 @@ void MujocoRobot::control(
         auto dt_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now - last_tick);
         last_tick = now;
 
-        franka::JointVelocities desired_velocities = motion_generator_callback(current_state_, toDuration(dt_ns));
+        franka::JointVelocities desired_velocities =
+            motion_generator_callback(current_state_, toDuration(dt_ns));
         franka::Torques torques = jointVelocityToTorque(desired_velocities, current_state_);
 
         {
@@ -376,13 +399,14 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
 
 void MujocoRobot::control(
-    std::function<franka::CartesianPose(const franka::RobotState&, franka::Duration)> motion_generator_callback,
+    std::function<franka::CartesianPose(const franka::RobotState&, franka::Duration)>
+        motion_generator_callback,
     bool /*limit_rate*/, double /*cutoff_frequency*/)
 {
     std::lock_guard<std::mutex> guard(control_mutex_);
@@ -403,7 +427,8 @@ void MujocoRobot::control(
         auto dt_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now - last_tick);
         last_tick = now;
 
-        franka::CartesianPose desired_pose = motion_generator_callback(current_state_, toDuration(dt_ns));
+        franka::CartesianPose desired_pose =
+            motion_generator_callback(current_state_, toDuration(dt_ns));
 
         // Convert Cartesian pose to joint positions via IK
         std::array<double, 7> target_q = cartesianPoseToJointPosition(desired_pose, current_state_);
@@ -424,13 +449,14 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }
 
 void MujocoRobot::control(
-    std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)> motion_generator_callback,
+    std::function<franka::CartesianVelocities(const franka::RobotState&, franka::Duration)>
+        motion_generator_callback,
     bool /*limit_rate*/, double /*cutoff_frequency*/)
 {
     std::lock_guard<std::mutex> guard(control_mutex_);
@@ -451,10 +477,12 @@ void MujocoRobot::control(
         auto dt_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now - last_tick);
         last_tick = now;
 
-        franka::CartesianVelocities desired_velocities = motion_generator_callback(current_state_, toDuration(dt_ns));
+        franka::CartesianVelocities desired_velocities =
+            motion_generator_callback(current_state_, toDuration(dt_ns));
 
         // Convert Cartesian velocities to joint velocities
-        std::array<double, 7> target_dq = cartesianVelocityToJointVelocity(desired_velocities, current_state_);
+        std::array<double, 7> target_dq =
+            cartesianVelocityToJointVelocity(desired_velocities, current_state_);
         franka::JointVelocities joint_velocities{target_dq};
         joint_velocities.motion_finished = desired_velocities.motion_finished;
 
@@ -472,7 +500,7 @@ void MujocoRobot::control(
             break;
         }
 
-        next_tick += kControlPeriod;
+        next_tick += control_period_;
         std::this_thread::sleep_until(next_tick);
     }
 }

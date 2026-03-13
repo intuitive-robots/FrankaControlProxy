@@ -22,7 +22,6 @@ struct ControllerConfig : public AbstractConfig
 {
     // communication
     std::string controller_name;
-    std::string command_topic;
 
     ControllerConfig() = default;
 
@@ -62,10 +61,11 @@ class AbstractControlMode
   public:
     virtual ~AbstractControlMode() = default;
 
-    virtual void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
-                                AtomicDoubleBuffer<franka::RobotState>& state_buffer);
-    void startControl();
-    void stopControl();
+    void initController(FrankaPanda& robot, PandaPinocchioModel& pinocchio_model,
+                        AtomicDoubleBuffer<franka::RobotState>& state_buffer,
+                        const SafetyLimitConfig& safety_config);
+    virtual void startControl();
+    virtual void stopControl();
     const std::string getModeName();
     virtual void controlTask();
     bool moveToJointPosition(const std::array<double, NUM_DOFS>& target_q,
@@ -73,22 +73,25 @@ class AbstractControlMode
     bool moveToCartesianPose(const Eigen::Vector3d& target_position,
                              const Eigen::Quaterniond& target_orientation,
                              double max_velocity = 0.5, double tolerance = 1e-3);
+
   protected:
-    AbstractControlMode(const SafetyLimitConfig& safety_config) : safety_config_(safety_config) {}
+    AbstractControlMode()
+    {
+        controller_name = "AbstractControlMode";
+    };
     FrankaPanda* robot_;
     PandaPinocchioModel* pinocchio_model_;
     AtomicDoubleBuffer<franka::RobotState>* state_buffer_;
 
     bool is_running_ = false;
-    std::string controller_name{"AbstractControlMode"};
+    std::string controller_name;
     bool tryRecovery(int max_attempts = 3);
 
-    virtual franka::Torques controlLoop(const franka::RobotState& robot_state,
-                                        franka::Duration duration) = 0;
+    virtual franka::Torques controlLoop(const franka::RobotState&, franka::Duration) {  return franka::Torques({}); };
     std::thread control_thread_;
-    const SafetyLimitConfig& safety_config_;
 
   private:
+    const SafetyLimitConfig* safety_config_;
     void checkStateLimits(const franka::RobotState& robot_state, franka::Torques& torque_out,
                           const SafetyLimitConfig& safety_config_);
     void postprocessTorques(franka::Torques& torque_applied,
