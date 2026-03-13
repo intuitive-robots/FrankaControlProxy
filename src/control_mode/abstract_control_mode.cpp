@@ -83,6 +83,7 @@ void AbstractControlMode::controlTask()
     auto control_callback = [this](const franka::RobotState& state,
                                    franka::Duration duration) -> franka::Torques
     {
+        state_buffer_->write(state);
         franka::Torques tau = this->controlLoop(state, duration);
         if (!is_running_)
         {

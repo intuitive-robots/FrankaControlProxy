@@ -1,5 +1,4 @@
 #pragma once
-
 #include <franka/robot_state.h>
 #include <msgpack.hpp>
 #include <vector>

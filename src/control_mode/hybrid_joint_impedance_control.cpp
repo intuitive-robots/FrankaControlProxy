@@ -16,7 +16,6 @@ void HybridJointImpedanceControl::startControl()
 franka::Torques HybridJointImpedanceControl::controlLoop(const franka::RobotState& robot_state,
                                                          franka::Duration /*duration*/)
 {
-    state_buffer_->write(robot_state);
     const JointPosition desired_pos = desired_joint_command_->read();
     const JointPosition current_pos = Eigen::Map<const JointPosition>(robot_state.q.data());
     const JointVelocity desired_vel = JointVelocity::Zero();
