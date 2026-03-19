@@ -12,6 +12,7 @@ struct CartesianImpedanceConfig : public ControllerConfig
     Eigen::Matrix<double, 3, 3> Kd_p{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_r{Eigen::Matrix<double, 3, 3>::Zero()};
     double max_torque{5.0};
+    double damping{1e-5};
     CartesianImpedanceConfig() = default;
 
     void fromFile(const std::string& controller_config_path) override
@@ -29,6 +30,7 @@ struct CartesianImpedanceConfig : public ControllerConfig
         Kd_p = Kp_p.cwiseSqrt() * 2.0;
         Kd_r = Kp_r.cwiseSqrt() * 2.0;
         max_torque = reader.getValue<double>("max_torque");
+        damping = reader.getValue<double>("damping");
     }
 };
 
@@ -36,7 +38,8 @@ class CartesianImpedanceController : public AbstractControlMode
 {
   public:
     CartesianImpedanceController(AtomicDoubleBuffer<transform::Pose>& desired_cartesian_pose)
-        : desired_cartesian_pose_(&desired_cartesian_pose)
+        : desired_cartesian_pose_(&desired_cartesian_pose),
+         q_null_desired(Eigen::Matrix<double, 7, 1>::Zero())
     {
         controller_name = "CartesianImpedance";
     }
@@ -48,4 +51,5 @@ class CartesianImpedanceController : public AbstractControlMode
     void startControl() override;
     CartesianImpedanceConfig config_;
     AtomicDoubleBuffer<transform::Pose>* desired_cartesian_pose_ = nullptr;
+    Eigen::Matrix<double, 7, 1> q_null_desired;
 };

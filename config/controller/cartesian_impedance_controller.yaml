@@ -7,3 +7,4 @@ Kp_p: [750, 750, 750]
 Kp_r: [15, 15, 15]
 
 max_torque: 5.0
+damping: 1e-5
