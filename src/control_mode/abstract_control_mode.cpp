@@ -3,6 +3,7 @@
 #include "motion_generator/joint_position_motion_generator.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -51,8 +52,17 @@ void AbstractControlMode::initController(FrankaPanda& robot, PandaPinocchioModel
 
 void AbstractControlMode::startControl()
 {
-    robot_->automaticErrorRecovery();
-    zlc::info("[{}] Robot control started.", getModeName());
+    try
+    {
+        robot_->automaticErrorRecovery();
+        zlc::info("[{}] Robot control started.", getModeName());
+    }
+    catch (const franka::Exception& ex)
+    {
+        zlc::warn("[{}] Automatic error recovery at start failed: {}", getModeName(), ex.what());
+        zlc::warn("[{}] Waiting for manual recovery before starting control.", getModeName());
+    }
+
     is_running_ = true;
     control_thread_ = std::thread(&AbstractControlMode::controlTask, this);
     zlc::info("[{}] Control thread launched.", getModeName());
@@ -79,7 +89,11 @@ void AbstractControlMode::controlTask()
     zlc::info("[{}] Control thread started.", getModeName());
     auto control_callback = [this](const franka::RobotState& state,
                                    franka::Duration duration) -> franka::Torques
-    { return this->controlLoop(state, duration); };
+    {
+        franka::Torques torques = this->controlLoop(state, duration);
+        checkStateLimits(state, torques, safety_config_);
+        return torques;
+    };
     while (is_running_)
     {
         try
@@ -187,8 +201,14 @@ bool AbstractControlMode::tryRecovery(int max_attempts)
         }
         catch (const franka::Exception& e)
         {
-            zlc::error("[{}] Recovery failed: {}", getModeName(), e.what());
-            return false;
+            zlc::error("[{}] Recovery failed (attempt {}/{}): {}", getModeName(), i + 1, max_attempts, e.what());
+            if (std::string(e.what()).find("manual error recovery required") != std::string::npos)
+            {
+                zlc::warn("[{}] Manual recovery required by robot. Pausing and waiting for operator action.", getModeName());
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                continue;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
     }
     return false;

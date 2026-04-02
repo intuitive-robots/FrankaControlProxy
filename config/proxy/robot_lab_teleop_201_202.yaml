@@ -2,16 +2,16 @@
 node_name: FrankaLeader
 proxy_ip: 141.3.53.63
 group: 224.0.0.1
-group_port: 7721
+group_port: 7732
 group_name: hardware_collection
 
 robot:
   - type: panda
-    config_path: config/robot/robot_lab_201.yaml
+    config_path: config/robot/robot_lab_panda_201.yaml
   - type: panda
-    config_path: config/robot/robot_lab_202.yaml
+    config_path: config/robot/robot_lab_panda_202.yaml
 grippers:
   - type: franka_gripper
-    config_path: config/gripper/robot_lab_gripper_201.yaml
-  - type: franka_gripper
     config_path: config/gripper/robot_lab_gripper_202.yaml
+  - type: robotiq_gripper
+    config_path: config/gripper/droid_robotiq.yaml

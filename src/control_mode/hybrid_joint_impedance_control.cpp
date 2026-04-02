@@ -1,6 +1,27 @@
 #include "control_mode/hybrid_joint_impedance_control.hpp"
 
 #include <Eigen/Geometry>
+#include <iomanip>
+#include <sstream>
+
+namespace
+{
+std::string formatJointCommand(const std::array<double, 7>& pos)
+{
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(4) << "[";
+    for (size_t i = 0; i < pos.size(); ++i)
+    {
+        if (i > 0)
+        {
+            oss << ", ";
+        }
+        oss << pos[i];
+    }
+    oss << "]";
+    return oss.str();
+}
+}  // namespace
 
 HybridJointImpedanceControl::~HybridJointImpedanceControl() = default;
 
@@ -22,6 +43,7 @@ void HybridJointImpedanceControl::initController(
 
 void HybridJointImpedanceControl::writeCommand(const HybridJointImpedanceCommand& cmd)
 {
+    zlc::info("Received command on '{}': {}", config_.command_topic, formatJointCommand(cmd.pos));
     desired_positions_.write(JointPosition::Map(cmd.pos.data()));
 }
 
