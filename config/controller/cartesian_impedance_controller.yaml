@@ -3,7 +3,10 @@ name: CartesianImpedance
 # Cartesian stiffness gains (diagonal)
 # Position stiffness (N/m)
 Kp_p: [750, 750, 750]
+Kd_p: [55, 55, 55]
 # Orientation stiffness (Nm/rad)
-Kp_r: [15, 15, 15]
+Kp_r: [45, 45, 45]
+Kd_r: [5, 5, 5]
 
-max_torque: 5.0
+
+max_torque: 8.0

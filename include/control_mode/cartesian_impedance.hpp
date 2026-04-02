@@ -24,10 +24,15 @@ struct CartesianImpedanceConfig : public ControllerConfig
         Kp_p = Eigen::Vector3d::Map(Kp_p_vals.data()).asDiagonal();
         const std::array<double, 3> Kp_r_vals = reader.getArray<double, 3>("Kp_r");
         Kp_r = Eigen::Vector3d::Map(Kp_r_vals.data()).asDiagonal();
+        const std::array<double, 3> Kd_p_vals = reader.getArray<double, 3>("Kd_p");
+        Kd_p = Eigen::Vector3d::Map(Kd_p_vals.data()).asDiagonal();
+        const std::array<double, 3> Kd_r_vals = reader.getArray<double, 3>("Kd_r");
+        Kd_r = Eigen::Vector3d::Map(Kd_r_vals.data()).asDiagonal();
 
-        // Compute Kd from Kp (critically damped)
-        Kd_p = Kp_p.cwiseSqrt() * 2.0;
-        Kd_r = Kp_r.cwiseSqrt() * 2.0;
+
+        // // Compute Kd from Kp (critically damped)
+        // Kd_p = Kp_p.cwiseSqrt() * 2.0;
+        // Kd_r = Kp_r.cwiseSqrt() * 2.0;
         max_torque = reader.getValue<double>("max_torque");
     }
 };
