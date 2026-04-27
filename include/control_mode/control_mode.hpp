@@ -2,6 +2,7 @@
 #include <control_mode/abstract_control_mode.hpp>
 #include <control_mode/cartesian_impedance.hpp>
 #include <control_mode/gravity_comp_control.hpp>
+#include <control_mode/human_control.hpp>
 #include <control_mode/hybrid_joint_impedance_control.hpp>
 #include <control_mode/idle_control_mode.hpp>
 #include <control_mode/osc_control.hpp>
@@ -29,6 +30,7 @@ class ControlModeFactory
                               AtomicDoubleBuffer<franka::RobotState>& state_buffer)
     {
         registry["Idle"] = std::make_unique<IdleControlMode>();
+        registry["HumanControl"] = std::make_unique<HumanControlMode>();
         registry["HybridJointImpedance"] = std::make_unique<HybridJointImpedanceControl>(desired_joint_command_);
         registry["CartesianImpedance"] =
             std::make_unique<CartesianImpedanceController>(desired_cartesian_pose_);
