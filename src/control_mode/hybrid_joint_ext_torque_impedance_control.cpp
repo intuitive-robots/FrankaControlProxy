@@ -10,6 +10,7 @@ void HybridJointExtTorqueImpedanceControl::startControl()
     config_.fromFile("config/controller/hybrid_joint_ext_torque_impedance_controller.yaml");
     std::array<double, 7> current_pos = state_buffer_->read().q;
     desired_joint_command_->write(JointPosition::Map(current_pos.data()));
+    desired_ext_tau_->write(JointTorque::Zero());
     AbstractControlMode::startControl();
 }
 

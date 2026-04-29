@@ -21,6 +21,10 @@ class ControlModeFactory
         const std::string joint_topic_name = fmt::format("{}/{}", robot_name, "joint_command");
         zlc::registerSubscriberHandler(joint_topic_name, &ControlModeFactory::writeJointCommand,
                                        this);
+        const std::string joint_torque_topic_name =
+            fmt::format("{}/{}", robot_name, "joint_torque_command");
+        zlc::registerSubscriberHandler(joint_torque_topic_name,
+                                       &ControlModeFactory::writeJointTorqueCommand, this);
         const std::string cartesian_topic_name =
             fmt::format("{}/{}", robot_name, "cartesian_pose_command");
         zlc::registerSubscriberHandler(cartesian_topic_name,
@@ -63,12 +67,11 @@ class ControlModeFactory
     void writeJointCommand(const JointCommand& cmd)
     {
         desired_joint_command_.write(JointPosition::Map(cmd.pos.data()));
-        // Write external torque if provided (non-zero)
-        JointTorque ext_tau = JointTorque::Map(cmd.tau.data());
-        if (ext_tau.norm() > 1e-6)
-        {
-            desired_joint_ext_torque_command_.write(ext_tau);
-        }
+    }
+
+    void writeJointTorqueCommand(const JointTorqueCommand& cmd)
+    {
+        desired_joint_ext_torque_command_.write(JointTorque::Map(cmd.tau.data()));
     }
 
     void writeCartesianCommand(const CartesianPoseCommand& cmd)
