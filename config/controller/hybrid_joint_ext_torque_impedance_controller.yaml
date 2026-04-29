@@ -1,0 +1,8 @@
+name: HybridJointExtTorqueImpedance
+# Same gains as HybridJointImpedance
+kq_gains: [20, 30, 25, 25, 15, 10, 10]
+kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5]
+kx_gains: [400, 400, 400, 80, 80, 80]
+kxd_gains: [4, 4, 4, 1, 1, 1]
+
+ignore_gravity: true

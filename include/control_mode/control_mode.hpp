@@ -4,6 +4,7 @@
 #include <control_mode/gravity_comp_control.hpp>
 #include <control_mode/human_control.hpp>
 #include <control_mode/hybrid_joint_impedance_control.hpp>
+#include <control_mode/hybrid_joint_ext_torque_impedance_control.hpp>
 #include <control_mode/idle_control_mode.hpp>
 #include <control_mode/osc_control.hpp>
 
@@ -32,6 +33,7 @@ class ControlModeFactory
         registry["Idle"] = std::make_unique<IdleControlMode>();
         registry["HumanControl"] = std::make_unique<HumanControlMode>();
         registry["HybridJointImpedance"] = std::make_unique<HybridJointImpedanceControl>(desired_joint_command_);
+        registry["HybridJointExtTorqueImpedance"] = std::make_unique<HybridJointExtTorqueImpedanceControl>(desired_joint_command_, desired_joint_ext_torque_command_);
         registry["CartesianImpedance"] =
             std::make_unique<CartesianImpedanceController>(desired_cartesian_pose_);
         for (const auto& pair : registry)
@@ -55,11 +57,18 @@ class ControlModeFactory
     std::unordered_map<std::string, std::unique_ptr<AbstractControlMode>> registry;
     SafetyLimitConfig safety_config_;
     AtomicDoubleBuffer<JointPosition> desired_joint_command_{JointPosition::Zero()};
+    AtomicDoubleBuffer<JointTorque> desired_joint_ext_torque_command_{JointTorque::Zero()};
     AtomicDoubleBuffer<transform::Pose> desired_cartesian_pose_{transform::Pose::Identity()};
 
     void writeJointCommand(const JointCommand& cmd)
     {
         desired_joint_command_.write(JointPosition::Map(cmd.pos.data()));
+        // Write external torque if provided (non-zero)
+        JointTorque ext_tau = JointTorque::Map(cmd.tau.data());
+        if (ext_tau.norm() > 1e-6)
+        {
+            desired_joint_ext_torque_command_.write(ext_tau);
+        }
     }
 
     void writeCartesianCommand(const CartesianPoseCommand& cmd)

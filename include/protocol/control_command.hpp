@@ -6,7 +6,8 @@ struct JointCommand
 {
     std::array<double, 7> pos;
     std::array<double, 7> vel;
-    MSGPACK_DEFINE_MAP(pos, vel)
+    std::array<double, 7> tau;  // External joint torque (for hybrid_joint_impedance_torque_control)
+    MSGPACK_DEFINE_MAP(pos, vel, tau)
 };
 
 struct CartesianPoseCommand
