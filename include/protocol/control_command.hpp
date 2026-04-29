@@ -4,14 +4,14 @@
 
 struct JointCommand
 {
-    std::array<double, 7> pos;
-    std::array<double, 7> vel;
-    MSGPACK_DEFINE_MAP(pos, vel, tau)
+    std::array<double, 7> pos{};
+    std::array<double, 7> vel{};
+    MSGPACK_DEFINE_MAP(pos, vel)
 };
 
 struct JointTorqueCommand
 {
-    std::array<double, 7> tau;
+    std::array<double, 7> tau{};
     MSGPACK_DEFINE_MAP(tau)
 };
 
