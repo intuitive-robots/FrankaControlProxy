@@ -15,7 +15,7 @@ struct HybridJointExtTorqueImpedanceConfig : public ControllerConfig
     Eigen::Matrix<double, 6, 6> kx;
     Eigen::Matrix<double, 6, 6> kxd;
     bool ignore_gravity{true};
-    HybridJointTorqueImpedanceConfig() = default;
+    HybridJointExtTorqueImpedanceConfig() = default;
 
     void fromFile(const std::string& controller_config_path) override
     {
