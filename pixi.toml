@@ -1,0 +1,39 @@
+# Build env for franka_control_proxy. mobile-0-rt (real-time machine) has no internet, so the proxy is
+# built here and only what it needs at runtime is deployed. conda-forge's toolchain targets an old glibc,
+# so the binary runs on rt (Ubuntu 22.04). ruckig and ZeroLanCom are fetched by CMakeLists.txt.
+#   pixi run build    -> build/proxy
+#   pixi run dist     -> dist/{bin/proxy, lib/*.so, config/, models/franka_emika_panda/panda_arm.urdf}
+#   pixi run deploy   -> replaces mobile-0-rt:~/ngres/franka_control_proxy with dist/
+#                        (run there: cd ~/ngres/franka_control_proxy && ./bin/proxy ./config/proxy/droid.yaml)
+[workspace]
+name = "franka_control_proxy"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+cxx-compiler = "*"
+cmake = ">=3.28"
+make = "*"
+pkg-config = "*"
+eigen = "3.4.*"
+pinocchio = "2.5.2.*"
+# must match the robot's system version (firmware)
+libfranka = "0.9.2.*"
+boost = "*"
+yaml-cpp = "*"
+# ZeroLanCom deps
+fmt = "*"
+spdlog = "*"
+zeromq = "*"
+cppzmq = "*"
+# msgpack-cxx needs a newer boost than pinocchio 2.5.2; 3.3 still ships msgpack.hpp
+msgpack-c = "3.3.*"
+# dist / deploy
+patchelf = "*"
+rsync = "*"
+
+[tasks]
+configure = "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNO_ROBOT_TESTING=OFF"
+build = { cmd = "cmake --build build -j", depends-on = ["configure"] }
+dist = { cmd = "bash scripts/pixi_dist.sh build/proxy dist", depends-on = ["build"] }
+deploy = { cmd = "ssh mobile-0-rt 'rm -rf ngres/franka_control_proxy && mkdir -p ngres/franka_control_proxy' && rsync -a dist/ mobile-0-rt:ngres/franka_control_proxy/", depends-on = ["dist"] }

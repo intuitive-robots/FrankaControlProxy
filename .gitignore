@@ -40,3 +40,8 @@ MUJOCO_LOG.TXT
 
 !models/franka_emika_panda/assets/
 !models/franka_emika_panda/assets/*.obj
+# pixi build env (pixi.toml) and the deploy folder for mobile-0-rt
+.pixi/
+dist/
+# Claude Code worktrees
+.claude/

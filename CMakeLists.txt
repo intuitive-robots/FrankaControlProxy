@@ -27,11 +27,6 @@ else()
     add_compile_definitions(NO_ROBOT_TESTING=0)
 endif()
 
-if(DEFINED ENV{CONDA_PREFIX})
-    set(CMAKE_PREFIX_PATH $ENV{CONDA_PREFIX})
-    set(Boost_NO_SYSTEM_PATHS ON) 
-endif()
-
 # -----------------------------
 # Include paths
 # -----------------------------
@@ -50,8 +45,34 @@ find_package(Eigen3 3.3.9 REQUIRED)
 find_package(pinocchio REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem serialization system)
 find_package(yaml-cpp REQUIRED)
-find_package(zerolancom REQUIRED)
 find_package(Franka REQUIRED)
+# Pub/sub messaging (not on conda-forge); fetched if missing. The pinned commit still includes
+# utils/thread_pool.hpp, which upstream deleted in 2a9e4c5 and no longer uses, so the patch drops it.
+find_package(zerolancom QUIET)
+if(NOT zerolancom_FOUND)
+    message(STATUS "zerolancom not found, fetching 68bdabf")
+    include(FetchContent)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(zerolancom
+        URL https://github.com/xinkai-jiang/ZeroLanCom/archive/68bdabfc7a41e4c71c9ae1b100f892d74e8075c7.tar.gz
+        PATCH_COMMAND sed -i /thread_pool.hpp/d include/zerolancom/nodes/zerolancom_node.hpp
+        EXCLUDE_FROM_ALL)
+    FetchContent_MakeAvailable(zerolancom)
+    add_library(zerolancom::zerolancom ALIAS zerolancom)
+endif()
+# Online trajectory generation for the joint reference (conda-forge: ruckig); fetched if missing
+find_package(ruckig QUIET)
+if(NOT ruckig_FOUND)
+    message(STATUS "ruckig not found, fetching v0.14.0")
+    include(FetchContent)
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(BUILD_CLOUD_CLIENT OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(ruckig
+        URL https://github.com/pantor/ruckig/archive/refs/tags/v0.14.0.tar.gz)
+    FetchContent_MakeAvailable(ruckig)
+endif()
 if(NO_ROBOT_TESTING)
     find_package(MuJoCo REQUIRED)
     find_package(glfw3 REQUIRED)
@@ -92,6 +113,7 @@ target_link_libraries(proxy
     pinocchio::pinocchio
     Eigen3::Eigen
     Franka::Franka
+    ruckig::ruckig
 )
 
 if(NO_ROBOT_TESTING)

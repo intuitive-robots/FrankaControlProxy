@@ -12,93 +12,43 @@ A C++ server for controlling Franka Emika robots with optional MuJoCo simulation
 
 ---
 
-## 📋 Prerequisites
+## 🛠 Building
 
-- **OS**: Linux (tested on Ubuntu 20.04/22.04)
-- **Compiler**: GCC with C++17 support
-- **CMake**: ≥ 3.16
-- **Conda**: For environment management
+All build dependencies (compiler, CMake, pinocchio 2.5.2, libfranka 0.9.2, Boost, ...) come from the
+[pixi](https://pixi.sh) environment in `pixi.toml`. ruckig and ZeroLanCom are fetched by `CMakeLists.txt`.
+
+```bash
+pixi run build    # -> build/proxy
+```
+
+libfranka must match the robot's system version; change `libfranka` in `pixi.toml` if your robot needs another one.
+
+The MuJoCo simulation build (`-DNO_ROBOT_TESTING=ON`) additionally needs MuJoCo 3.4.0 and GLFW, which are not part
+of the pixi environment.
 
 ---
 
-## 🛠 Installation
+## 🚀 Deploying to the real-time machine
 
-### 1. Create Conda Environment
-
-```bash
-conda create -n franka_control_proxy python=3.9
-conda activate franka_control_proxy
-```
-
-### 2. Install Pinocchio
+The real-time machine (`mobile-0-rt`) has no internet, so the proxy is built elsewhere and only what it
+needs at runtime is copied over:
 
 ```bash
-conda install pinocchio==2.5.2
+pixi run dist     # -> dist/{bin/proxy, lib/*.so, config/, models/franka_emika_panda/panda_arm.urdf}
+pixi run deploy   # replaces mobile-0-rt:~/ngres/franka_control_proxy with dist/
 ```
 
-### 3. Install ZeroLanCom
-
-```bash
-cd <your_workspace>
-git clone git@github.com:xinkai-jiang/ZeroLanCom.git
-cd ZeroLanCom
-bash ./scripts/compile.sh
-```
-
-### 4. Install libfranka
-
-```bash
-cd <your_workspace>
-git clone git@github.com:frankaemika/libfranka.git
-cd libfranka
-git checkout v0.9.2
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-sudo make install
-```
-
-### 5. (Optional) Install MuJoCo for Simulation
-
-Skip this step if you only need to control real robots.
-
-1. Download and extract MuJoCo 3.4.0:
-
-```bash
-mkdir -p ~/.mujoco
-cd ~/.mujoco
-wget https://github.com/google-deepmind/mujoco/releases/download/3.4.0/mujoco-3.4.0-linux-x86_64.tar.gz
-tar -xzf mujoco-3.4.0-linux-x86_64.tar.gz
-```
-
-2. Install GLFW:
-
-```bash
-sudo apt install libglfw3-dev
-```
+`bin/proxy` finds its libraries in `../lib`, so no environment or `LD_LIBRARY_PATH` is needed on the target.
 
 ---
 
-## 🔨 Building
+## 🏃 Usage
 
-### Build for Real Robot
-
-```bash
-bash ./scripts/compile.sh
-```
-
-### Build with MuJoCo Simulation
+Run from the folder that contains `config/` and `models/` (paths in the configs are relative to it):
 
 ```bash
-bash ./scripts/compile_with_mujoco.sh
-```
-
----
-
-## 🚀 Usage
-
-```bash
-./build/proxy --config <config_file>
+./bin/proxy ./config/proxy/droid.yaml     # deployed folder
+./build/proxy ./config/proxy/droid.yaml   # local build
 ```
 
 See the `config/` directory for example configuration files.
