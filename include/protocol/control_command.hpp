@@ -15,6 +15,13 @@ struct JointTorqueCommand
     MSGPACK_DEFINE_MAP(tau)
 };
 
+// Feed-forward wrench at the flange: force [N] then torque [Nm], base frame axes
+struct EEWrenchCommand
+{
+    std::array<double, 6> wrench{};
+    MSGPACK_DEFINE_MAP(wrench)
+};
+
 struct CartesianPoseCommand
 {
     std::array<double, 3> pos;

@@ -1,17 +1,50 @@
 name: HybridJointImpedance
-#polymetis default
+# Stiff teleoperation preset (control mode "HybridJointImpedance"), tuned 2026-10-28 with GELLO at
+# 200 Hz using check_teleop_tracking.py: good for free-space tasks that need no compliance.
+# Compliant preset for contact-rich tasks: hybrid_joint_impedance_compliant_controller.yaml.
+# polymetis default
 # kq_gains: [20, 30, 25, 25, 15, 10, 10]
 # kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5]
 # kx_gains: [100, 100, 100, 40, 40, 40]
 # kxd_gains: [1, 1, 1, 0.2, 0.2, 0.2]
 
-kq_gains: [20, 30, 25, 25, 15, 10, 10]
-kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5]
-# kx_gains: [100, 100, 100, 40, 40, 40]
-kx_gains: [400, 400, 400, 80, 80, 80]
-# kxd_gains: [1, 1, 1, 0.2, 0.2, 0.2]
-kxd_gains: [4, 4, 4, 1, 1, 1]
 
+#config of usb task 
+# 2026-10-28 teleop tuning: j1/j3 raised from 20/25 and 2.0/2.0 (lagged 50-76 ms with feed-forward on)
+# previous: kq_gains: [20, 100, 25, 100, 15, 50, 10]  kqd_gains: [2.0, 6, 2.0, 6, 1.0, 1.5, 1.0]
+# j2 kqd 6 -> 18: rang at ~3.3 Hz (damping ratio ~0.33) when j1 moved fast
+# j5 kq 15 -> 80: stick-slip (moved at 10% of GELLO speed when slow), 90-110 ms lag
+# 2026-10-28 (acceleration feed-forward): j1-j4 raised. With the URDF inertia (+1.2 kg payload)
+# the previous gains gave ~2.2-3.1 Hz and damping ratio ~0.33 on j1-j4 at the GELLO start pose
+# (lowest coupled mode 1.75 Hz), i.e. both slow and underdamped. These give ~3.0-3.9 Hz with
+# damping ratio ~0.6-0.7 (DROID home: ~3.4-4 Hz, 0.6-1.0); still below libfranka's
+# joint_impedance example (600 Nm/rad).
+# -> on the robot: too stiff (not compliant enough) and it rumbled (Kd 30-45 times the 200 Hz
+#    steps of the velocity reference). Back to the previous stiffness, responsiveness comes from
+#    the acceleration feed-forward instead. Damping on j1/j3/j4 doubled (ratio ~0.33 -> ~0.4-0.6).
+#    Note ~60-70% of the j1-j4 stiffness comes from kx (J^T kx J): lower kx for more compliance.
+# tried: kq_gains: [300, 500, 300, 350, 80, 50, 10]  kqd_gains: [30, 45, 30, 30, 1.0, 1.5, 1.0]
+# previous: kq_gains: [60, 100, 60, 100, 80, 50, 10]  kqd_gains: [4.0, 18, 4.0, 6, 1.0, 1.5, 1.0]
+# -> fatal hardware error when the leader moved fast (raw commands + feed-forward reached the
+#    robot unbounded). The reference now goes through Ruckig (limits below), so it is smooth and
+#    damping no longer amplifies command steps: j1-j4 damping ratio ~0.5-0.6 (DROID home ~0.55-1).
+# tried: kqd_gains: [8.0, 18, 8.0, 10, 1.0, 1.5, 1.0]  (rumble-fix, ratio ~0.4)
+kq_gains: [60, 100, 60, 100, 80, 50, 10]
+kqd_gains: [16, 25, 16, 18, 1.0, 1.5, 1.0]
+kx_gains: [500, 500, 1000, 80, 80, 80]
+kxd_gains: [15, 15, 10, 5, 5, 5]
+
+
+
+
+# #config of socket task & handwash
+# kq_gains: [20, 30, 25, 25, 15, 10, 10]
+# kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5]
+# #test config
+# ##datasets config
+# kx_gains: [400, 400, 400, 80, 80, 80]
+# # datsets config
+# kxd_gains: [4, 4, 4, 1, 1, 1]
 
 ignore_gravity: true # use for now
 #real_robot using
@@ -24,3 +57,36 @@ ignore_gravity: true # use for now
 # kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5] * 0.5
 # kx_gains: [100, 100, 100, 40, 40, 40] *0.35
 # kxd_gains: [1, 1, 1, 0.2, 0.2, 0.2] *0.25
+
+# Commanded joint velocity (JointCommand.vel) as target velocity for the reference trajectory and
+# to move the target between commands. Only active if the client sends vel (GELLO pair does).
+# 2026-10-28: 1.0 overshot ~1 deg (up to 3.6) on j2/j4/j6 at stops once GELLO ran at 200 Hz
+# (raw commands). With the Ruckig reference the stops are jerk-limited.
+velocity_feedforward: 1.0
+# Reference acceleration (bounded by max_acceleration) through M(q), 0 = off. 0.5 because GELLO
+# velocity noise alone can drive the reference acceleration to its limit (simulation); raise
+# towards 1.0 if it runs quietly. The arm URDF has no gripper/camera (slight under-compensation).
+acceleration_feedforward: 0.5
+# Reference trajectory between leader commands and the controller (JointReferenceGenerator):
+# position loop gain [1/s], braking fraction of max_acceleration, velocity low-pass [s]
+reference_position_gain: 30.0
+reference_braking: 0.5
+reference_velocity_filter_time: 0.02
+# Limits of the reference trajectory. Conservative for teleoperation: ~45% of the Franka
+# velocity, ~30% acceleration, ~3% jerk limits. Bounds the inertia feed-forward to
+# ~|M| * a_max * acceleration_feedforward (~3 Nm) and its rate to ~|M| * j_max (~300 Nm/s,
+# libfranka allows 1000). Leader motions faster than this lag instead of reaching the robot.
+# Raise max_acceleration if quick motions feel delayed; lower max_jerk if it sounds harsh.
+# Franka: max_velocity [2.175 x4, 2.61 x3], max_acceleration [15, 7.5, 10, 12.5, 15, 20, 20],
+#         max_jerk [7500, 3750, 5000, 6250, 7500, 10000, 10000]
+max_velocity: [1.0, 1.0, 1.0, 1.0, 1.3, 1.3, 1.3]
+max_acceleration: [4.0, 2.5, 3.0, 4.0, 5.0, 6.0, 6.0]
+max_jerk: [200, 120, 160, 200, 240, 320, 320]
+extrapolate_position: true
+# Feed-forward stops when no command arrived for this long [s]
+feedforward_timeout: 0.05
+# Feed-forward wrench (topic <robot>/ee_wrench_command, e.g. the insertion push of the kinesthetic
+# replay): applied as J^T * wrench at the flange, norm-limited, dropped when older than the timeout [s]
+max_ee_force: 30.0
+max_ee_torque: 3.0
+ee_wrench_timeout: 0.1

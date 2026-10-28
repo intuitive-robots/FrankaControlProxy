@@ -20,8 +20,9 @@ struct FrankaArmState
     std::vector<double> tau_ext_hat_filtered;
     std::vector<double> O_F_ext_hat_K;
     std::vector<double> K_F_ext_hat_K;
+    std::vector<double> tau_J;
     MSGPACK_DEFINE_MAP(time_ms, EE_pos, EE_quat, O_T_EE, O_T_EE_d, q, q_d, dq, dq_d, tau_ext_hat_filtered,
-                       O_F_ext_hat_K, K_F_ext_hat_K)
+                       O_F_ext_hat_K, K_F_ext_hat_K, tau_J)
 
     FrankaArmState(const franka::RobotState& state)
         : time_ms(0),
@@ -34,7 +35,8 @@ struct FrankaArmState
           tau_ext_hat_filtered(state.tau_ext_hat_filtered.begin(),
                                state.tau_ext_hat_filtered.end()),
           O_F_ext_hat_K(state.O_F_ext_hat_K.begin(), state.O_F_ext_hat_K.end()),
-          K_F_ext_hat_K(state.K_F_ext_hat_K.begin(), state.K_F_ext_hat_K.end())
+          K_F_ext_hat_K(state.K_F_ext_hat_K.begin(), state.K_F_ext_hat_K.end()),
+          tau_J(state.tau_J.begin(), state.tau_J.end())
           {
             transform::Pose pose_EE(state.O_T_EE);
             Eigen::Vector3d t = pose_EE.translation();
@@ -42,6 +44,7 @@ struct FrankaArmState
             Eigen::Quaterniond q = pose_EE.quaternion();
             EE_quat = {q.x(), q.y(), q.z(), q.w()};
           };
+          
 };
 
 struct PandaGripperState

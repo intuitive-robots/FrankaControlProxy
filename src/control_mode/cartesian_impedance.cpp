@@ -6,7 +6,9 @@ void CartesianImpedanceController::startControl()
     config_.fromFile("config/controller/cartesian_impedance_controller.yaml");
     franka::RobotState curr_state = state_buffer_->read();
     Eigen::Affine3d T_EE_in_base_frame(Eigen::Matrix4d::Map(curr_state.O_T_EE.data()));
-    desired_cartesian_pose_->write(transform::Pose(T_EE_in_base_frame));
+    CartesianTarget target;
+    target.pose = transform::Pose(T_EE_in_base_frame);
+    desired_cartesian_target_->write(target);
     AbstractControlMode::startControl();
     zlc::info("[CartesianImpedance] Control started.");
 }
@@ -14,12 +16,33 @@ void CartesianImpedanceController::startControl()
 franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotState& robot_state,
                                                           franka::Duration /*duration*/)
 {
-    // Get desired pose from trajectory interpolator
-    Eigen::Vector3d desired_pos_EE;
-    Eigen::Quaterniond desired_quat_EE;
-    transform::Pose desired_pose = desired_cartesian_pose_->read();
-    desired_pos_EE = desired_pose.translation();
-    desired_quat_EE = desired_pose.quaternion();
+    // Get desired pose and feed-forward twist of the latest command
+    const CartesianTarget target = desired_cartesian_target_->read();
+    Eigen::Vector3d desired_pos_EE = target.pose.translation();
+    Eigen::Quaterniond desired_quat_EE = target.pose.quaternion();
+
+    // Use the commanded twist as damping reference so the damper does not brake the motion
+    // (with a zero reference the EE lags by Kd/Kp seconds). Dropped when commands stop arriving.
+    Eigen::Matrix<double, 6, 1> twist_desired = Eigen::Matrix<double, 6, 1>::Zero();
+    const double cmd_age =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - target.stamp).count();
+    if (cmd_age < config_.feedforward_timeout)
+    {
+        twist_desired = config_.velocity_feedforward * target.twist;
+    }
+    if (config_.extrapolate_pose)
+    {
+        // Move the setpoint along the twist between commands instead of stepping at the command rate.
+        // Capped at the timeout so the setpoint stops (and does not jump back) when commands stop.
+        const double dt = std::min(cmd_age, config_.feedforward_timeout);
+        const Eigen::Matrix<double, 6, 1> shift = config_.velocity_feedforward * target.twist * dt;
+        desired_pos_EE += shift.head<3>();
+        const Eigen::Vector3d rot_vec = shift.tail<3>();
+        if (rot_vec.norm() > 1e-9)
+        {
+            desired_quat_EE = Eigen::AngleAxisd(rot_vec.norm(), rot_vec.normalized()) * desired_quat_EE;
+        }
+    }
 
     // Extract current joint state
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
@@ -35,9 +58,6 @@ franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotSta
 
     // Compute current EE twist (velocity): twist = J * dq
     Eigen::Matrix<double, 6, 1> twist_current = jacobian * dq;
-
-    // Desired twist is zero (we want to reach and stop at the desired pose)
-    Eigen::Matrix<double, 6, 1> twist_desired = Eigen::Matrix<double, 6, 1>::Zero();
 
     // ========== Compute pose error ==========
     // Position error

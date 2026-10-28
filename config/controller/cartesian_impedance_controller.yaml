@@ -10,3 +10,10 @@ Kd_r: [5, 5, 5]
 
 
 max_torque: 8.0
+
+# Commanded twist (pos_vel / rot_vel) as damping reference and to move the setpoint between
+# commands. 0 = old behaviour (damper brakes towards zero velocity).
+velocity_feedforward: 1.0
+extrapolate_pose: true
+# Feed-forward stops when no command arrived for this long [s]
+feedforward_timeout: 0.1

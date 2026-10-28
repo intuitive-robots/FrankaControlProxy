@@ -1,8 +1,34 @@
 name: HybridJointExtTorqueImpedance
-# Same gains as HybridJointImpedance
+# Stiffness unchanged from the previous config; damping raised because the old values
+# were heavily underdamped (zeta ~0.07 lowest mode, ~0.03-0.05 in Cartesian space).
+# With these values the modal damping ratio is ~0.45-1.2 over typical poses, with or
+# without the Robotiq + camera payload. Raise kxd further if ringing is still visible.
 kq_gains: [20, 30, 25, 25, 15, 10, 10]
-kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5]
+kqd_gains: [3.0, 4.0, 3.0, 3.0, 1.5, 1.0, 0.5]
 kx_gains: [400, 400, 400, 80, 80, 80]
-kxd_gains: [4, 4, 4, 1, 1, 1]
+kxd_gains: [40, 40, 40, 3, 3, 3]
+
+# previous (same as HybridJointImpedance socket/handwash config)
+# kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5]
+# kxd_gains: [4, 4, 4, 1, 1, 1]
+
+#polymetis default
+# kq_gains: [20, 30, 25, 25, 15, 10, 10]
+# kqd_gains: [1.0, 1.5, 1.0, 1.0, 0.5, 0.5, 0.5]
+# kx_gains: [100, 100, 100, 40, 40, 40]
+# kxd_gains: [1, 1, 1, 0.2, 0.2, 0.2]
 
 ignore_gravity: true
+
+# Commanded joint velocity (JointCommand.vel) as damping reference and to move the setpoint
+# between commands. Only active if the client sends vel (GELLO pair does). 0 = old behaviour.
+velocity_feedforward: 1.0
+# Off: replayed external torques may already contain the inertial part (would double count)
+acceleration_feedforward: 0.0
+# Limits of the reference trajectory, same as the stiff preset; see there
+max_velocity: [1.0, 1.0, 1.0, 1.0, 1.3, 1.3, 1.3]
+max_acceleration: [4.0, 2.5, 3.0, 4.0, 5.0, 6.0, 6.0]
+max_jerk: [200, 120, 160, 200, 240, 320, 320]
+extrapolate_position: true
+# Feed-forward stops when no command arrived for this long [s]
+feedforward_timeout: 0.05

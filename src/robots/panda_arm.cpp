@@ -53,7 +53,7 @@ void PandaArm::initRobot()
     //initialize franka robot
     try
     {
-        robot_ = std::make_unique<FrankaPanda>(config_.robot_ip);
+        robot_ = makeFrankaPanda(config_.robot_ip);
         model_ = std::make_unique<PandaPinocchioModel>("./models/franka_emika_panda/panda_arm.urdf",
                                                        "panda_link8");
     }

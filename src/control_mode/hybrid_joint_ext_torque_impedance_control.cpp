@@ -9,17 +9,28 @@ void HybridJointExtTorqueImpedanceControl::startControl()
 {
     config_.fromFile("config/controller/hybrid_joint_ext_torque_impedance_controller.yaml");
     std::array<double, 7> current_pos = state_buffer_->read().q;
-    desired_joint_command_->write(JointPosition::Map(current_pos.data()));
+    JointTarget target;
+    target.pos = JointPosition::Map(current_pos.data());
+    desired_joint_command_->write(target);
+    reference_generator_.reset(target.pos, config_.feedforward);
     desired_ext_tau_->write(JointTorque::Zero());
     AbstractControlMode::startControl();
 }
 
 franka::Torques HybridJointExtTorqueImpedanceControl::controlLoop(const franka::RobotState& robot_state,
-                                                                  franka::Duration /*duration*/)
+                                                                  franka::Duration duration)
 {
-    const JointPosition desired_pos = desired_joint_command_->read();
+    JointPosition target_pos;
+    JointVelocity target_vel;
+    jointTarget(desired_joint_command_->read(), config_.feedforward, target_pos, target_vel);
+    // the controller tracks a jerk-limited reference, never the raw (possibly jumping) command
+    JointPosition desired_pos;
+    JointVelocity desired_vel;
+    JointAcceleration desired_acc;
+    reference_generator_.update(target_pos, target_vel, duration.toMSec(), desired_pos,
+                                desired_vel, desired_acc);
+    desired_acc *= config_.feedforward.acceleration_feedforward;
     const JointPosition current_pos = Eigen::Map<const JointPosition>(robot_state.q.data());
-    const JointVelocity desired_vel = JointVelocity::Zero();
     const JointVelocity current_vel = Eigen::Map<const JointVelocity>(robot_state.dq.data());
 
     JocobianMatrix J = pinocchio_model_->computeJacobian(current_pos);
@@ -31,11 +42,11 @@ franka::Torques HybridJointExtTorqueImpedanceControl::controlLoop(const franka::
 
     Eigen::Matrix<double, 7, 1> torque_feedback = Kp * joint_pos_error + Kd * joint_vel_error;
 
+    // M(q) * desired_acc + Coriolis; gravity is subtracted because libfranka already compensates it
     JointTorque torque_forward =
-        pinocchio_model_->inverseDynamics(current_pos, current_vel, JointAcceleration::Zero());
-    torque_forward -= pinocchio_model_->inverseDynamics(
-        current_pos, JointVelocity::Zero(),
-        JointAcceleration::Zero()); // Subtract gravity compensation to get pure feedforward torque for inertia and Coriolis effects.
+        pinocchio_model_->inverseDynamics(current_pos, current_vel, desired_acc);
+    torque_forward -= pinocchio_model_->inverseDynamics(current_pos, JointVelocity::Zero(),
+                                                        JointAcceleration::Zero());
 
     // Read external torque command
     const JointTorque ext_tau = desired_ext_tau_->read();

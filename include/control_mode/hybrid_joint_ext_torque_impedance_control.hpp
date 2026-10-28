@@ -5,6 +5,7 @@
 #include <msgpack.hpp>
 
 #include "control_mode/abstract_control_mode.hpp"
+#include "control_mode/joint_target.hpp"
 #include "protocol/control_command.hpp"
 #include "utils/Pose.h"
 
@@ -15,6 +16,7 @@ struct HybridJointExtTorqueImpedanceConfig : public ControllerConfig
     Eigen::Matrix<double, 6, 6> kx;
     Eigen::Matrix<double, 6, 6> kxd;
     bool ignore_gravity{true};
+    JointFeedforwardConfig feedforward;
     HybridJointExtTorqueImpedanceConfig() = default;
 
     void fromFile(const std::string& controller_config_path) override
@@ -30,13 +32,14 @@ struct HybridJointExtTorqueImpedanceConfig : public ControllerConfig
         const std::array<double, 6> kxd_gains = reader.getArray<double, 6>("kxd_gains");
         kxd = transform::Vector6d::Map(kxd_gains.data()).asDiagonal();
         ignore_gravity = reader.getValue<bool>("ignore_gravity");
+        feedforward.read(reader);
     }
 };
 
 class HybridJointExtTorqueImpedanceControl : public AbstractControlMode
 {
   public:
-    HybridJointExtTorqueImpedanceControl(AtomicDoubleBuffer<JointPosition>& desired_joint_command_,
+    HybridJointExtTorqueImpedanceControl(AtomicDoubleBuffer<JointTarget>& desired_joint_command_,
                                          AtomicDoubleBuffer<JointTorque>& desired_ext_tau)
         : desired_joint_command_(&desired_joint_command_)
         , desired_ext_tau_(&desired_ext_tau)
@@ -50,6 +53,7 @@ class HybridJointExtTorqueImpedanceControl : public AbstractControlMode
                                 franka::Duration duration) override;
     void startControl() override;
     HybridJointExtTorqueImpedanceConfig config_;
-    AtomicDoubleBuffer<JointPosition>* desired_joint_command_;
+    AtomicDoubleBuffer<JointTarget>* desired_joint_command_;
+    JointReferenceGenerator reference_generator_;
     AtomicDoubleBuffer<JointTorque>* desired_ext_tau_;
 };

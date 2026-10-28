@@ -96,6 +96,7 @@ void AbstractControlMode::controlTask()
     {
         try
         {
+            setControlThreadPriority();
             robot_->control(control_callback);
             break;
         }
@@ -135,6 +136,7 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
             robot_->automaticErrorRecovery();
             JointPositionMotionGenerator motion_generator(max_velocity, target_q, *state_buffer_,
                                                           tolerance);
+            setControlThreadPriority();
             robot_->control(motion_generator);
             break;
         }
@@ -173,6 +175,7 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
         robot_->automaticErrorRecovery();
         CartesianPoseMotionGenerator motion_generator(
             max_velocity, target_position, target_orientation, *state_buffer_, tolerance);
+        setControlThreadPriority();
         robot_->control(motion_generator);
     }
     catch (const franka::Exception& e)
