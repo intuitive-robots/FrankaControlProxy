@@ -1,19 +1,12 @@
 name: CartesianImpedance
 
 # Cartesian stiffness gains (diagonal)
-# 2026-11-09 (Ruckig reference): stiffer for more precise teleoperation. The spring now tracks a
-# jerk-limited reference whose twist is the damping reference, so the damper no longer amplifies
-# command steps (what made stiffer joint gains rumble). Static error from friction / model errors
-# scales with 1/Kp (-37%). Kd scaled with sqrt(Kp), so the damping ratio stays as before
-# (~0.58 translational at ~3 kg effective mass). Not yet tested on the robot: if it rings, raise Kd;
-# if it rumbles or feels too stiff in contact, go back towards the previous values.
-# previous: Kp_p: [750, 750, 750]  Kd_p: [55, 55, 55]  Kp_r: [45, 45, 45]  Kd_r: [5, 5, 5]
 # Position stiffness (N/m)
-Kp_p: [1200, 1200, 1200]
-Kd_p: [70, 70, 70]
+Kp_p: [750, 750, 750]
+Kd_p: [55, 55, 55]
 # Orientation stiffness (Nm/rad)
-Kp_r: [70, 70, 70]
-Kd_r: [6, 6, 6]
+Kp_r: [45, 45, 45]
+Kd_r: [5, 5, 5]
 
 
 max_torque: 8.0
@@ -28,7 +21,7 @@ feedforward_timeout: 0.05
 
 # Reference trajectory between the commands and the controller (CartesianReferenceGenerator in
 # cartesian_target.hpp), so the spring never sees the raw targets (WebXR: ~72 Hz steps of up to
-# 1 cm / 5 deg, i.e. 12 N force steps at Kp_p 1200).
+# 1 cm / 5 deg, i.e. 7.5 N force steps at Kp_p 750).
 # Loop that pulls the reference onto the target: gain [1/s], braking fraction of max_acceleration,
 # low-pass time constant of the commanded twist [s]
 reference_position_gain: 30.0
