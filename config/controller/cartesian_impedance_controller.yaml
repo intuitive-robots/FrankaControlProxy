@@ -13,7 +13,7 @@ max_torque: 8.0
 
 # Commanded twist (pos_vel / rot_vel) as target velocity of the reference and to move the target between
 # commands. 0 = old behaviour (damper brakes towards zero velocity).
-velocity_feedforward: 1.0
+velocity_feedforward: 0.0
 extrapolate_pose: true
 # Feed-forward and extrapolation stop when no new command arrived for this long [s]. Bounds the
 # drift on a dropout to twist * timeout (WebXR: ~3.5 samples; the client zeroes the twist on de-clutch).
@@ -33,6 +33,6 @@ reference_velocity_filter_time: 0.02
 # Raise max_acceleration if quick motions feel delayed; lower max_jerk if it sounds harsh.
 # Franka Cartesian limits: translation 1.7 m/s, 13 m/s^2, 6500 m/s^3;
 #                          rotation 2.5 rad/s, 25 rad/s^2, 12500 rad/s^3
-max_velocity: [0.7, 0.7, 0.7, 1.5, 1.5, 1.5]
-max_acceleration: [4.0, 4.0, 4.0, 8.0, 8.0, 8.0]
+max_velocity: [0.4, 0.4, 0.4, 1.0, 1.0, 1.0]
+max_acceleration: [4.0, 4.0, 4.0, 6.0, 6.0, 6.0]
 max_jerk: [200, 200, 200, 400, 400, 400]
