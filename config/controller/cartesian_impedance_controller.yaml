@@ -1,19 +1,45 @@
 name: CartesianImpedance
 
 # Cartesian stiffness gains (diagonal)
+# 2026-11-09 (Ruckig reference): stiffer for more precise teleoperation. The spring now tracks a
+# jerk-limited reference whose twist is the damping reference, so the damper no longer amplifies
+# command steps (what made stiffer joint gains rumble). Static error from friction / model errors
+# scales with 1/Kp (-37%). Kd scaled with sqrt(Kp), so the damping ratio stays as before
+# (~0.58 translational at ~3 kg effective mass). Not yet tested on the robot: if it rings, raise Kd;
+# if it rumbles or feels too stiff in contact, go back towards the previous values.
+# previous: Kp_p: [750, 750, 750]  Kd_p: [55, 55, 55]  Kp_r: [45, 45, 45]  Kd_r: [5, 5, 5]
 # Position stiffness (N/m)
-Kp_p: [750, 750, 750]
-Kd_p: [55, 55, 55]
+Kp_p: [1200, 1200, 1200]
+Kd_p: [70, 70, 70]
 # Orientation stiffness (Nm/rad)
-Kp_r: [45, 45, 45]
-Kd_r: [5, 5, 5]
+Kp_r: [70, 70, 70]
+Kd_r: [6, 6, 6]
 
 
 max_torque: 8.0
 
-# Commanded twist (pos_vel / rot_vel) as damping reference and to move the setpoint between
+# Commanded twist (pos_vel / rot_vel) as target velocity of the reference and to move the target between
 # commands. 0 = old behaviour (damper brakes towards zero velocity).
 velocity_feedforward: 1.0
 extrapolate_pose: true
-# Feed-forward stops when no command arrived for this long [s]
-feedforward_timeout: 0.1
+# Feed-forward and extrapolation stop when no new command arrived for this long [s]. Bounds the
+# drift on a dropout to twist * timeout (WebXR: ~3.5 samples; the client zeroes the twist on de-clutch).
+feedforward_timeout: 0.05
+
+# Reference trajectory between the commands and the controller (CartesianReferenceGenerator in
+# cartesian_target.hpp), so the spring never sees the raw targets (WebXR: ~72 Hz steps of up to
+# 1 cm / 5 deg, i.e. 12 N force steps at Kp_p 1200).
+# Loop that pulls the reference onto the target: gain [1/s], braking fraction of max_acceleration,
+# low-pass time constant of the commanded twist [s]
+reference_position_gain: 30.0
+reference_braking: 0.5
+reference_velocity_filter_time: 0.02
+# Limits of the reference per base-frame axis [x, y, z (m), rx, ry, rz (rad)]. Target motions faster
+# than this lag instead of reaching the robot. Linear 0.7 m/s matches the WebXR step cap (1 cm per
+# sample at 72 Hz); acceleration/jerk are ~30% / ~3% of the Franka limits, as for the joint reference.
+# Raise max_acceleration if quick motions feel delayed; lower max_jerk if it sounds harsh.
+# Franka Cartesian limits: translation 1.7 m/s, 13 m/s^2, 6500 m/s^3;
+#                          rotation 2.5 rad/s, 25 rad/s^2, 12500 rad/s^3
+max_velocity: [0.7, 0.7, 0.7, 1.5, 1.5, 1.5]
+max_acceleration: [4.0, 4.0, 4.0, 8.0, 8.0, 8.0]
+max_jerk: [200, 200, 200, 400, 400, 400]

@@ -9,40 +9,31 @@ void CartesianImpedanceController::startControl()
     CartesianTarget target;
     target.pose = transform::Pose(T_EE_in_base_frame);
     desired_cartesian_target_->write(target);
+    reference_generator_.reset(target.pose.translation(), target.pose.quaternion(),
+                               config_.feedforward);
     AbstractControlMode::startControl();
     zlc::info("[CartesianImpedance] Control started.");
 }
 
 franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotState& robot_state,
-                                                          franka::Duration /*duration*/)
+                                                          franka::Duration duration)
 {
-    // Get desired pose and feed-forward twist of the latest command
-    const CartesianTarget target = desired_cartesian_target_->read();
-    Eigen::Vector3d desired_pos_EE = target.pose.translation();
-    Eigen::Quaterniond desired_quat_EE = target.pose.quaternion();
+    // Target pose and twist of the latest command (twist feed-forward and extrapolation applied)
+    Eigen::Vector3d target_pos;
+    Eigen::Quaterniond target_quat;
+    Eigen::Matrix<double, 6, 1> target_twist;
+    cartesianTarget(desired_cartesian_target_->read(), config_.feedforward, target_pos, target_quat,
+                    target_twist);
 
-    // Use the commanded twist as damping reference so the damper does not brake the motion
-    // (with a zero reference the EE lags by Kd/Kp seconds). Dropped when commands stop arriving.
-    Eigen::Matrix<double, 6, 1> twist_desired = Eigen::Matrix<double, 6, 1>::Zero();
-    const double cmd_age =
-        std::chrono::duration<double>(std::chrono::steady_clock::now() - target.stamp).count();
-    if (cmd_age < config_.feedforward_timeout)
-    {
-        twist_desired = config_.velocity_feedforward * target.twist;
-    }
-    if (config_.extrapolate_pose)
-    {
-        // Move the setpoint along the twist between commands instead of stepping at the command rate.
-        // Capped at the timeout so the setpoint stops (and does not jump back) when commands stop.
-        const double dt = std::min(cmd_age, config_.feedforward_timeout);
-        const Eigen::Matrix<double, 6, 1> shift = config_.velocity_feedforward * target.twist * dt;
-        desired_pos_EE += shift.head<3>();
-        const Eigen::Vector3d rot_vec = shift.tail<3>();
-        if (rot_vec.norm() > 1e-9)
-        {
-            desired_quat_EE = Eigen::AngleAxisd(rot_vec.norm(), rot_vec.normalized()) * desired_quat_EE;
-        }
-    }
+    // The controller tracks a jerk-limited reference, never the raw (stepping, possibly jumping)
+    // target. The reference twist is the damping reference, so the damper does not brake the
+    // motion (with a zero reference the EE lags by Kd/Kp seconds).
+    Eigen::Vector3d desired_pos_EE;
+    Eigen::Quaterniond desired_quat_EE;
+    Eigen::Matrix<double, 6, 1> twist_desired;
+    Eigen::Matrix<double, 6, 1> acc_desired;
+    reference_generator_.update(target_pos, target_quat, target_twist, duration.toMSec(),
+                                desired_pos_EE, desired_quat_EE, twist_desired, acc_desired);
 
     // Extract current joint state
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
@@ -95,17 +86,11 @@ franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotSta
     // ========== Project wrench to joint torques ==========
     Eigen::Matrix<double, 7, 1> tau_d = jacobian.transpose() * wrench_feedback;
 
-    // Convert to std::array
-    std::array<double, 7> tau_d_array{};
-    Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
-
-    // Rate limiting
-    std::array<double, 7> tau_d_limited = tau_d_array;
-
     // Safety clamp
+    std::array<double, 7> tau_d_limited{};
     for (size_t i = 0; i < 7; i++)
     {
-        tau_d_limited[i] = std::clamp(tau_d_limited[i], -config_.max_torque, config_.max_torque);
+        tau_d_limited[i] = std::clamp(tau_d[i], -config_.max_torque, config_.max_torque);
     }
 
     return tau_d_limited;

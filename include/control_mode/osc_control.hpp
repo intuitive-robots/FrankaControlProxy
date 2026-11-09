@@ -4,7 +4,6 @@
 
 // #include "control_mode/abstract_control_mode.hpp"
 // #include "protocol/control_command.hpp"
-// #include "utils/linear_trajInterpolator.hpp"
 
 // struct OSCConfig : public ControllerConfig
 // {

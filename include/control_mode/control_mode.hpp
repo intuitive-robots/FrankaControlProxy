@@ -106,6 +106,16 @@ class ControlModeFactory
         target.pose = transform::Pose(quaternion, translation);
         // pos_vel is the linear, rot_vel[0:3] the angular velocity, both in the base frame
         target.twist << Eigen::Vector3d::Map(cmd.pos_vel.data()), Eigen::Vector3d::Map(cmd.rot_vel.data());
+        // Clients resend the latest sample at their loop rate (e.g. the WebXR pair at 500 Hz, new
+        // samples at ~72 Hz). Keep the stamp of the first copy, so the pose is extrapolated from
+        // when the sample arrived and the twist feed-forward times out when no new sample comes.
+        const CartesianTarget current = desired_cartesian_target_.read();
+        if (current.twist == target.twist &&
+            current.pose.translation() == target.pose.translation() &&
+            current.pose.quaternion().coeffs() == target.pose.quaternion().coeffs())
+        {
+            return;
+        }
         target.stamp = std::chrono::steady_clock::now();
         desired_cartesian_target_.write(target);
     }

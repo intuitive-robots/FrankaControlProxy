@@ -125,3 +125,10 @@ if(NO_ROBOT_TESTING)
         X11
     )
 endif()
+
+# -----------------------------
+# Offline test of the Cartesian reference trajectory (not built by default): pixi run test-reference
+# -----------------------------
+add_executable(cartesian_reference_test EXCLUDE_FROM_ALL tests/cartesian_reference_test.cpp)
+target_include_directories(cartesian_reference_test PRIVATE include ${YAML_CPP_INCLUDE_DIR})
+target_link_libraries(cartesian_reference_test ${YAML_CPP_LIBRARIES} zerolancom::zerolancom Eigen3::Eigen ruckig::ruckig)

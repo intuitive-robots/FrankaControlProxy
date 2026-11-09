@@ -3,6 +3,7 @@
 # so the binary runs on rt (Ubuntu 22.04). ruckig and ZeroLanCom are fetched by CMakeLists.txt.
 #   pixi run build    -> build/proxy
 #   pixi run dist     -> dist/{bin/proxy, lib/*.so, config/, models/franka_emika_panda/panda_arm.urdf}
+#   pixi run test-reference -> offline test of the Cartesian reference trajectory
 #   pixi run deploy   -> replaces mobile-0-rt:~/ngres/franka_control_proxy with dist/
 #                        (run there: cd ~/ngres/franka_control_proxy && ./bin/proxy ./config/proxy/droid.yaml)
 [workspace]
@@ -36,4 +37,5 @@ rsync = "*"
 configure = "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNO_ROBOT_TESTING=OFF"
 build = { cmd = "cmake --build build -j", depends-on = ["configure"] }
 dist = { cmd = "bash scripts/pixi_dist.sh build/proxy dist", depends-on = ["build"] }
+test-reference = { cmd = "cmake --build build -j --target cartesian_reference_test && ./build/cartesian_reference_test", depends-on = ["configure"] }
 deploy = { cmd = "ssh mobile-0-rt 'rm -rf ngres/franka_control_proxy && mkdir -p ngres/franka_control_proxy' && rsync -a dist/ mobile-0-rt:ngres/franka_control_proxy/", depends-on = ["dist"] }
