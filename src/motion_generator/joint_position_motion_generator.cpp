@@ -25,12 +25,13 @@ franka::JointPositions JointPositionMotionGenerator::operator()(const franka::Ro
     time_ += period.toSec();
 
     if (time_ == 0.0) {
-        q_start_ = JointPositionMotionGenerator::Vector7d(robot_state.q.data());
+        // q_d, not q: starting from q makes the first command jump by q - q_d (discontinuity)
+        q_start_ = JointPositionMotionGenerator::Vector7d(robot_state.q_d.data());
         delta_q_ = q_goal_ - q_start_;
 
         // Check if already within tolerance - skip motion if so
         if (delta_q_.cwiseAbs().maxCoeff() < tolerance_) {
-            franka::JointPositions output(robot_state.q);
+            franka::JointPositions output(robot_state.q_d);
             output.motion_finished = true;
             return output;
         }
