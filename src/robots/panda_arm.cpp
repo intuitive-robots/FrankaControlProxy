@@ -24,10 +24,20 @@ PandaArm::PandaArm(const std::string& config_path)
         is_running = false;
         return;
     }
-    control_mode_factory_ = std::make_unique<ControlModeFactory>(config_.name);
-    control_mode_factory_->registerControlModes(*robot_, *model_, current_state);
-    setControlMode("Idle");
-    initializeService();
+    try
+    {
+        control_mode_factory_ = std::make_unique<ControlModeFactory>(config_.name);
+        control_mode_factory_->registerControlModes(*robot_, *model_, current_state);
+        setControlMode("Idle");
+        initializeService();
+    }
+    catch (...)
+    {
+        // state_pub_thread is already running: join it before the exception leaves the
+        // constructor, otherwise destroying the joinable std::thread calls std::terminate.
+        stop();
+        throw;
+    }
 }
 
 void PandaArm::initializeService()
@@ -76,9 +86,16 @@ void PandaArm::initRobot()
         return;
     }
     current_state.write(robot_->readOnce());
+    if (isUserStopped(current_state.read()))
+    {
+        zlc::error("{}", kUserStopMessage);
+        zlc::warn("Proxy keeps running and publishing state; control modes only work once the "
+                  "user stop is released.");
+    }
+    // set before starting the thread, its loop condition would otherwise end it immediately
+    is_running = true;
     state_pub_thread = std::thread(&PandaArm::statePublishThread, this);
     zlc::info("PandaArm started successfully.");
-    is_running = true;
 }
 
 void PandaArm::stop()

@@ -86,6 +86,9 @@ class AbstractControlMode
     bool is_running_ = false;
     std::string controller_name;
     bool tryRecovery(int max_attempts = 3);
+    // Reads the robot state outside a control loop (falls back to the last buffered state),
+    // so a failed command can be explained with the current robot mode.
+    franka::RobotState readFreshState();
 
     virtual franka::Torques controlLoop(const franka::RobotState&, franka::Duration) {  return franka::Torques({}); };
     std::thread control_thread_;

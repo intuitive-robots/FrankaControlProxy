@@ -46,6 +46,29 @@ inline std::unique_ptr<FrankaPanda> makeFrankaPanda(const std::string& robot_ip)
 #endif
 }
 
+// The user stop (external activation device) is pressed: the robot rejects every command,
+// including automaticErrorRecovery(), until the button is released. Only readOnce() still works.
+inline bool isUserStopped(const franka::RobotState& state)
+{
+    return state.robot_mode == franka::RobotMode::kUserStopped;
+}
+
+inline constexpr const char* kUserStopMessage =
+    "USER STOP IS PRESSED: the robot is in \"User stopped\" mode and rejects all commands. "
+    "Release the user stop button (twist it / pull it up) so the robot can be controlled again.";
+
+// Logs why a franka command failed, calling out the user stop explicitly.
+inline void logFrankaCommandError(const std::string& context, const std::exception& e,
+                                  const franka::RobotState& state)
+{
+    if (isUserStopped(state))
+    {
+        zlc::error("[{}] {}", context, kUserStopMessage);
+        return;
+    }
+    zlc::error("[{}] {}", context, e.what());
+}
+
 // Same as libfranka does for kEnforce: SCHED_FIFO with the highest priority for the calling thread.
 inline void setControlThreadPriority()
 {

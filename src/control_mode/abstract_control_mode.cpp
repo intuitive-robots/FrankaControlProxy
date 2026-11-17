@@ -54,7 +54,16 @@ void AbstractControlMode::initController(FrankaPanda& robot, PandaPinocchioModel
 
 void AbstractControlMode::startControl()
 {
-    robot_->automaticErrorRecovery();
+    // A rejected recovery (e.g. user stop pressed) must not escape: the control thread is
+    // started anyway so Idle keeps reading state, and torque modes report the failure there.
+    try
+    {
+        robot_->automaticErrorRecovery();
+    }
+    catch (const franka::Exception& e)
+    {
+        logFrankaCommandError(getModeName(), e, readFreshState());
+    }
     zlc::debug("[{}] control started.", getModeName());
     is_running_ = true;
     control_thread_ = std::thread(&AbstractControlMode::controlTask, this);
@@ -102,7 +111,7 @@ void AbstractControlMode::controlTask()
         }
         catch (const std::exception& ex)
         {
-            zlc::error("[{}] Robot is unable to be controlled: {}", getModeName(), ex.what());
+            logFrankaCommandError(getModeName(), ex, readFreshState());
         }
         bool recovered = tryRecovery();
         if (!recovered)
@@ -142,7 +151,8 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
         }
         catch (const franka::Exception& e)
         {
-            zlc::error("[{}] Error when move joint position: {}", getModeName(), e.what());
+            logFrankaCommandError(getModeName() + " move to joint position", e,
+                                  readFreshState());
         }
         bool recovered = tryRecovery();
         if (!recovered)
@@ -186,6 +196,20 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
     return true;
 }
 
+franka::RobotState AbstractControlMode::readFreshState()
+{
+    try
+    {
+        franka::RobotState state = robot_->readOnce();
+        state_buffer_->write(state);
+        return state;
+    }
+    catch (const std::exception&)
+    {
+        return state_buffer_->read();
+    }
+}
+
 bool AbstractControlMode::tryRecovery(int max_attempts)
 {
     for (int i = 0; i < max_attempts; i++)
@@ -198,7 +222,7 @@ bool AbstractControlMode::tryRecovery(int max_attempts)
         }
         catch (const franka::Exception& e)
         {
-            zlc::error("[{}] Recovery failed: {}", getModeName(), e.what());
+            logFrankaCommandError(getModeName() + " recovery", e, readFreshState());
             return false;
         }
     }
