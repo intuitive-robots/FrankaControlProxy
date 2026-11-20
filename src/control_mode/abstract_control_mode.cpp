@@ -138,6 +138,20 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
         zlc::warn("[{}] moveToJointPosition rejected: control thread is running.", getModeName());
         return false;
     }
+    // a motion that finishes in its first cycle is rejected by libfranka ("still moving")
+    const franka::RobotState state = readFreshState();
+    double max_error = 0.0;
+    for (size_t i = 0; i < NUM_DOFS; i++)
+    {
+        max_error = std::max(max_error, std::abs(target_q[i] - state.q[i]));
+    }
+    if (max_error < tolerance)
+    {
+        zlc::info("[{}] Already at target joint position.", getModeName());
+        startControl();
+        return true;
+    }
+    bool reached = false;
     for (size_t i = 0; i < 5; i++)
     {
         try
@@ -147,6 +161,7 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
                                                           tolerance);
             setControlThreadPriority();
             robot_->control(motion_generator);
+            reached = true;
             break;
         }
         catch (const franka::Exception& e)
@@ -161,8 +176,13 @@ bool AbstractControlMode::moveToJointPosition(const std::array<double, NUM_DOFS>
             break;
         }
     }
-    zlc::info("[{}] Reached target joint position.", getModeName());
     startControl();
+    if (!reached)
+    {
+        zlc::error("[{}] Move to joint position failed, target not reached.", getModeName());
+        return false;
+    }
+    zlc::info("[{}] Reached target joint position.", getModeName());
     return true;
 }
 

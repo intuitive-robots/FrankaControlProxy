@@ -14,6 +14,8 @@
 
 #include <iomanip>
 
+#include <termios.h>
+
 #include <boost/crc.hpp>
 
 #include "helpers.h"
@@ -22,15 +24,16 @@
 namespace robotiq {
 
 std::string write_read(boost::asio::serial_port& serial, boost::asio::io_context& io_context, const std::string& message,
-                       std::size_t timeout_ms) {
-  // write
+                       std::size_t response_len, std::size_t timeout_ms) {
+  // drop bytes left over from an earlier timed-out exchange, they would prefix this reply
+  ::tcflush(serial.native_handle(), TCIFLUSH);
   write(serial, message);
 
-  // read
+  // Modbus RTU frames have no terminator: read exactly the expected length
   TimeoutReader reader(serial, io_context, timeout_ms);
   char c;
   std::string result;
-  while (reader.read_char(c) && c != '\n') {
+  while (result.size() < response_len && reader.read_char(c)) {
     result += c;
   }
   return bin_to_hex(result);

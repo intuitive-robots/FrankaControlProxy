@@ -52,6 +52,10 @@ static std::string PRESET_READ_WRITE_PREFIX = "091707D0000303E8000306090000";
 // Expected response for preset messages
 static std::string PRESET_RESPONSE = "091003E800030130";
 
+// Reply lengths in bytes: FC16 echo, and FC04/FC23 with 3 registers (id, fc, count, 6 data, crc)
+static constexpr std::size_t PRESET_RESPONSE_LEN = 8;
+static constexpr std::size_t FEEDBACK_RESPONSE_LEN = 11;
+
 struct RobotiqGripperInterface::Implementation {
   Implementation();
   bool is_connected{false};
@@ -114,7 +118,7 @@ bool RobotiqGripperInterface::reset(bool blocking) {
   std::string r;
   {
     std::lock_guard<std::mutex> lock(m_impl->m_serial_mutex);
-    r = write_read(m_impl->m_serial, m_impl->m_io_context, PRESET_RESET, m_impl->m_timeout_ms);
+    r = write_read(m_impl->m_serial, m_impl->m_io_context, PRESET_RESET, PRESET_RESPONSE_LEN, m_impl->m_timeout_ms);
   }
   if (r.compare(PRESET_RESPONSE) != 0) {
     return false;
@@ -154,7 +158,7 @@ bool RobotiqGripperInterface::activate(bool blocking) {
   std::string r;
   {
     std::lock_guard<std::mutex> lock(m_impl->m_serial_mutex);
-    r = write_read(m_impl->m_serial, m_impl->m_io_context, PRESET_ACTIVATE, m_impl->m_timeout_ms);
+    r = write_read(m_impl->m_serial, m_impl->m_io_context, PRESET_ACTIVATE, PRESET_RESPONSE_LEN, m_impl->m_timeout_ms);
   }
   if (r.compare(PRESET_RESPONSE) != 0) {
     return false;
@@ -288,7 +292,7 @@ GripperFeedback RobotiqGripperInterface::get_feedback() {
   std::string response;
   {
     std::lock_guard<std::mutex> lock(m_impl->m_serial_mutex);
-    response = write_read(m_impl->m_serial, m_impl->m_io_context, READ_FEEDBACK, m_impl->m_timeout_ms);
+    response = write_read(m_impl->m_serial, m_impl->m_io_context, READ_FEEDBACK, FEEDBACK_RESPONSE_LEN, m_impl->m_timeout_ms);
   }
   std::optional<GripperFeedback> feedback = string_to_feedback(response);
   if (!feedback) {
@@ -320,25 +324,24 @@ bool RobotiqGripperInterface::set_raw_gripper_position(uint8_t position, uint8_t
     PRESET_POSITION_PREFIX + uint8_to_hex(position) + uint8_to_hex(speed) + uint8_to_hex(force);
   message += crc16_modbus(message);
 
-  if (blocking) {
-    std::string r;
-    {
-      std::lock_guard<std::mutex> lock(m_impl->m_serial_mutex);
-      r = write_read(m_impl->m_serial, m_impl->m_io_context, message, m_impl->m_timeout_ms);
-    }
-    if (r.compare(PRESET_RESPONSE) != 0) {
-      return false;
-    }
+  // the reply is read in both modes; left unread it would prefix the next feedback reply
+  std::string r;
+  {
+    std::lock_guard<std::mutex> lock(m_impl->m_serial_mutex);
+    r = write_read(m_impl->m_serial, m_impl->m_io_context, message, PRESET_RESPONSE_LEN,
+                   m_impl->m_timeout_ms);
+  }
+  if (r.compare(PRESET_RESPONSE) != 0) {
+    return false;
+  }
 
+  if (blocking) {
     bool done = false;
     while (not done) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       GripperFeedback y = get_feedback();
       done = y.status.gobj == ObjectStatus::IN_MOTION ? false : true;
     }
-  } else {
-    std::lock_guard<std::mutex> lock(m_impl->m_serial_mutex);
-    write(m_impl->m_serial, message);
   }
 
   return true;
@@ -358,7 +361,8 @@ std::optional<GripperFeedback> RobotiqGripperInterface::set_raw_gripper_position
   std::string response;
   {
     std::lock_guard<std::mutex> lock(m_impl->m_serial_mutex);
-    response = write_read(m_impl->m_serial, m_impl->m_io_context, message, m_impl->m_timeout_ms);
+    response = write_read(m_impl->m_serial, m_impl->m_io_context, message, FEEDBACK_RESPONSE_LEN,
+                          m_impl->m_timeout_ms);
   }
   return string_to_feedback(response);
 }

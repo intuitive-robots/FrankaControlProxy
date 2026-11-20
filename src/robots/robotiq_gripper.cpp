@@ -70,8 +70,12 @@ void RobotiqGripper::controlLoopThread()
                 if (commandChanged(cmd, last_cmd)) {
                     // zlc::info("RobotiqGripper executing new command: Pos {:.2f}, Speed {:.2f}, Force {:.2f}, Blocking {}",
                     //           cmd.position, cmd.speed, cmd.force, cmd.blocking);
-                    gripper_->set_gripper_position(cmd.position, cmd.speed, cmd.force, cmd.blocking);
-                    last_cmd = cmd;
+                    // without an ack the command is resent next cycle
+                    if (gripper_->set_gripper_position(cmd.position, cmd.speed, cmd.force,
+                                                       cmd.blocking))
+                        last_cmd = cmd;
+                    else
+                        zlc::warn("RobotiqGripper command not acknowledged, retrying");
                 }
             }
             catch (const std::exception& e)

@@ -1,15 +1,29 @@
 name: CartesianImpedance
 
-# Cartesian stiffness gains (diagonal)
+# Cartesian stiffness gains (diagonal, base frame). Isotropic so the same gains suit every task;
+# Kd ~ 2*sqrt(Kp) (pos) and ~ 0.75*sqrt(Kp) (rot), the ratios of the former 750/55 and 45/5.
+# Pushing force = Kp_p * (target offset past the robot): 50 N needs 5 cm at 1000 N/m.
 # Position stiffness (N/m)
-Kp_p: [750, 750, 750]
-Kd_p: [55, 55, 55]
+Kp_p: [1000, 1000, 1000]
+Kd_p: [63, 63, 63]
 # Orientation stiffness (Nm/rad)
-Kp_r: [45, 45, 45]
-Kd_r: [5, 5, 5]
+Kp_r: [60, 60, 60]
+Kd_r: [5.8, 5.8, 5.8]
 
+# Per-joint torque limit [Nm] (Franka: 87 on joints 1-4, 12 on 5-7). If a joint would exceed its
+# limit, the whole torque vector is scaled down, so the wrench keeps its direction.
+# (The former scalar 8 Nm capped the pushing force at ~15-25 N in insertion poses.)
+max_torque: [40, 40, 40, 40, 10, 10, 10]
 
-max_torque: 8.0
+# Collision reflex thresholds, set when this controller starts (the Franka keeps them afterwards).
+# Contact is reported above `lower`, the reflex stops the robot above `upper`. Upper must exceed
+# max_torque, or pushing against the environment trips the reflex.
+# Joint torques [Nm], 7 joints
+collision_torque_lower: [30, 30, 30, 30, 12, 12, 12]
+collision_torque_upper: [60, 60, 60, 60, 25, 25, 25]
+# Cartesian wrench [N, N, N, Nm, Nm, Nm]
+collision_force_lower: [40, 40, 40, 15, 15, 15]
+collision_force_upper: [80, 80, 80, 30, 30, 30]
 
 # Commanded twist (pos_vel / rot_vel) as target velocity of the reference and to move the target between
 # commands. 0 = old behaviour (damper brakes towards zero velocity).

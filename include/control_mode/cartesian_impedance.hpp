@@ -14,7 +14,11 @@ struct CartesianImpedanceConfig : public ControllerConfig
     Eigen::Matrix<double, 3, 3> Kp_r{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_p{Eigen::Matrix<double, 3, 3>::Zero()};
     Eigen::Matrix<double, 3, 3> Kd_r{Eigen::Matrix<double, 3, 3>::Zero()};
-    double max_torque{5.0};
+    std::array<double, 7> max_torque{};
+    std::array<double, 7> collision_torque_lower{};
+    std::array<double, 7> collision_torque_upper{};
+    std::array<double, 6> collision_force_lower{};
+    std::array<double, 6> collision_force_upper{};
     // Twist feed-forward, pose extrapolation and the reference trajectory
     CartesianFeedforwardConfig feedforward;
     CartesianImpedanceConfig() = default;
@@ -34,7 +38,11 @@ struct CartesianImpedanceConfig : public ControllerConfig
         const std::array<double, 3> Kd_r_vals = reader.getArray<double, 3>("Kd_r");
         Kd_r = Eigen::Vector3d::Map(Kd_r_vals.data()).asDiagonal();
 
-        max_torque = reader.getValue<double>("max_torque");
+        max_torque = reader.getArray<double, 7>("max_torque");
+        collision_torque_lower = reader.getArray<double, 7>("collision_torque_lower");
+        collision_torque_upper = reader.getArray<double, 7>("collision_torque_upper");
+        collision_force_lower = reader.getArray<double, 6>("collision_force_lower");
+        collision_force_upper = reader.getArray<double, 6>("collision_force_upper");
         feedforward.read(reader);
     }
 };

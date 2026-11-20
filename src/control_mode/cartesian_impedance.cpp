@@ -4,6 +4,9 @@
 void CartesianImpedanceController::startControl()
 {
     config_.fromFile("config/controller/cartesian_impedance_controller.yaml");
+    // Only allowed while no control loop runs (the previous mode is stopped before this one starts)
+    robot_->setCollisionBehavior(config_.collision_torque_lower, config_.collision_torque_upper,
+                                 config_.collision_force_lower, config_.collision_force_upper);
     franka::RobotState curr_state = state_buffer_->read();
     Eigen::Affine3d T_EE_in_base_frame(Eigen::Matrix4d::Map(curr_state.O_T_EE.data()));
     CartesianTarget target;
@@ -86,12 +89,21 @@ franka::Torques CartesianImpedanceController::controlLoop(const franka::RobotSta
     // ========== Project wrench to joint torques ==========
     Eigen::Matrix<double, 7, 1> tau_d = jacobian.transpose() * wrench_feedback;
 
-    // Safety clamp
-    std::array<double, 7> tau_d_limited{};
+    // Safety limit: scale the whole vector so the most-saturated joint sits at its limit. Unlike a
+    // per-joint clamp this keeps the direction of the wrench (no sideways push when one joint
+    // saturates).
+    double scale = 1.0;
     for (size_t i = 0; i < 7; i++)
     {
-        tau_d_limited[i] = std::clamp(tau_d[i], -config_.max_torque, config_.max_torque);
+        const double abs_tau = std::abs(tau_d[i]);
+        if (abs_tau > config_.max_torque[i])
+        {
+            scale = std::min(scale, config_.max_torque[i] / abs_tau);
+        }
     }
+    tau_d *= scale;
 
+    std::array<double, 7> tau_d_limited{};
+    Eigen::Matrix<double, 7, 1>::Map(tau_d_limited.data()) = tau_d;
     return tau_d_limited;
 }
