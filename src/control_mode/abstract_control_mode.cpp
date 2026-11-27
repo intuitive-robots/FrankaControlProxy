@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <stdexcept>
 
 #include "motion_generator/cartesian_pose_motion_generator.hpp"
@@ -158,6 +157,8 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
                                               const Eigen::Quaterniond& target_orientation,
                                               double max_velocity, double tolerance)
 {
+    stopControl();
+    zlc::info("[{}] Moving to Cartesian pose ...", getModeName());
     if (!robot_)
     {
         zlc::error("[{}] moveToCartesianPose failed: robot not initialized.", getModeName());
@@ -177,9 +178,11 @@ bool AbstractControlMode::moveToCartesianPose(const Eigen::Vector3d& target_posi
     }
     catch (const franka::Exception& e)
     {
-        std::cout << e.what() << std::endl;
+        zlc::error("[{}] Error when move Cartesian pose: {}", getModeName(), e.what());
         return false;
     }
+    zlc::info("[{}] Reached target Cartesian pose.", getModeName());
+    startControl();
     return true;
 }
 

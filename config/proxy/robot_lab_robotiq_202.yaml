@@ -1,0 +1,13 @@
+# Franka Arm Configuration (leader)
+node_name: robot_lab_robotiq_202
+proxy_ip: 141.3.53.63
+group: 224.0.0.1
+group_port: 7725
+group_name: robot_lab_robotiq_202
+
+robot:
+  - type: panda
+    config_path: config/robot/robot_lab_panda_202.yaml
+grippers:
+  - type: robotiq_gripper
+    config_path: config/gripper/202_robotiq_.yaml

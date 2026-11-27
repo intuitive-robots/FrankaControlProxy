@@ -1,0 +1,20 @@
+# Robotiq gripper settings
+name: FrankaPanda
+
+# Serial communication
+gripper_port: /dev/ttyUSB0
+gripper_baud: 115200
+
+# Scaling (see robotiq interface docs)
+scale_alpha: 1.0
+scale_beta: 0.0
+
+# Receive timeout (ms)
+receive_timeout_ms: 500
+
+# topics
+command_topic: FrankaPanda/robotiq_gripper_command
+state_topic: robotiq_gripper_state
+
+# State publish rate (Hz)
+gripper_pub_rate_hz: 10
